@@ -339,6 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetActivityTimer() {
         // 操作があれば即座に表示
         fabContainer.classList.remove('hidden');
+        document.body.classList.remove('hide-cursor'); // カーソルを再表示
         
         // 既存のタイマーをリセット
         if (activityTimeout) clearTimeout(activityTimeout);
@@ -346,11 +347,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3秒後に非表示にするタイマーをセット
         activityTimeout = setTimeout(() => {
             fabContainer.classList.add('hidden');
+            document.body.classList.add('hide-cursor'); // マウスカーソルも一緒に隠す
         }, 3000);
     }
 
     // 監視するユーザー操作のイベント一覧
-    const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'wheel'];
+    // （注：'scroll' イベントはオートスクロール中にも自動で毎フレーム発火してしまうため監視から外し、'wheel'等の手動操作のみ検知）
+    const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'wheel'];
     activityEvents.forEach(eventType => {
         window.addEventListener(eventType, resetActivityTimer, { passive: true });
     });
