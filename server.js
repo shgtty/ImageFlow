@@ -3,8 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 8000;
-// コマンドライン引数から設定ファイル名を取得。指定がない場合は 'folders.txt' にフォールバック
+// コマンドライン引数から各設定ファイル名を取得（指定がない場合はデフォルト名にフォールバック）
 const CONFIG_FILE = process.argv[2] || 'folders.txt';
+const INCLUDE_FILE = process.argv[3] || 'include.txt';
+const EXCLUDE_FILE = process.argv[4] || 'exclude.txt';
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 // 指定されたディレクトリを再帰的に検索して画像ファイルのリストを取得する
@@ -53,10 +55,78 @@ const server = http.createServer((req, res) => {
         } catch (err) {
             console.error('Error handling folders.txt:', err);
         }
+        
+        // フィルタリング設定ファイル（ホワイトリスト・ブラックリスト）の読み込み
+        let includes = [];
+        let excludes = [];
+        let includeMode = 'AND'; // デフォルトの判定モードをANDに変更
+        
+        try {
+            if (fs.existsSync(INCLUDE_FILE)) {
+                let lines = fs.readFileSync(INCLUDE_FILE, 'utf-8')
+                             .split('\n')
+                             .map(l => l.trim())
+                             .filter(l => l && !l.startsWith('#'));
+                             
+                // モード切り替え行の検出
+                if (lines.includes('MODE:OR')) {
+                    includeMode = 'OR';
+                    lines = lines.filter(l => l !== 'MODE:OR');
+                } else if (lines.includes('MODE:AND')) {
+                    includeMode = 'AND';
+                    lines = lines.filter(l => l !== 'MODE:AND');
+                }
+                
+                includes = lines;
+            } else {
+                const defaultIncludeText = `# ここに記述された文字列がファイルパスに含まれる画像のみを表示します（1行に1つ）\n# デフォルトはすべての単語を含む画像を表示する「AND検索」です。\n# どれか一つでも含むものを表示する「OR検索」に切り替えたい場合は、ファイル内に MODE:OR と記述してください。\n\n# 例:\nanime\nsummer\n`;
+                fs.writeFileSync(INCLUDE_FILE, defaultIncludeText, 'utf-8');
+            }
+            
+            if (fs.existsSync(EXCLUDE_FILE)) {
+                excludes = fs.readFileSync(EXCLUDE_FILE, 'utf-8')
+                             .split('\n')
+                             .map(l => l.trim())
+                             .filter(l => l && !l.startsWith('#'));
+            } else {
+                fs.writeFileSync(EXCLUDE_FILE, '# ここに記述された文字列がファイルパスに含まれる画像を除外します（1行に1つ）\n# 例: thumbnail\n', 'utf-8');
+            }
+        } catch(e) {
+            console.error('Error reading filter files:', e);
+        }
 
         let allImages = [];
         for (const folder of folders) {
-            allImages = allImages.concat(getImagesFromDirectory(folder));
+            let images = getImagesFromDirectory(folder);
+            
+            // フィルタの適用
+            images = images.filter(imgPath => {
+                // パスの大文字小文字を区別せずに判定
+                const pathLower = imgPath.toLowerCase(); 
+                
+                // includes対象（ホワイトリスト）の判定
+                if (includes.length > 0) {
+                    if (includeMode === 'AND') {
+                        // AND: リストに書かれた文字列が「すべて」パスに含まれている必要がある
+                        const matchInclude = includes.every(inc => pathLower.includes(inc.toLowerCase()));
+                        if (!matchInclude) return false;
+                    } else {
+                        // OR: どれか一つでも含まれていればOK
+                        const matchInclude = includes.some(inc => pathLower.includes(inc.toLowerCase()));
+                        if (!matchInclude) return false;
+                    }
+                }
+                
+                // excludes対象（ブラックリスト）の判定：一つでも含まれていたらNG
+                if (excludes.length > 0) {
+                    const matchExclude = excludes.some(exc => pathLower.includes(exc.toLowerCase()));
+                    if (matchExclude) return false;
+                }
+                
+                return true;
+            });
+
+            allImages = allImages.concat(images);
         }
 
         // Shuffle (Fisher-Yates)
