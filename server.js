@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const AdmZip = require('adm-zip');
 
 const PORT = 8000;
 // コマンドライン引数から各設定ファイル名を取得（指定がない場合はデフォルト名にフォールバック）
@@ -9,27 +10,45 @@ const INCLUDE_FILE = process.argv[3] || 'include.txt';
 const EXCLUDE_FILE = process.argv[4] || 'exclude.txt';
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
-// 指定されたディレクトリを再帰的に検索して画像ファイルのリストを取得する
-function getImagesFromDirectory(dirPath) {
+// 指定されたパス（ディレクトリまたは単一ファイル）を処理し、画像ファイルのリストを取得する
+function getImagesFromPath(targetPath) {
     let results = [];
     try {
-        const list = fs.readdirSync(dirPath);
-        for (const file of list) {
-            const filePath = path.join(dirPath, file);
-            try {
-                const stat = fs.statSync(filePath);
-                if (stat && stat.isDirectory()) {
-                    results = results.concat(getImagesFromDirectory(filePath));
-                } else {
-                    const ext = path.extname(filePath).toLowerCase();
-                    if (VALID_EXTS.has(ext)) {
-                        results.push(filePath);
+        const stat = fs.statSync(targetPath);
+        
+        if (stat.isFile()) {
+            const ext = path.extname(targetPath).toLowerCase();
+            if (VALID_EXTS.has(ext)) {
+                results.push(targetPath);
+            } else if (ext === '.zip') {
+                try {
+                    const zip = new AdmZip(targetPath);
+                    const zipEntries = zip.getEntries();
+                    for (const entry of zipEntries) {
+                        if (!entry.isDirectory) {
+                            const entryExt = path.extname(entry.entryName).toLowerCase();
+                            if (VALID_EXTS.has(entryExt)) {
+                                results.push(`${targetPath}|${entry.entryName}`);
+                            }
+                        }
                     }
+                } catch (zipErr) {
+                    console.error(`Error reading ZIP file ${targetPath}:`, zipErr.message);
                 }
-            } catch(e) { /* アクセス権限等で読めないファイルはスキップ */ }
+            }
+            return results;
+        }
+
+        if (stat.isDirectory()) {
+            const list = fs.readdirSync(targetPath);
+            for (const file of list) {
+                const filePath = path.join(targetPath, file);
+                results = results.concat(getImagesFromPath(filePath)); // 個別のファイルごとに関数を再帰呼び出し
+            }
+            return results;
         }
     } catch (err) {
-        console.error(`Error reading ${dirPath}: ${err.message}`);
+        // アクセス権限等で読めないパスは静かにスキップする
     }
     return results;
 }
@@ -47,10 +66,12 @@ const server = http.createServer((req, res) => {
                 const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
                 folders = content.split('\n')
                                  .map(line => line.trim())
-                                 .filter(line => line && fs.existsSync(line) && fs.statSync(line).isDirectory());
+                                 // 「#」で始まる行はコメントとして除外。またディレクトリだけでなく直接入力されたファイル自体も許容する
+                                 .filter(line => line && !line.startsWith('#') && fs.existsSync(line));
             } else {
-                // folders.txt がない場合は空のファイルを作成
-                fs.writeFileSync(CONFIG_FILE, 'C:\\\n', 'utf-8');
+                // folders.txt がない場合は説明文つきのひな形を作成
+                const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
+                fs.writeFileSync(CONFIG_FILE, defaultFoldersText, 'utf-8');
             }
         } catch (err) {
             console.error('Error handling folders.txt:', err);
@@ -96,8 +117,8 @@ const server = http.createServer((req, res) => {
         }
 
         let allImages = [];
-        for (const folder of folders) {
-            let images = getImagesFromDirectory(folder);
+        for (const target of folders) {
+            let images = getImagesFromPath(target);
             
             // フィルタの適用
             images = images.filter(imgPath => {
@@ -155,27 +176,52 @@ const server = http.createServer((req, res) => {
 
     if (reqUrl.pathname === '/image') {
         const imgPath = reqUrl.searchParams.get('path');
-        if (imgPath && fs.existsSync(imgPath)) {
-            const ext = path.extname(imgPath).toLowerCase();
+        
+        if (imgPath) {
+            // ZIP内の仮想パスかどうかを判定
+            const isZipEntry = imgPath.includes('|');
+            const actualExt = isZipEntry ? path.extname(imgPath.split('|')[1]).toLowerCase() : path.extname(imgPath).toLowerCase();
+            
             let mimeType = 'image/jpeg';
-            if (ext === '.png') mimeType = 'image/png';
-            if (ext === '.gif') mimeType = 'image/gif';
-            if (ext === '.webp') mimeType = 'image/webp';
+            if (actualExt === '.png') mimeType = 'image/png';
+            if (actualExt === '.gif') mimeType = 'image/gif';
+            if (actualExt === '.webp') mimeType = 'image/webp';
 
-            res.writeHead(200, { 
+            const headers = {
                 'Content-Type': mimeType,
                 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
                 'Pragma': 'no-cache',
                 'Expires': '0'
-            });
-            const stream = fs.createReadStream(imgPath);
-            stream.pipe(res);
-            return;
-        } else {
-            res.writeHead(404);
-            res.end('Image not found');
-            return;
+            };
+
+            if (isZipEntry) {
+                // ZIPファイルの特定データをメモリに展開・バッファ提供フロー
+                const [zipPath, entryName] = imgPath.split('|');
+                if (fs.existsSync(zipPath)) {
+                    try {
+                        const zip = new AdmZip(zipPath);
+                        const buffer = zip.readFile(entryName); // メモリ上で伸長・展開
+                        if (buffer) {
+                            res.writeHead(200, headers);
+                            res.end(buffer); // メモリ上のバッファを直接レスポンスするためHDD消費なし
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Error extracting from zip:', e.message);
+                    }
+                }
+            } else if (fs.existsSync(imgPath)) {
+                // 通常のファイル提供ストリーミングフロー
+                res.writeHead(200, headers);
+                const stream = fs.createReadStream(imgPath);
+                stream.pipe(res);
+                return;
+            }
         }
+        
+        res.writeHead(404);
+        res.end('Image not found');
+        return;
     }
 
     // Serve static files (index.html, script.js)
