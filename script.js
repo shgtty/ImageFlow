@@ -12,7 +12,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('stopBtn');
     const speedIndicator = document.getElementById('speed-indicator');
 
-    let scrollSpeed = 0;
+    // -- 永続化用のキー --
+    const STORAGE_KEY_SPEED = 'imageflow_scroll_speed';
+    const STORAGE_KEY_COLUMNS = 'imageflow_column_count';
+
+    let scrollSpeed = parseFloat(localStorage.getItem(STORAGE_KEY_SPEED)) || 0;
     let isScrolling = false;
     let indicatorTimeout = null;
     let savedSpeedForPause = 0;
@@ -23,7 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIndex = 0;
     const BATCH_SIZE = 15;
     let columns = [];
-    let columnCount = 3;
+    let columnCount = parseInt(localStorage.getItem(STORAGE_KEY_COLUMNS)) || 3;
+    // 範囲のバリデーション
+    if (columnCount < 1) columnCount = 1;
+    if (columnCount > 10) columnCount = 10;
     let pendingImages = 0;
 
     // 次の画像バッチをDOMに追加する関数
@@ -81,8 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gallery.innerHTML = ''; // ギャラリーをクリア
         
         if (!shouldKeepState) {
-            // 通常のリロード時はスクロール速度をリセット
-            scrollSpeed = 0;
+            // 通常のリロード時もスクロール速度は保持（ユーザー要望により永続化）
             isScrolling = false;
         }
         window.scrollTo(0, 0);
@@ -123,8 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // 初回表示分だけDOMを一気に描画（画面がいっぱいになる少し多めの枚数）
             renderNextBatch(30);
 
-            // 自動ループの場合、ロード完了後にスクロールを再開
-            if (shouldKeepState && savedSpeed !== 0) {
+            // ロード完了後に（速度が設定されていれば）スクロールを開始
+            if (savedSpeed !== 0) {
                 // DOM描画を確実に待つために少し遅延させる
                 requestAnimationFrame(() => {
                     scrollSpeed = savedSpeed;
@@ -199,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newCount < 1 || newCount > 10) return; // 1列～10列の間に制限
         
         columnCount = newCount;
+        localStorage.setItem(STORAGE_KEY_COLUMNS, columnCount);
         
         // 既存のすべての画像要素を収集
         let existingImages = [];
@@ -252,6 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // 0付近の浮動小数点誤差を補正
         if (Math.abs(scrollSpeed) < 0.1) scrollSpeed = 0;
         
+        localStorage.setItem(STORAGE_KEY_SPEED, scrollSpeed);
+        
         updateSpeedIndicator();
 
         if (scrollSpeed !== 0 && !isScrolling) {
@@ -270,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopBtn.addEventListener('click', () => {
         isPaused = false; // 停止を確定させたためポーズも解除
         scrollSpeed = 0;
+        localStorage.setItem(STORAGE_KEY_SPEED, scrollSpeed);
         isScrolling = false;
         updateSpeedIndicator();
     });
@@ -313,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (scrollSpeed !== 0) {
                     savedSpeedForPause = scrollSpeed;
                     scrollSpeed = 0;
+                    localStorage.setItem(STORAGE_KEY_SPEED, scrollSpeed);
                     isPaused = true;
                     updateSpeedIndicator();
                 }
@@ -320,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 一時停止中なら元の速度で再開する
                 isPaused = false;
                 scrollSpeed = savedSpeedForPause;
+                localStorage.setItem(STORAGE_KEY_SPEED, scrollSpeed);
                 updateSpeedIndicator();
                 
                 if (scrollSpeed !== 0 && !isScrolling) {
