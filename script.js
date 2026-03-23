@@ -299,6 +299,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
             changeColumnCount(1); // 列を増やす (画像を小さく)
+        } else if (e.key === 'Escape') {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                window.close();
+            }
         } else if (e.key === ' ' || e.code === 'Space') {
             e.preventDefault(); // デフォルトのページ一括スクロールを無効化
             
