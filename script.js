@@ -15,12 +15,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const colPlusBtn = document.getElementById('colPlusBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
+    const modeBtn = document.getElementById('modeBtn');
+
+    // DualView の初期化
+    if (typeof DualView !== 'undefined') DualView.init();
 
     // -- 永続化用のキー --
     const STORAGE_KEY_SPEED = 'imageflow_scroll_speed';
     const STORAGE_KEY_COLUMNS = 'imageflow_column_count';
+    const STORAGE_KEY_MODE = 'imageflow_display_mode'; // 'gallery' or 'dual'
+    const STORAGE_KEY_DUAL_INTERVAL = 'imageflow_dual_interval'; // Seconds
 
     let scrollSpeed = parseFloat(localStorage.getItem(STORAGE_KEY_SPEED)) || 0;
+    let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
     let isScrolling = false;
     let indicatorTimeout = null;
     let savedSpeedForPause = 0;
@@ -92,17 +99,27 @@ document.addEventListener('DOMContentLoaded', () => {
         gallery.innerHTML = ''; // ギャラリーをクリア
         
         if (!shouldKeepState) {
-            // 通常のリロード時もスクロール速度は保持（ユーザー要望により永続化）
             isScrolling = false;
         }
         window.scrollTo(0, 0);
         
         try {
-            const response = await fetch('/api/images');
-            if (!response.ok) {
-                throw new Error(`Server status: ${response.status}`);
+            let data;
+            if (shouldKeepState && allImagesUrls.length > 0) {
+                // すでにデータがある場合はフェッチをスキップして再構築のみ行う
+                data = {
+                    totalFound: allImagesUrls.length,
+                    count: allImagesUrls.length,
+                    images: allImagesUrls,
+                    foldersUsed: [] 
+                };
+            } else {
+                const response = await fetch('/api/images');
+                if (!response.ok) {
+                    throw new Error(`Server status: ${response.status}`);
+                }
+                data = await response.json();
             }
-            const data = await response.json();
             
             if (data.totalFound === 0) {
                 status.innerHTML = `画像が見つかりませんでした。<br><strong>folders.txt</strong> を確認してください。(現在の指定先: ${data.foldersUsed.join(', ') || 'なし'})`;
@@ -144,11 +161,84 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
+
+            // モードの復元（前回復帰時がDualモードだった場合）
+            if (localStorage.getItem(STORAGE_KEY_MODE) === 'dual') {
+                // 少しだけDOM構築を待ってから移行
+                setTimeout(() => {
+                    if (!DualView.isActive) {
+                        toggleMode(0, dualInterval); // 保存された秒数で開始
+                    }
+                }, 100);
+            }
         } catch (error) {
             console.error('Error fetching images:', error);
             status.textContent = 'サーバーと通信できません。「node server.js」が実行されているか確認してください。';
         }
     }
+
+    // 表示モード切替
+    function toggleMode(forcedIndex = null, forcedInterval = null) {
+        if (typeof DualView === 'undefined') return;
+
+        if (!DualView.isActive) {
+            let startIndex = 0;
+            let startInterval = forcedInterval !== null ? forcedInterval : dualInterval;
+
+            if (forcedIndex !== null) {
+                startIndex = forcedIndex;
+            } else {
+                // 現在画面中央付近に見えている画像のインデックスを取得してそこから開始
+                const imagesInGallery = Array.from(gallery.querySelectorAll('img'));
+                const viewportMiddle = window.innerHeight / 2;
+                let closestImg = imagesInGallery[0];
+                let minDistance = Infinity;
+                
+                imagesInGallery.forEach(img => {
+                    const rect = img.getBoundingClientRect();
+                    const distance = Math.abs((rect.top + rect.bottom) / 2 - viewportMiddle);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestImg = img;
+                    }
+                });
+
+                if (closestImg) {
+                    startIndex = parseInt(closestImg.dataset.index);
+                } else {
+                    startIndex = Math.max(0, currentIndex - BATCH_SIZE);
+                }
+            }
+
+            // スクロールを一時停止
+            if (isScrolling || scrollSpeed !== 0) {
+                savedSpeedForPause = scrollSpeed;
+                scrollSpeed = 0;
+                isScrolling = false;
+                updateSpeedIndicator();
+            }
+
+            localStorage.setItem(STORAGE_KEY_MODE, 'dual');
+            DualView.enter(allImagesUrls, startIndex, startInterval, (exitIndex) => {
+                // 終了時の処理（必要に応じて位置を調整など）
+                localStorage.setItem(STORAGE_KEY_MODE, 'gallery');
+                
+                // スクロール速度を復元
+                if (scrollSpeed === 0 && savedSpeedForPause !== 0) {
+                    scrollSpeed = savedSpeedForPause;
+                }
+
+                loadImages(true); 
+                status.textContent = "通常のギャラリー表示に戻りました";
+                statusBar.style.opacity = '1';
+                setTimeout(() => statusBar.style.opacity = '0', 2000);
+            });
+        } else {
+            DualView.exit();
+        }
+    }
+
+    modeBtn.addEventListener('click', toggleMode);
 
     reloadBtn.addEventListener('click', loadImages);
 
@@ -173,6 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function autoScroll() {
+        if (typeof DualView !== 'undefined' && DualView.isActive) {
+            isScrolling = false;
+            return;
+        }
         if (scrollSpeed !== 0) {
             window.scrollBy({ top: scrollSpeed, left: 0, behavior: 'instant' });
             
@@ -253,9 +347,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function changeScrollSpeed(delta) {
+        if (DualView.isActive) {
+            // Dual View モードでの秒数増減
+            // 下キー (delta > 0) で速く (秒数減)、上キー (delta < 0) で遅く (秒数増)
+            if (dualInterval === 0 && delta > 0) {
+                dualInterval = 5; // 最初は5秒から
+            } else if (dualInterval > 0) {
+                // 逆方向に送りたい場合は一旦停止か、秒数を増やす
+                if (delta > 0) {
+                    dualInterval = Math.max(1, dualInterval - 1); // 最速1秒
+                } else {
+                    dualInterval += 1;
+                }
+            } else if (delta < 0) {
+                // 停止中に上を押した場合も5秒から
+                dualInterval = 5;
+            }
+            
+            localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
+            DualView.setAutoAdvance(dualInterval);
+            return;
+        }
+
         if (isPaused) {
             isPaused = false;
-            scrollSpeed = savedSpeedForPause; // ポーズ状態から復帰して加速
+            scrollSpeed = savedSpeedForPause;
         }
 
         scrollSpeed += delta;
@@ -266,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(STORAGE_KEY_SPEED, scrollSpeed);
         
         updateSpeedIndicator();
-
+        
         if (scrollSpeed !== 0 && !isScrolling) {
             isScrolling = true;
             requestAnimationFrame(autoScroll);
@@ -281,6 +397,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 停止
     stopBtn.addEventListener('click', () => {
+        if (DualView.isActive) {
+            dualInterval = 0;
+            localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
+            DualView.stop();
+            return;
+        }
+
         isPaused = false; // 停止を確定させたためポーズも解除
         scrollSpeed = 0;
         localStorage.setItem(STORAGE_KEY_SPEED, scrollSpeed);
@@ -321,20 +444,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // キーボード操作（Fキーでフルスクリーン、上下キーで速度変更）
     document.addEventListener('keydown', (e) => {
         // 入力中の誤爆を防ぐ場合は対象要素を絞るが、今回は入力欄がないためシンプルに実装
-        if (e.key === 'f' || e.key === 'F') {
+        if (e.key === 'm' || e.key === 'M') {
+            toggleMode();
+        } else if (e.key === 'f' || e.key === 'F') {
             toggleFullscreen();
         } else if (e.key === 'ArrowUp') {
-            e.preventDefault(); // デフォルトのスクロールを無効化
+            e.preventDefault();
             changeScrollSpeed(-1);
         } else if (e.key === 'ArrowDown') {
-            e.preventDefault(); // デフォルトのスクロールを無効化
+            e.preventDefault();
             changeScrollSpeed(1);
         } else if (e.key === 'ArrowLeft') {
             e.preventDefault();
-            changeColumnCount(-1); // 列を減らす (画像を大きく)
+            if (DualView.isActive) {
+                DualView.prev();
+            } else {
+                changeColumnCount(-1);
+            }
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
-            changeColumnCount(1); // 列を増やす (画像を小さく)
+            if (DualView.isActive) {
+                DualView.next();
+            } else {
+                changeColumnCount(1);
+            }
         } else if (e.key === 'Escape') {
             if (document.fullscreenElement) {
                 document.exitFullscreen();
@@ -344,6 +477,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === ' ' || e.code === 'Space') {
             e.preventDefault(); // デフォルトのページ一括スクロールを無効化
             
+            if (DualView.isActive) {
+                DualView.togglePause();
+                return;
+            }
+
             if (!isPaused) {
                 // スクロール中なら一時停止する
                 if (scrollSpeed !== 0) {
