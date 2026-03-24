@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollDownBtn = document.getElementById('scrollDownBtn');
     const stopBtn = document.getElementById('stopBtn');
     const speedIndicator = document.getElementById('speed-indicator');
+    const colMinusBtn = document.getElementById('colMinusBtn');
+    const colPlusBtn = document.getElementById('colPlusBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const fullscreenIcon = document.getElementById('fullscreenIcon');
 
     // -- 永続化用のキー --
     const STORAGE_KEY_SPEED = 'imageflow_scroll_speed';
@@ -284,19 +288,41 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSpeedIndicator();
     });
 
+    // 列数変更
+    colMinusBtn.addEventListener('click', () => changeColumnCount(-1));
+    colPlusBtn.addEventListener('click', () => changeColumnCount(1));
+
+    // フルスクリーン切り替え
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error('フルスクリーンへの切り替えに失敗しました:', err);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    }
+
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+    // フルスクリーンの状態変化を監視してアイコンを切り替える
+    document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+            // Exit fullscreen icon
+            fullscreenIcon.innerHTML = '<path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>';
+        } else {
+            // Enter fullscreen icon
+            fullscreenIcon.innerHTML = '<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>';
+        }
+    });
+
     // キーボード操作（Fキーでフルスクリーン、上下キーで速度変更）
     document.addEventListener('keydown', (e) => {
         // 入力中の誤爆を防ぐ場合は対象要素を絞るが、今回は入力欄がないためシンプルに実装
         if (e.key === 'f' || e.key === 'F') {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.error('フルスクリーンへの切り替えに失敗しました:', err);
-                });
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
+            toggleFullscreen();
         } else if (e.key === 'ArrowUp') {
             e.preventDefault(); // デフォルトのスクロールを無効化
             changeScrollSpeed(-1);

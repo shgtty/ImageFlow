@@ -129,6 +129,12 @@
         #gallery img.loaded {
             opacity: 1; /* フェードイン用: クラス追加で表示 */
         }
+
+        .fab-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -158,8 +164,29 @@
             </button>
         </div>
         
+        <!-- フルスクリーンボタン -->
+        <div class="fab-wrapper">
+            <button class="fab" id="fullscreenBtn" title="フルスクリーン切替 (F)">
+                <svg viewBox="0 0 24 24" id="fullscreenIcon"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+            </button>
+        </div>
+
+        <!-- 列数変更ボタン -->
+        <div class="fab-row">
+            <div class="fab-wrapper">
+                <button class="fab" id="colMinusBtn" title="列を減らす (←)">
+                    <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+            </div>
+            <div class="fab-wrapper">
+                <button class="fab" id="colPlusBtn" title="列を増やす (→)">
+                    <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+            </div>
+        </div>
+
         <!-- 再読み込みボタン -->
-        <div class="fab-wrapper" style="margin-top: 20px;">
+        <div class="fab-wrapper" style="margin-top: 10px;">
             <button class="fab" id="reloadBtn" title="画像を再読み込み">
                 <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
             </button>
