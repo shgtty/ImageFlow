@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetActivityTimer() {
         // 操作があれば即座に表示
         fabContainer.classList.remove('hidden');
-        document.body.classList.remove('hide-cursor'); // カーソルを再表示
+        document.documentElement.classList.remove('hide-cursor');
         
         // 既存のタイマーをリセット
         if (activityTimeout) clearTimeout(activityTimeout);
@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3秒後に非表示にするタイマーをセット
         activityTimeout = setTimeout(() => {
             fabContainer.classList.add('hidden');
-            document.body.classList.add('hide-cursor'); // マウスカーソルも一緒に隠す
+            document.documentElement.classList.add('hide-cursor');
         }, 3000);
     }
 

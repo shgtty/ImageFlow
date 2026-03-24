@@ -48,8 +48,19 @@
         }
 
         /* 非アクティブ時にマウスカーソルを消すクラス */
-        body.hide-cursor {
+        .hide-cursor {
             cursor: none;
+        }
+
+        /* スクロールバーを最初から常に非表示にする (表示切り替え時のレイアウトのズレを防止) */
+        html {
+            -ms-overflow-style: none; /* IE, Edge (Legacy) */
+            scrollbar-width: none; /* Firefox */
+        }
+        html::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Edge (Chromium) */
+            width: 0;
+            height: 0;
         }
         
         .fab-wrapper {
