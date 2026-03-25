@@ -40,8 +40,8 @@ const DualView = (() => {
         document.body.style.overflow = 'hidden';
         galleryElement.innerHTML = '';
         galleryElement.style.display = 'flex';
-        galleryElement.style.width = '100vw';
-        galleryElement.style.height = '100vh';
+        galleryElement.style.width = '100%';
+        galleryElement.style.height = '100%';
         galleryElement.style.alignItems = 'center';
         galleryElement.style.justifyContent = 'center';
         galleryElement.style.backgroundColor = '#000';
@@ -109,40 +109,31 @@ const DualView = (() => {
 
         const container = document.createElement('div');
         container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
         container.style.width = '100%';
         container.style.height = '100%';
-        container.style.gap = '10px';
-        container.style.padding = '10px';
+        container.style.gap = '0';
+        container.style.padding = '0';
         container.style.boxSizing = 'border-box';
+        container.style.backgroundColor = '#000';
 
         for (let i = 0; i < 2; i++) {
             const idx = currentIndex + i;
             if (idx < images.length) {
-                const wrapper = document.createElement('div');
-                wrapper.style.flex = '1';
-                wrapper.style.height = '100%';
-                wrapper.style.display = 'flex';
-                wrapper.style.alignItems = 'center';
-                wrapper.style.justifyContent = 'center';
-                wrapper.style.overflow = 'hidden';
-
                 const img = document.createElement('img');
                 img.src = images[idx];
-                img.style.maxWidth = '100%';
+                // Resize to fit: max 50% width and 100% height of viewport
+                img.style.maxWidth = '50%';
                 img.style.maxHeight = '100%';
+                img.style.width = 'auto'; // Maintain aspect ratio
+                img.style.height = 'auto'; // Maintain aspect ratio
                 img.style.objectFit = 'contain';
-                img.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
-                img.style.transition = 'opacity 0.3s ease';
-                img.style.opacity = '0';
-                
-                img.onload = () => img.style.opacity = '1';
+                img.style.opacity = '1';
+                img.style.transition = 'none';
+                img.style.display = 'block';
 
-                wrapper.appendChild(img);
-                container.appendChild(wrapper);
-            } else {
-                const placeholder = document.createElement('div');
-                placeholder.style.flex = '1';
-                container.appendChild(placeholder);
+                container.appendChild(img);
             }
         }
 
