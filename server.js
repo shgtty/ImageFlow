@@ -60,6 +60,7 @@ const server = http.createServer((req, res) => {
     const reqUrl = new URL(req.url, `http://${req.headers.host}`);
 
     if (reqUrl.pathname === '/api/images') {
+        const sortMode = reqUrl.searchParams.get('sort') || 'random';
         let folders = [];
         try {
             if (fs.existsSync(CONFIG_FILE)) {
@@ -150,13 +151,17 @@ const server = http.createServer((req, res) => {
             allImages = allImages.concat(images);
         }
 
-        // Shuffle (Fisher-Yates)
-        for (let i = allImages.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
+        if (sortMode === 'asc') {
+            allImages.sort((a, b) => a.localeCompare(b));
+        } else {
+            // Shuffle (Fisher-Yates)
+            for (let i = allImages.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
+            }
         }
 
-        const limitImages = allImages.slice(0, 1000);
+        const limitImages = sortMode === 'asc' ? allImages : allImages.slice(0, 1000);
         const imageUrls = limitImages.map(img => `/image?path=${encodeURIComponent(img)}`);
 
         res.writeHead(200, { 

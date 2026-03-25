@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
     const modeBtn = document.getElementById('modeBtn');
+    const sortBtn = document.getElementById('sortBtn');
+    const sortIcon = document.getElementById('sortIcon');
 
     // DualView の初期化
     if (typeof DualView !== 'undefined') DualView.init();
@@ -25,9 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_COLUMNS = 'imageflow_column_count';
     const STORAGE_KEY_MODE = 'imageflow_display_mode'; // 'gallery' or 'dual'
     const STORAGE_KEY_DUAL_INTERVAL = 'imageflow_dual_interval'; // Seconds
+    const STORAGE_KEY_GALLERY_SORT = 'imageflow_gallery_sort';
+    const STORAGE_KEY_DUAL_SORT = 'imageflow_dual_sort';
 
     let scrollSpeed = parseFloat(localStorage.getItem(STORAGE_KEY_SPEED)) || 0;
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
+    let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
+    let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
     let isScrolling = false;
     let indicatorTimeout = null;
     let savedSpeedForPause = 0;
@@ -43,6 +49,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (columnCount < 1) columnCount = 1;
     if (columnCount > 10) columnCount = 10;
     let pendingImages = 0;
+
+    function updateSortIcon() {
+        const mode = (DualView && DualView.isActive) ? dualSortMode : gallerySortMode;
+        if (mode === 'asc') {
+            sortIcon.innerHTML = '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>';
+            sortBtn.title = 'ソート切替 = 昇順 (R)';
+        } else {
+            sortIcon.innerHTML = '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>';
+            sortBtn.title = 'ソート切替 = ランダム (R)';
+        }
+    }
+    updateSortIcon();
 
     // 次の画像バッチをDOMに追加する関数
     function renderNextBatch(count = BATCH_SIZE) {
@@ -90,7 +108,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 画像読み込み処理
     async function loadImages(keepState = false) {
         const shouldKeepState = keepState === true;
-        let savedSpeed = scrollSpeed;
+        // 現在の速度を保存。すでに 0 なら storage から取得を試みる（重畳リロード対策）
+        let savedSpeed = scrollSpeed !== 0 ? scrollSpeed : (parseFloat(localStorage.getItem(STORAGE_KEY_SPEED)) || 0);
+
+        // スクロールを一旦停止して重複実行を防ぐ
+        scrollSpeed = 0;
 
         if (statusTimeout) clearTimeout(statusTimeout);
         statusBar.style.opacity = '1'; // 読み込み開始時に再度表示
@@ -98,9 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
         status.textContent = '読み込み中... 少しお待ちください。';
         gallery.innerHTML = ''; // ギャラリーをクリア
         
-        if (!shouldKeepState) {
-            isScrolling = false;
-        }
         window.scrollTo(0, 0);
         
         try {
@@ -114,7 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     foldersUsed: [] 
                 };
             } else {
-                const response = await fetch('/api/images');
+                const targetSortMode = localStorage.getItem(STORAGE_KEY_MODE) === 'dual' ? dualSortMode : gallerySortMode;
+                const response = await fetch(`/api/images?sort=${targetSortMode}`);
                 if (!response.ok) {
                     throw new Error(`Server status: ${response.status}`);
                 }
@@ -150,9 +170,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 初回表示分だけDOMを一気に描画（画面がいっぱいになる少し多めの枚数）
             renderNextBatch(30);
 
-            // ロード完了後に（速度が設定されていれば）スクロールを開始
+            // ロード完了後に（保存された速度があれば）スクロールを再開
             if (savedSpeed !== 0) {
-                // DOM描画を確実に待つために少し遅延させる
+                // 旧ループが確実に停止し isScrolling = false になるのを待つため、rAF 内で再開
                 requestAnimationFrame(() => {
                     scrollSpeed = savedSpeed;
                     if (!isScrolling) {
@@ -219,20 +239,43 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             localStorage.setItem(STORAGE_KEY_MODE, 'dual');
-            DualView.enter(allImagesUrls, startIndex, startInterval, (exitIndex) => {
-                // 終了時の処理（必要に応じて位置を調整など）
-                localStorage.setItem(STORAGE_KEY_MODE, 'gallery');
-                
-                // スクロール速度を復元
-                if (scrollSpeed === 0 && savedSpeedForPause !== 0) {
-                    scrollSpeed = savedSpeedForPause;
-                }
+            updateSortIcon();
 
-                loadImages(true); 
-                status.textContent = "通常のギャラリー表示に戻りました";
-                statusBar.style.opacity = '1';
-                setTimeout(() => statusBar.style.opacity = '0', 2000);
-            });
+            const doEnter = () => {
+                DualView.enter(allImagesUrls, startIndex, startInterval, (exitIndex) => {
+                    // 終了時の処理
+                    localStorage.setItem(STORAGE_KEY_MODE, 'gallery');
+                    updateSortIcon();
+                    
+                    // スクロール速度を復元
+                    if (scrollSpeed === 0 && savedSpeedForPause !== 0) {
+                        scrollSpeed = savedSpeedForPause;
+                    }
+
+                    if (gallerySortMode !== dualSortMode) {
+                        loadImages(false); // モードが違う場合は強制再フェッチ
+                    } else {
+                        loadImages(true); 
+                    }
+                    status.textContent = "通常のギャラリー表示に戻りました";
+                    statusBar.style.opacity = '1';
+                    setTimeout(() => statusBar.style.opacity = '0', 2000);
+                });
+            };
+
+            if (gallerySortMode !== dualSortMode) {
+                // ソート設定が異なる場合は、まずフェッチを行い新しいURLリストの準備をしてから表示する
+                fetch(`/api/images?sort=${dualSortMode}`).then(r => r.json()).then(data => {
+                    allImagesUrls = data.images;
+                    startIndex = 0; // 並びが変わるので最初から
+                    doEnter();
+                }).catch(e => {
+                    console.error(e);
+                    doEnter(); // エラー時はとりあえず表示はする
+                });
+            } else {
+                doEnter();
+            }
         } else {
             DualView.exit();
         }
@@ -240,7 +283,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modeBtn.addEventListener('click', toggleMode);
 
-    reloadBtn.addEventListener('click', loadImages);
+    sortBtn.addEventListener('click', () => {
+        toggleSort();
+    });
+
+    reloadBtn.addEventListener('click', () => loadImages(false));
+
+    function toggleSort() {
+        if (DualView && DualView.isActive) {
+            dualSortMode = (dualSortMode === 'random' ? 'asc' : 'random');
+            localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
+            updateSortIcon();
+            // DualView 表示中にソート切替した場合、内部でリストを再取得し DualView を更新する
+            fetch(`/api/images?sort=${dualSortMode}`).then(r => r.json()).then(data => {
+                allImagesUrls = data.images;
+                DualView.updateImagesAndReset(allImagesUrls, 0);
+                status.textContent = dualSortMode === 'asc' ? '昇順（ファイル名）で表示します' : 'ランダム順で表示します';
+                statusBar.style.opacity = '1';
+                if (statusTimeout) clearTimeout(statusTimeout);
+                statusTimeout = setTimeout(() => statusBar.style.opacity = '0', 2000);
+            }).catch(console.error);
+        } else {
+            // "左右2枚表示モードの場合は" とあるが、通常モードでも一応対応しておくか、何もしないか。
+            // ユーザーは「左右2枚表示モードの場合は...切り替えられるように」と書いているため、
+            // Galleryの切替もできるようにしておくのが親切。
+            gallerySortMode = (gallerySortMode === 'random' ? 'asc' : 'random');
+            localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
+            updateSortIcon();
+            loadImages(false);
+            status.textContent = gallerySortMode === 'asc' ? '昇順（ファイル名）で表示します' : 'ランダム順で表示します';
+            statusBar.style.opacity = '1';
+            if (statusTimeout) clearTimeout(statusTimeout);
+            statusTimeout = setTimeout(() => statusBar.style.opacity = '0', 2000);
+        }
+    }
 
     // 初回読み込み
     loadImages();
@@ -446,6 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // 入力中の誤爆を防ぐ場合は対象要素を絞るが、今回は入力欄がないためシンプルに実装
         if (e.key === 'm' || e.key === 'M') {
             toggleMode();
+        } else if (e.key === 'r' || e.key === 'R') {
+            // Rキーでソート切り替え
+            toggleSort();
         } else if (e.key === 'f' || e.key === 'F') {
             toggleFullscreen();
         } else if (e.key === 'ArrowUp') {

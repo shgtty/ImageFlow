@@ -249,6 +249,14 @@ const DualView = (() => {
         }
     }
 
+    function updateImagesAndReset(newImagesUrls, startIndex = 0) {
+        if (!isActive) return;
+        images = newImagesUrls;
+        currentIndex = startIndex;
+        render();
+        showIndicator();
+    }
+
     return {
         init,
         enter,
@@ -258,6 +266,7 @@ const DualView = (() => {
         setAutoAdvance,
         togglePause,
         stop,
+        updateImagesAndReset,
         get isActive() { return isActive; },
         get interval() { return advanceInterval; },
         get isPaused() { return isPaused; }
