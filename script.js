@@ -619,6 +619,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener(eventType, resetActivityTimer, { passive: true });
     });
 
+    // マウスのホイールボタンクリックでフルスクリーン切り替え
+    window.addEventListener('mousedown', (e) => {
+        if (e.button === 1) { // 中央ボタン（ホイール）
+            e.preventDefault(); // オートスクロール（ブラウザ標準）などを防止
+            toggleFullscreen();
+        }
+    });
+
     // 初回起動時もタイマーをスタート
     resetActivityTimer();
 });
