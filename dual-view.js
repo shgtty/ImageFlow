@@ -10,6 +10,7 @@ const DualView = (() => {
     let oldGalleryStyle = {};
     let onExitCallback = null;
     let currentClickHandler = null;
+    let currentWheelHandler = null;
 
     // Auto Advance logic
     let advanceInterval = 0; // Seconds
@@ -70,6 +71,18 @@ const DualView = (() => {
             }
         };
         window.addEventListener('click', currentClickHandler);
+
+        // Handle wheel for navigation
+        currentWheelHandler = (e) => {
+            if (!isActive) return;
+            // deltaY > 0 is scroll down (next)
+            if (e.deltaY > 0) {
+                next();
+            } else if (e.deltaY < 0) {
+                prev();
+            }
+        };
+        window.addEventListener('wheel', currentWheelHandler, { passive: true });
         
         showIndicator();
     }
@@ -83,6 +96,10 @@ const DualView = (() => {
         if (currentClickHandler) {
             window.removeEventListener('click', currentClickHandler);
             currentClickHandler = null;
+        }
+        if (currentWheelHandler) {
+            window.removeEventListener('wheel', currentWheelHandler);
+            currentWheelHandler = null;
         }
 
         // Restore styles
