@@ -5,9 +5,9 @@ const AdmZip = require('adm-zip');
 
 const PORT = 8000;
 // コマンドライン引数から各設定ファイル名を取得（指定がない場合はデフォルト名にフォールバック）
-const CONFIG_FILE = process.argv[2] || 'folders.txt';
-const INCLUDE_FILE = process.argv[3] || 'include.txt';
-const EXCLUDE_FILE = process.argv[4] || 'exclude.txt';
+const CONFIG_FILE = process.argv[2] || path.join(__dirname, '..', 'config', 'folders.txt');
+const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'include.txt');
+const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 // 指定されたパス（ディレクトリまたは単一ファイル）を処理し、画像ファイルのリストを取得する
@@ -229,8 +229,8 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // Serve static files (index.html, script.js)
-    let filePath = path.join(__dirname, reqUrl.pathname === '/' ? 'index.html' : reqUrl.pathname);
+    // Serve static files from 'public' directory
+    let filePath = path.join(__dirname, '..', 'public', reqUrl.pathname === '/' ? 'index.html' : reqUrl.pathname);
     const ext = path.extname(filePath);
     let contentType = 'text/html';
     if (ext === '.js') contentType = 'text/javascript';
@@ -248,7 +248,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
     console.log(`=========================================`);
     console.log(`Image Server is running at http://localhost:${PORT}/`);
-    console.log(`Please edit the 'folders.txt' file in this directory`);
+    console.log(`Please edit the 'folders.txt' file in the 'config' directory`);
     console.log(`to add or change the target image folders.`);
     console.log(`=========================================`);
 });

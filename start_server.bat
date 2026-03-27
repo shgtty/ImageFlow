@@ -10,6 +10,6 @@ echo To stop the server, press Ctrl+C or close this window.
 echo.
 
 start http://localhost:8000
-node server.js %*
+node server/server.js %*
 
 pause
