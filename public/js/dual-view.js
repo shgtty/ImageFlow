@@ -18,6 +18,11 @@ const DualView = (() => {
     let isPaused = false;
     let savedIntervalBeforePause = 0;
 
+    // Layout logic
+    let lastShownCount = 1;
+    let currentRenderId = 0;
+    const dimensionCache = new Map(); // URL -> {width, height}
+
     function init() {
         galleryElement = document.getElementById('gallery');
     }
@@ -120,8 +125,63 @@ const DualView = (() => {
         if (onExitCallback) onExitCallback(currentIndex);
     }
 
-    function render() {
+    async function getImageDims(url) {
+        if (!url) return { width: 1, height: 1 };
+        if (dimensionCache.has(url)) {
+            const cached = dimensionCache.get(url);
+            if (cached instanceof Promise) return cached;
+            return cached;
+        }
+        
+        const promise = new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const dims = { width: img.naturalWidth, height: img.naturalHeight };
+                dimensionCache.set(url, dims);
+                resolve(dims);
+            };
+            img.onerror = () => {
+                const dims = { width: 1, height: 1 };
+                dimensionCache.set(url, dims);
+                resolve(dims);
+            };
+            img.src = url;
+        });
+        dimensionCache.set(url, promise);
+        return promise;
+    }
+
+    function preloadDimensions(startIndex, count) {
+        for (let i = 0; i < count; i++) {
+            const idx = startIndex + i;
+            if (idx < images.length) {
+                getImageDims(images[idx]);
+            }
+        }
+    }
+
+    async function calculatePageInfo(index) {
+        if (index >= images.length) return { count: 0 };
+        const dims1 = await getImageDims(images[index]);
+        if (dims1.width > dims1.height) return { count: 1 }; // Landscape is always 1
+
+        if (index + 1 < images.length) {
+            const dims2 = await getImageDims(images[index + 1]);
+            if (dims2.width > dims2.height) return { count: 1 }; // Next is landscape, so show current (portrait) alone
+            return { count: 2 }; // Both portrait
+        }
+        return { count: 1 };
+    }
+
+    async function render() {
         if (!isActive) return;
+        
+        const renderId = ++currentRenderId;
+        const pageInfo = await calculatePageInfo(currentIndex);
+        
+        if (renderId !== currentRenderId || !isActive) return;
+        
+        lastShownCount = pageInfo.count;
         galleryElement.innerHTML = '';
 
         const container = document.createElement('div');
@@ -135,33 +195,42 @@ const DualView = (() => {
         container.style.boxSizing = 'border-box';
         container.style.backgroundColor = '#000';
 
-        for (let i = 0; i < 2; i++) {
+        const maxWidth = lastShownCount === 1 ? '100%' : '50%';
+
+        for (let i = 0; i < lastShownCount; i++) {
             const idx = currentIndex + i;
             if (idx < images.length) {
                 const img = document.createElement('img');
                 img.src = images[idx];
-                // Resize to fit: max 50% width and 100% height of viewport
-                img.style.maxWidth = '50%';
-                img.style.maxHeight = '100%';
-                img.style.width = 'auto'; // Maintain aspect ratio
-                img.style.height = 'auto'; // Maintain aspect ratio
+                img.style.width = maxWidth;
+                img.style.height = '100%';
                 img.style.objectFit = 'contain';
+                img.style.display = 'block';
                 img.style.opacity = '1';
                 img.style.transition = 'none';
-                img.style.display = 'block';
-
+                
+                // 2枚表示のときは中央に寄せる（左画像は右寄せ、右画像は左寄せ）
+                if (lastShownCount === 2) {
+                    img.style.objectPosition = (i === 0) ? 'right' : 'left';
+                } else {
+                    img.style.objectPosition = 'center';
+                }
+                
                 container.appendChild(img);
             }
         }
 
         galleryElement.appendChild(container);
-        resetTimer(); // Restart current interval when manual nav or render happens
+        resetTimer(); 
+        
+        // Preload next
+        preloadDimensions(currentIndex + lastShownCount, 4);
     }
 
-    function next() {
-        if (currentIndex + 2 < images.length) {
-            currentIndex += 2;
-            render();
+    async function next() {
+        if (currentIndex + lastShownCount < images.length) {
+            currentIndex += lastShownCount;
+            await render();
             showIndicator();
         } else {
             showIndicator("最後の一枚です");
@@ -169,15 +238,26 @@ const DualView = (() => {
         }
     }
 
-    function prev() {
-        if (currentIndex - 2 >= 0) {
-            currentIndex -= 2;
-        } else if (currentIndex > 0) {
-            currentIndex = 0;
-        } else {
-            return;
+    async function prev() {
+        if (currentIndex <= 0) return;
+
+        // Determine previous page start
+        let prevIndex = currentIndex - 1;
+        if (prevIndex > 0) {
+            // Check if we can fit two portraits (prevIndex-1 and prevIndex)
+            const dimsPrev = await getImageDims(images[prevIndex]);
+            const dimsPrevPrev = await getImageDims(images[prevIndex - 1]);
+            
+            const isPrevPortrait = dimsPrev.width <= dimsPrev.height;
+            const isPrevPrevPortrait = dimsPrevPrev.width <= dimsPrevPrev.height;
+            
+            if (isPrevPortrait && isPrevPrevPortrait) {
+                prevIndex = prevIndex - 1;
+            }
         }
-        render();
+        
+        currentIndex = prevIndex;
+        await render();
         showIndicator();
     }
 
@@ -244,9 +324,11 @@ const DualView = (() => {
             } else if (isPaused) {
                 indicator.textContent = `Dual View: Paused (Next in ${advanceInterval}s)`;
             } else if (advanceInterval > 0) {
-                indicator.textContent = `Dual View: Auto (${advanceInterval}s) | ${currentIndex + 1}-${Math.min(currentIndex + 2, images.length)} / ${images.length}`;
+                const endIdx = Math.min(currentIndex + lastShownCount, images.length);
+                indicator.textContent = `Dual View: Auto (${advanceInterval}s) | ${currentIndex + 1}${lastShownCount > 1 ? '-' + endIdx : ''} / ${images.length}`;
             } else {
-                indicator.textContent = `Dual View: Manual | ${currentIndex + 1}-${Math.min(currentIndex + 2, images.length)} / ${images.length}`;
+                const endIdx = Math.min(currentIndex + lastShownCount, images.length);
+                indicator.textContent = `Dual View: Manual | ${currentIndex + 1}${lastShownCount > 1 ? '-' + endIdx : ''} / ${images.length}`;
             }
             indicator.style.opacity = '1';
             
