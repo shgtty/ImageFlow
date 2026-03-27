@@ -227,9 +227,14 @@ const DualView = (() => {
         preloadDimensions(currentIndex + lastShownCount, 4);
     }
 
-    async function next() {
-        if (currentIndex + lastShownCount < images.length) {
-            currentIndex += lastShownCount;
+    async function next(step) {
+        const moveAmount = (typeof step === 'number') ? step : lastShownCount;
+        if (currentIndex + moveAmount < images.length) {
+            currentIndex += moveAmount;
+            await render();
+            showIndicator();
+        } else if (moveAmount > 1 && currentIndex + 1 < images.length) {
+            currentIndex += 1;
             await render();
             showIndicator();
         } else {
@@ -238,10 +243,17 @@ const DualView = (() => {
         }
     }
 
-    async function prev() {
+    async function prev(step) {
         if (currentIndex <= 0) return;
 
-        // Determine previous page start
+        if (typeof step === 'number') {
+            currentIndex = Math.max(0, currentIndex - step);
+            await render();
+            showIndicator();
+            return;
+        }
+
+        // Determine previous page start (default behavior)
         let prevIndex = currentIndex - 1;
         if (prevIndex > 0) {
             // Check if we can fit two portraits (prevIndex-1 and prevIndex)

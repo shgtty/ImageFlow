@@ -257,14 +257,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === 'ArrowLeft') {
             e.preventDefault();
             if (DualView.isActive) {
-                DualView.prev();
+                DualView.prev(1);
             } else if (GalleryView.isActive) {
                 GalleryView.changeColumnCount(-1);
             }
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
             if (DualView.isActive) {
-                DualView.next();
+                DualView.next(1);
             } else if (GalleryView.isActive) {
                 GalleryView.changeColumnCount(1);
             }
