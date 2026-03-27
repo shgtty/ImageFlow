@@ -40,19 +40,38 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof GalleryView !== 'undefined') GalleryView.init();
 
     updateSortIcon();
+    updateModeIcon();
     loadImages();
 
     // --- Functions ---
 
     function updateSortIcon() {
-        const isActiveDual = (typeof DualView !== 'undefined' && DualView.isActive);
-        const mode = isActiveDual ? dualSortMode : gallerySortMode;
-        if (mode === 'asc') {
-            sortIcon.innerHTML = '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>';
-            sortBtn.title = 'ソート切替 = 昇順 (R)';
-        } else {
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        if (currentSort === 'asc') {
+            // 現在は昇順なので、ランダムへ切替えるためのアイコンを表示
             sortIcon.innerHTML = '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>';
-            sortBtn.title = 'ソート切替 = ランダム (R)';
+            sortBtn.title = 'ランダム順に切替 (R)';
+        } else {
+            // 現在はランダムなので、昇順(A-Z)へ切替えるためのアイコンを表示
+            sortIcon.innerHTML = '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>';
+            sortBtn.title = '昇順(A-Z)に切替 (R)';
+        }
+    }
+
+    function updateModeIcon() {
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const modeIcon = document.getElementById('modeIcon');
+        if (modeIcon) {
+            if (mode === 'dual') {
+                // デュアルモード中なので、ギャラリーへ切替えるための "G" アイコンを表示
+                modeIcon.innerHTML = '<text x="50%" y="72%" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="currentColor">G</text>';
+                modeBtn.title = 'ギャラリー表示へ切替 (M)';
+            } else {
+                // ギャラリーモード中なので、デュアルへ切替えるための "D" アイコンを表示
+                modeIcon.innerHTML = '<text x="50%" y="72%" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="currentColor">D</text>';
+                modeBtn.title = 'デュアル表示へ切替 (M)';
+            }
         }
     }
 
@@ -103,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             localStorage.setItem(STORAGE_KEY_MODE, 'dual');
             updateSortIcon();
+            updateModeIcon();
 
             // Check if sort needs to change
             if (gallerySortMode !== dualSortMode) {
@@ -123,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleDualExit(exitIndex) {
         localStorage.setItem(STORAGE_KEY_MODE, 'gallery');
         updateSortIcon();
+        updateModeIcon();
         
         if (gallerySortMode !== dualSortMode) {
             loadImages();
