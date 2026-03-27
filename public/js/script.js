@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
+    // 停止（秒数0）からの復帰用に、有効だった直近の秒数を保持する
+    let lastActiveDualInterval = 5; 
+    if (dualInterval > 0) lastActiveDualInterval = dualInterval;
     let statusTimeout = null;
 
     // --- Initialization ---
@@ -172,15 +175,23 @@ document.addEventListener('DOMContentLoaded', () => {
     fullscreenBtn.addEventListener('click', toggleFullscreen);
 
     scrollUpBtn.addEventListener('click', () => {
-        if (GalleryView.isActive) GalleryView.changeScrollSpeed(-1);
+        if (GalleryView.isActive) {
+            GalleryView.changeScrollSpeed(-1);
+        } else if (DualView.isActive) {
+            changeDualInterval(-1);
+        }
     });
     scrollDownBtn.addEventListener('click', () => {
-        if (GalleryView.isActive) GalleryView.changeScrollSpeed(1);
+        if (GalleryView.isActive) {
+            GalleryView.changeScrollSpeed(1);
+        } else if (DualView.isActive) {
+            changeDualInterval(1);
+        }
     });
     stopBtn.addEventListener('click', () => {
         if (DualView.isActive) {
-            dualInterval = 0;
-            localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
+            // 永続化（保存）だけ 0 にする（次回リロード時に停止で開始するため）
+            localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, 0);
             DualView.stop();
         } else if (GalleryView.isActive) {
             GalleryView.stop();
@@ -213,16 +224,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (GalleryView.isActive) {
                 GalleryView.changeScrollSpeed(-1);
             } else if (DualView.isActive) {
-                // Handle DualView speed change?
-                // For simplicity, let's keep it in script.js or delegate
-                changeDualInterval(-1);
+                DualView.prev();
             }
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (GalleryView.isActive) {
                 GalleryView.changeScrollSpeed(1);
             } else if (DualView.isActive) {
-                changeDualInterval(1);
+                DualView.next();
             }
         } else if (e.key === 'ArrowLeft') {
             e.preventDefault();
@@ -247,7 +256,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === ' ' || e.code === 'Space') {
             e.preventDefault();
             if (DualView.isActive) {
-                DualView.togglePause();
+                if (DualView.interval === 0) {
+                    // 停止中からの再開時は、最後に有効だった秒数で再開する
+                    dualInterval = lastActiveDualInterval;
+                    localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
+                    DualView.setAutoAdvance(dualInterval);
+                } else {
+                    DualView.togglePause();
+                }
             } else if (GalleryView.isActive) {
                 GalleryView.togglePause();
             }
@@ -255,17 +271,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function changeDualInterval(delta) {
-        if (dualInterval === 0 && delta > 0) {
-            dualInterval = 5;
-        } else if (dualInterval > 0) {
-            if (delta > 0) {
-                dualInterval = Math.max(1, dualInterval - 1);
-            } else {
-                dualInterval += 1;
-            }
-        } else if (delta < 0) {
-            dualInterval = 5;
+        // 現在のインターバルを取得（停止中なら 0 を返す）
+        let current = (typeof DualView !== 'undefined' && DualView.isActive) ? DualView.interval : dualInterval;
+
+        if (current === 0) {
+            // 停止中なら、最後に有効だった値をベースにして増減を開始
+            dualInterval = lastActiveDualInterval;
+        } else {
+            dualInterval = current;
         }
+
+        // 変化させる
+        if (delta > 0) {
+            dualInterval = Math.max(1, dualInterval - 1);
+        } else {
+            dualInterval += 1;
+        }
+
+        lastActiveDualInterval = dualInterval;
         localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
         DualView.setAutoAdvance(dualInterval);
     }
