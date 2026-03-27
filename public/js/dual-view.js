@@ -277,6 +277,7 @@ const DualView = (() => {
         updateImagesAndReset,
         get isActive() { return isActive; },
         get interval() { return advanceInterval; },
-        get isPaused() { return isPaused; }
+        get isPaused() { return isPaused; },
+        get currentIndex() { return currentIndex; }
     };
 })();
