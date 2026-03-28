@@ -19,6 +19,7 @@ const DualView = (() => {
     let savedIntervalBeforePause = 0;
 
     // Layout logic
+    let isRightToLeft = false;
     let lastShownCount = 1;
     let currentRenderId = 0;
     const dimensionCache = new Map(); // URL -> {width, height}
@@ -188,6 +189,7 @@ const DualView = (() => {
         container.style.display = 'flex';
         container.style.justifyContent = 'center';
         container.style.alignItems = 'center';
+        container.style.flexDirection = isRightToLeft ? 'row-reverse' : 'row';
         container.style.width = '100%';
         container.style.height = '100%';
         container.style.gap = '0';
@@ -209,9 +211,12 @@ const DualView = (() => {
                 img.style.opacity = '1';
                 img.style.transition = 'none';
                 
-                // 2枚表示のときは中央に寄せる（左画像は右寄せ、右画像は左寄せ）
                 if (lastShownCount === 2) {
-                    img.style.objectPosition = (i === 0) ? 'right' : 'left';
+                    if (isRightToLeft) {
+                        img.style.objectPosition = (i === 0) ? 'left' : 'right';
+                    } else {
+                        img.style.objectPosition = (i === 0) ? 'right' : 'left';
+                    }
                 } else {
                     img.style.objectPosition = 'center';
                 }
@@ -359,6 +364,17 @@ const DualView = (() => {
         showIndicator();
     }
 
+    function toggleDirection() {
+        isRightToLeft = !isRightToLeft;
+        render();
+        return isRightToLeft;
+    }
+
+    function setDirection(rtl) {
+        isRightToLeft = !!rtl;
+        if (isActive) render();
+    }
+
     return {
         init,
         enter,
@@ -369,9 +385,12 @@ const DualView = (() => {
         togglePause,
         stop,
         updateImagesAndReset,
+        toggleDirection,
+        setDirection,
         get isActive() { return isActive; },
         get interval() { return advanceInterval; },
         get isPaused() { return isPaused; },
-        get currentIndex() { return currentIndex; }
+        get currentIndex() { return currentIndex; },
+        get isRightToLeft() { return isRightToLeft; }
     };
 })();

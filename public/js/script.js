@@ -16,14 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollUpBtn = document.getElementById('scrollUpBtn');
     const scrollDownBtn = document.getElementById('scrollDownBtn');
     const stopBtn = document.getElementById('stopBtn');
-    const colMinusBtn = document.getElementById('colMinusBtn');
     const colPlusBtn = document.getElementById('colPlusBtn');
+    
+    // Dual-View specific control buttons
+    const dirBtn = document.getElementById('dirBtn');
+    const dirBtnWrapper = document.getElementById('dirBtnWrapper');
+    const dirIcon = document.getElementById('dirIcon');
 
     // --- State Management ---
     const STORAGE_KEY_MODE = 'imageflow_display_mode'; // 'gallery' or 'dual'
     const STORAGE_KEY_GALLERY_SORT = 'imageflow_gallery_sort';
     const STORAGE_KEY_DUAL_SORT = 'imageflow_dual_sort';
     const STORAGE_KEY_DUAL_INTERVAL = 'imageflow_dual_interval';
+    const STORAGE_KEY_DUAL_RTL = 'imageflow_dual_rtl';
 
     let allImagesUrls = [];
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
@@ -38,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateSortIcon();
     updateModeIcon();
+    updateDirIcon();
+    
+    // Initial RTL setting
+    if (typeof DualView !== 'undefined') {
+        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
+        DualView.setDirection(isRtl);
+    }
+    
     loadImages();
 
     // --- Functions ---
@@ -59,6 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateModeIcon() {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const modeIcon = document.getElementById('modeIcon');
+        
+        if (dirBtnWrapper) {
+            dirBtnWrapper.style.display = (mode === 'dual') ? 'block' : 'none';
+        }
+
         if (modeIcon) {
             if (mode === 'dual') {
                 // デュアルモード中なので、ギャラリーへ切替えるための "G" アイコンを表示
@@ -69,6 +87,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 modeIcon.innerHTML = '<text x="50%" y="72%" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="currentColor">D</text>';
                 modeBtn.title = 'デュアル表示へ切替 (M)';
             }
+        }
+    }
+
+    function updateDirIcon() {
+        if (!dirIcon) return;
+        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
+        if (isRtl) {
+            // 現在は右から(RTL)なので、左から(LTR)へ切り替えるためのアイコンを表示
+            dirBtn.title = '左から右へ表示 (O)';
+            dirIcon.style.color = '#3498db'; // アクティブ感
+        } else {
+            // 現在は左から(LTR)なので、右から(RTL)へ切り替えるためのアイコンを表示
+            dirBtn.title = '右から左へ表示 (O)';
+            dirIcon.style.color = '';
         }
     }
 
@@ -187,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
             updateSortIcon();
             loadImages();
-            // showModeOverlay is called inside loadImages
         }
     }
 
@@ -199,12 +230,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function toggleDirection() {
+        if (!DualView.isActive) return;
+        const newState = DualView.toggleDirection();
+        localStorage.setItem(STORAGE_KEY_DUAL_RTL, newState);
+        updateDirIcon();
+        const dirText = newState ? '右から左へ' : '左から右へ';
+        showModeOverlay('表示順変更', dirText, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>');
+    }
+
     // --- Global Event Listeners ---
 
     reloadBtn.addEventListener('click', () => loadImages());
     modeBtn.addEventListener('click', toggleMode);
     sortBtn.addEventListener('click', toggleSort);
     fullscreenBtn.addEventListener('click', toggleFullscreen);
+    dirBtn.addEventListener('click', toggleDirection);
 
     scrollUpBtn.addEventListener('click', () => {
         if (GalleryView.isActive) {
@@ -249,6 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleMode();
         } else if (e.key === 'r' || e.key === 'R') {
             toggleSort();
+        } else if (e.key === 'o' || e.key === 'O') {
+            toggleDirection();
         } else if (e.key === 'f' || e.key === 'F') {
             toggleFullscreen();
         } else if (e.key === 'ArrowUp') {
