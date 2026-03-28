@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             allImagesUrls = data.images;
-            status.textContent = `全 ${data.totalFound} 枚中、${currentSort === 'asc' ? '昇順' : 'ランダム'}に ${data.count} 枚を表示中`;
+            status.textContent = `${data.totalFound} 枚の画像を${currentSort === 'asc' ? '昇順' : 'ランダム'}に表示します`;
             
             statusTimeout = setTimeout(() => {
                 statusBar.style.opacity = '0';

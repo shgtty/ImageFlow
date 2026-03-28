@@ -161,7 +161,7 @@ const server = http.createServer((req, res) => {
             }
         }
 
-        const limitImages = sortMode === 'asc' ? allImages : allImages.slice(0, 1000);
+        const limitImages = allImages; // 制限を解除 (Remove the 1000 image limit)
         const imageUrls = limitImages.map(img => `/image?path=${encodeURIComponent(img)}`);
 
         res.writeHead(200, { 
