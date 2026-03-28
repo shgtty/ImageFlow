@@ -352,8 +352,112 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 DualView.goToLast();
             }
+        } else if (e.key === 'PageUp') {
+            e.preventDefault();
+            skipFolder(-1);
+        } else if (e.key === 'PageDown') {
+            e.preventDefault();
+            skipFolder(1);
         }
     });
+
+    function getFolderPath(url) {
+        try {
+            const urlObj = new URL(url, window.location.origin);
+            const pathStr = urlObj.searchParams.get('path');
+            if (!pathStr) return '';
+            
+            if (pathStr.includes('|')) {
+                return pathStr.split('|')[0];
+            }
+            
+            const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
+            if (lastSlash >= 0) {
+                return pathStr.substring(0, lastSlash);
+            }
+            return pathStr;
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function getFolderDisplayName(url) {
+        let pathStr = getFolderPath(url);
+        if (!pathStr) return '不明なフォルダ';
+        const parts = pathStr.split(/[/\\]/);
+        return parts[parts.length - 1] || pathStr;
+    }
+
+    function skipFolder(direction) {
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        
+        if (currentSort !== 'asc') {
+            showModeOverlay('フォルダスキップは昇順(A-Z)ソート時のみ有効です', '', 0);
+            return;
+        }
+        
+        if (allImagesUrls.length === 0) return;
+        
+        let currentIndex = 0;
+        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+            currentIndex = DualView.currentIndex;
+        } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+            currentIndex = GalleryView.currentIndex;
+        } else {
+            return;
+        }
+        
+        const currentFolder = getFolderPath(allImagesUrls[currentIndex]);
+        let targetIndex = currentIndex;
+        
+        if (direction > 0) {
+            // Next folder
+            for (let i = currentIndex + 1; i < allImagesUrls.length; i++) {
+                if (getFolderPath(allImagesUrls[i]) !== currentFolder) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+            if (targetIndex === currentIndex) {
+                targetIndex = 0; // loop back to first
+            }
+        } else {
+            // Previous folder
+            let startOfCurrent = currentIndex;
+            while (startOfCurrent > 0 && getFolderPath(allImagesUrls[startOfCurrent - 1]) === currentFolder) {
+                startOfCurrent--;
+            }
+            
+            if (currentIndex > startOfCurrent) {
+                targetIndex = startOfCurrent;
+            } else {
+                if (startOfCurrent > 0) {
+                    const prevFolder = getFolderPath(allImagesUrls[startOfCurrent - 1]);
+                    targetIndex = startOfCurrent - 1;
+                    while (targetIndex > 0 && getFolderPath(allImagesUrls[targetIndex - 1]) === prevFolder) {
+                        targetIndex--;
+                    }
+                } else {
+                    const lastFolder = getFolderPath(allImagesUrls[allImagesUrls.length - 1]);
+                    targetIndex = allImagesUrls.length - 1;
+                    while (targetIndex > 0 && getFolderPath(allImagesUrls[targetIndex - 1]) === lastFolder) {
+                        targetIndex--;
+                    }
+                }
+            }
+        }
+        
+        const folderName = getFolderDisplayName(allImagesUrls[targetIndex]);
+        showModeOverlay('フォルダ移動', folderName, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>');
+
+        if (mode === 'dual') {
+            DualView.updateImagesAndReset(allImagesUrls, targetIndex);
+        } else if (mode === 'gallery') {
+            GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: false });
+            window.scrollTo(0, 0);
+        }
+    }
 
     function changeDualInterval(delta) {
         // 現在のインターバルを取得（停止中なら 0 を返す）
