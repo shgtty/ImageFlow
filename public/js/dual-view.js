@@ -236,20 +236,22 @@ const DualView = (() => {
         const moveAmount = (typeof step === 'number') ? step : lastShownCount;
         if (currentIndex + moveAmount < images.length) {
             currentIndex += moveAmount;
-            await render();
-            showIndicator();
         } else if (moveAmount > 1 && currentIndex + 1 < images.length) {
             currentIndex += 1;
-            await render();
-            showIndicator();
         } else {
-            showIndicator("最後の一枚です");
-            stopTimerByFinish();
+            // Loop back to start
+            currentIndex = 0;
         }
+        await render();
+        showIndicator();
     }
 
     async function prev(step) {
-        if (currentIndex <= 0) return;
+        if (currentIndex <= 0) {
+            // Loop back to end
+            await goToLast();
+            return;
+        }
 
         if (typeof step === 'number') {
             currentIndex = Math.max(0, currentIndex - step);
@@ -274,6 +276,20 @@ const DualView = (() => {
         }
         
         currentIndex = prevIndex;
+        await render();
+        showIndicator();
+    }
+
+    async function goToFirst() {
+        if (!isActive || images.length === 0) return;
+        currentIndex = 0;
+        await render();
+        showIndicator();
+    }
+
+    async function goToLast() {
+        if (!isActive || images.length === 0) return;
+        currentIndex = images.length - 1;
         await render();
         showIndicator();
     }
@@ -381,6 +397,8 @@ const DualView = (() => {
         exit,
         next,
         prev,
+        goToFirst,
+        goToLast,
         setAutoAdvance,
         togglePause,
         stop,

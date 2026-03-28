@@ -342,6 +342,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (GalleryView.isActive) {
                 GalleryView.togglePause();
             }
+        } else if (e.key === 'Home') {
+            if (DualView.isActive) {
+                e.preventDefault();
+                DualView.goToFirst();
+            }
+        } else if (e.key === 'End') {
+            if (DualView.isActive) {
+                e.preventDefault();
+                DualView.goToLast();
+            }
         }
     });
 
