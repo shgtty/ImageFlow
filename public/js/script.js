@@ -4,8 +4,7 @@
  */
 document.addEventListener('DOMContentLoaded', () => {
     // --- Common Elements ---
-    const status = document.getElementById('status');
-    const statusBar = document.getElementById('status-bar');
+    // --- Common Elements ---
     const reloadBtn = document.getElementById('reloadBtn');
     const modeBtn = document.getElementById('modeBtn');
     const sortBtn = document.getElementById('sortBtn');
@@ -30,10 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
-    // 停止（秒数0）からの復帰用に、有効だった直近の秒数を保持する
     let lastActiveDualInterval = 5; 
     if (dualInterval > 0) lastActiveDualInterval = dualInterval;
-    let statusTimeout = null;
 
     // --- Initialization ---
     if (typeof DualView !== 'undefined') DualView.init();
@@ -76,10 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadImages() {
-        if (statusTimeout) clearTimeout(statusTimeout);
-        statusBar.style.opacity = '1';
-        status.textContent = '読み込み中... 少しお待ちください。';
-
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
 
@@ -89,16 +82,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.totalFound === 0) {
-                status.innerHTML = `画像が見つかりませんでした。<br><strong>folders.txt</strong> を確認してください。`;
+                showModeOverlay('画像が見つかりませんでした (folders.txtを確認してください)', '', 0);
                 return;
             }
 
             allImagesUrls = data.images;
-            status.textContent = `${data.totalFound} 枚の画像を${currentSort === 'asc' ? '昇順' : 'ランダム'}に表示します`;
+            const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
+            const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
+            const iconHtml = mode === 'dual' 
+                ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
+                : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
             
-            statusTimeout = setTimeout(() => {
-                statusBar.style.opacity = '0';
-            }, 3000);
+            showModeOverlay(modeName, sortName, allImagesUrls.length, iconHtml);
 
             // Startup based on mode
             if (mode === 'dual' && typeof DualView !== 'undefined') {
@@ -108,8 +103,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error fetching images:', error);
-            status.textContent = 'サーバーと通信できません。';
+            showModeOverlay('サーバーと通信できません', '', 0);
         }
+    }
+
+    let modeOverlayTimer = null;
+    function showModeOverlay(modeName, sortName, count, iconHtml) {
+        const overlay = document.getElementById('mode-overlay');
+        if (!overlay) return;
+        
+        const sortPart = sortName ? ` [${sortName}]` : '';
+        const countPart = (typeof count === 'number' && count > 0) ? ` [${count}枚]` : '';
+        
+        overlay.innerHTML = `${iconHtml || ''} <span>${modeName}${sortPart}${countPart}</span>`;
+        overlay.classList.add('show');
+        
+        if (modeOverlayTimer) clearTimeout(modeOverlayTimer);
+        modeOverlayTimer = setTimeout(() => {
+            overlay.classList.remove('show');
+        }, 3000);
     }
 
 
@@ -123,6 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem(STORAGE_KEY_MODE, 'dual');
             updateSortIcon();
             updateModeIcon();
+
+            const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
+            showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
 
             // Check if sort needs to change
             if (gallerySortMode !== dualSortMode) {
@@ -145,15 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSortIcon();
         updateModeIcon();
         
+        const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
+        showModeOverlay('ギャラリーモード', gallerySortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
+
         if (gallerySortMode !== dualSortMode) {
             loadImages();
         } else {
             GalleryView.enter(allImagesUrls, exitIndex, { onEnd: () => loadImages() });
         }
-        
-        status.textContent = "通常のギャラリー表示に戻りました";
-        statusBar.style.opacity = '1';
-        setTimeout(() => statusBar.style.opacity = '0', 2000);
     }
 
     function toggleSort() {
@@ -165,18 +179,15 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch(`/api/images?sort=${dualSortMode}`).then(r => r.json()).then(data => {
                 allImagesUrls = data.images;
                 DualView.updateImagesAndReset(allImagesUrls, 0);
-                status.textContent = dualSortMode === 'asc' ? '昇順で表示します' : 'ランダム順で表示します';
-                statusBar.style.opacity = '1';
-                setTimeout(() => statusBar.style.opacity = '0', 2000);
+                const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
+                showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
             });
         } else {
             gallerySortMode = (gallerySortMode === 'random' ? 'asc' : 'random');
             localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
             updateSortIcon();
             loadImages();
-            status.textContent = gallerySortMode === 'asc' ? '昇順で表示します' : 'ランダム順で表示します';
-            statusBar.style.opacity = '1';
-            setTimeout(() => statusBar.style.opacity = '0', 2000);
+            // showModeOverlay is called inside loadImages
         }
     }
 
