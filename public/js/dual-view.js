@@ -233,7 +233,7 @@ const DualView = (() => {
         preloadDimensions(currentIndex + lastShownCount, 4);
     }
 
-    async function next(step) {
+    async function next(step, silent = false) {
         const moveAmount = (typeof step === 'number') ? step : lastShownCount;
         if (currentIndex + moveAmount < images.length) {
             currentIndex += moveAmount;
@@ -244,20 +244,20 @@ const DualView = (() => {
             currentIndex = 0;
         }
         await render();
-        showIndicator();
+        if (!silent) showIndicator();
     }
 
-    async function prev(step) {
+    async function prev(step, silent = false) {
         if (currentIndex <= 0) {
             // Loop back to end
-            await goToLast();
+            await goToLast(silent);
             return;
         }
 
         if (typeof step === 'number') {
             currentIndex = Math.max(0, currentIndex - step);
             await render();
-            showIndicator();
+            if (!silent) showIndicator();
             return;
         }
 
@@ -278,21 +278,21 @@ const DualView = (() => {
         
         currentIndex = prevIndex;
         await render();
-        showIndicator();
+        if (!silent) showIndicator();
     }
 
-    async function goToFirst() {
+    async function goToFirst(silent = false) {
         if (!isActive || images.length === 0) return;
         currentIndex = 0;
         await render();
-        showIndicator();
+        if (!silent) showIndicator();
     }
 
-    async function goToLast() {
+    async function goToLast(silent = false) {
         if (!isActive || images.length === 0) return;
         currentIndex = images.length - 1;
         await render();
-        showIndicator();
+        if (!silent) showIndicator();
     }
 
     // --- Auto Advance Implementation ---
@@ -373,12 +373,12 @@ const DualView = (() => {
         }
     }
 
-    function updateImagesAndReset(newImagesUrls, startIndex = 0) {
+    function updateImagesAndReset(newImagesUrls, startIndex = 0, silent = false) {
         if (!isActive) return;
         images = newImagesUrls;
         currentIndex = startIndex;
         render();
-        showIndicator();
+        if (!silent) showIndicator();
     }
 
     function toggleDirection() {

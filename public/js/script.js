@@ -368,26 +368,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (GalleryView.isActive) {
                 GalleryView.changeScrollSpeed(-1);
             } else if (DualView.isActive) {
-                DualView.prev();
+                DualView.prev(undefined, true);
             }
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (GalleryView.isActive) {
                 GalleryView.changeScrollSpeed(1);
             } else if (DualView.isActive) {
-                DualView.next();
+                DualView.next(undefined, true);
             }
         } else if (e.key === 'ArrowLeft') {
             e.preventDefault();
             if (DualView.isActive) {
-                DualView.prev(1);
+                DualView.prev(1, true);
             } else if (GalleryView.isActive) {
                 GalleryView.changeColumnCount(-1);
             }
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
             if (DualView.isActive) {
-                DualView.next(1);
+                DualView.next(1, true);
             } else if (GalleryView.isActive) {
                 GalleryView.changeColumnCount(1);
             }
@@ -414,12 +414,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === 'Home') {
             if (DualView.isActive) {
                 e.preventDefault();
-                DualView.goToFirst();
+                DualView.goToFirst(true);
             }
         } else if (e.key === 'End') {
             if (DualView.isActive) {
                 e.preventDefault();
-                DualView.goToLast();
+                DualView.goToLast(true);
             }
         } else if (e.key === 'PageUp') {
             e.preventDefault();
@@ -521,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showModeOverlay('フォルダ移動', folderName, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>');
 
         if (mode === 'dual') {
-            DualView.updateImagesAndReset(allImagesUrls, targetIndex);
+            DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
         } else if (mode === 'gallery') {
             GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: false });
             window.scrollTo(0, 0);
