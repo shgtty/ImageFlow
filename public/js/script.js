@@ -31,9 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_DUAL_SORT = 'imageflow_dual_sort';
     const STORAGE_KEY_DUAL_INTERVAL = 'imageflow_dual_interval';
     const STORAGE_KEY_DUAL_RTL = 'imageflow_dual_rtl';
+    const STORAGE_KEY_DUAL_INDEX = 'imageflow_dual_index';
+    const STORAGE_KEY_GALLERY_INDEX = 'imageflow_gallery_index';
 
     let allImagesUrls = [];
-    let lastDualIndex = -1; // ギャラリーからデュアルに戻るときに復元するためのインデックス
+    let lastDualIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || -1; 
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
@@ -55,6 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadImages();
+
+    // --- State Persistence ---
+    setInterval(() => {
+        if (typeof DualView !== 'undefined' && DualView.isActive && dualSortMode === 'asc') {
+            localStorage.setItem(STORAGE_KEY_DUAL_INDEX, DualView.currentIndex);
+        } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive && gallerySortMode === 'asc') {
+            localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
+        }
+    }, 2000);
 
     // --- Functions ---
 
@@ -135,10 +146,19 @@ document.addEventListener('DOMContentLoaded', () => {
             showModeOverlay(modeName, sortName, allImagesUrls.length, iconHtml);
 
             // Startup based on mode
+            let targetIndex = 0;
             if (mode === 'dual' && typeof DualView !== 'undefined') {
-                DualView.enter(allImagesUrls, 0, dualInterval, handleDualExit);
+                if (dualSortMode === 'asc') {
+                    targetIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || 0;
+                    if (targetIndex >= allImagesUrls.length) targetIndex = 0;
+                }
+                DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
             } else if (typeof GalleryView !== 'undefined') {
-                GalleryView.enter(allImagesUrls, 0, { onEnd: () => loadImages() });
+                if (gallerySortMode === 'asc') {
+                    targetIndex = parseInt(localStorage.getItem(STORAGE_KEY_GALLERY_INDEX)) || 0;
+                    if (targetIndex >= allImagesUrls.length) targetIndex = 0;
+                }
+                GalleryView.enter(allImagesUrls, targetIndex, { onEnd: () => loadImages() });
             }
         } catch (error) {
             console.error('Error fetching images:', error);
@@ -171,6 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 昇順モード（asc）なら位置復元、ランダムモード（random）ならギャラリーに同期
             const index = GalleryView.currentIndex;
             const currentImgUrl = allImagesUrls[index];
+            if (gallerySortMode === 'asc') {
+                localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, index);
+            }
             GalleryView.exit();
 
             localStorage.setItem(STORAGE_KEY_MODE, 'dual');
@@ -207,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleDualExit(exitIndex) {
         if (dualSortMode === 'asc') {
             lastDualIndex = exitIndex; // ソート（昇順）モード終了時の位置を保存
+            localStorage.setItem(STORAGE_KEY_DUAL_INDEX, exitIndex);
         }
         localStorage.setItem(STORAGE_KEY_MODE, 'gallery');
         updateSortIcon();
@@ -230,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (wasAsc) {
                 // ソート（昇順）から切り替える際、現在の位置を保存しておく
                 lastDualIndex = DualView.currentIndex;
+                localStorage.setItem(STORAGE_KEY_DUAL_INDEX, lastDualIndex);
             }
 
             dualSortMode = (dualSortMode === 'random' ? 'asc' : 'random');
