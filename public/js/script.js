@@ -11,13 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortIcon = document.getElementById('sortIcon');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
-    
+
     // Gallery specific control buttons
     const scrollUpBtn = document.getElementById('scrollUpBtn');
     const scrollDownBtn = document.getElementById('scrollDownBtn');
     const stopBtn = document.getElementById('stopBtn');
     const colPlusBtn = document.getElementById('colPlusBtn');
-    
+
     // Dual-View specific control buttons
     const dirBtn = document.getElementById('dirBtn');
     const dirBtnWrapper = document.getElementById('dirBtnWrapper');
@@ -31,10 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_DUAL_RTL = 'imageflow_dual_rtl';
 
     let allImagesUrls = [];
+    let lastDualIndex = -1; // ギャラリーからデュアルに戻るときに復元するためのインデックス
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
-    let lastActiveDualInterval = 5; 
+    let lastActiveDualInterval = 5;
     if (dualInterval > 0) lastActiveDualInterval = dualInterval;
 
     // --- Initialization ---
@@ -44,13 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSortIcon();
     updateModeIcon();
     updateDirIcon();
-    
+
     // Initial RTL setting
     if (typeof DualView !== 'undefined') {
         const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
         DualView.setDirection(isRtl);
     }
-    
+
     loadImages();
 
     // --- Functions ---
@@ -72,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateModeIcon() {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const modeIcon = document.getElementById('modeIcon');
-        
+
         if (dirBtnWrapper) {
             dirBtnWrapper.style.display = (mode === 'dual') ? 'block' : 'none';
         }
@@ -121,10 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
             allImagesUrls = data.images;
             const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
             const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
-            const iconHtml = mode === 'dual' 
+            const iconHtml = mode === 'dual'
                 ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
                 : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
-            
+
             showModeOverlay(modeName, sortName, allImagesUrls.length, iconHtml);
 
             // Startup based on mode
@@ -143,13 +144,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function showModeOverlay(modeName, sortName, count, iconHtml) {
         const overlay = document.getElementById('mode-overlay');
         if (!overlay) return;
-        
+
         const sortPart = sortName ? ` [${sortName}]` : '';
         const countPart = (typeof count === 'number' && count > 0) ? ` [${count}枚]` : '';
-        
+
         overlay.innerHTML = `${iconHtml || ''} <span>${modeName}${sortPart}${countPart}</span>`;
         overlay.classList.add('show');
-        
+
         if (modeOverlayTimer) clearTimeout(modeOverlayTimer);
         modeOverlayTimer = setTimeout(() => {
             overlay.classList.remove('show');
@@ -161,9 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof DualView === 'undefined' || typeof GalleryView === 'undefined') return;
 
         if (GalleryView.isActive) {
+            // 昇順モード（asc）なら位置復元、ランダムモード（random）ならギャラリーに同期
             const index = GalleryView.currentIndex;
+            const currentImgUrl = allImagesUrls[index];
             GalleryView.exit();
-            
+
             localStorage.setItem(STORAGE_KEY_MODE, 'dual');
             updateSortIcon();
             updateModeIcon();
@@ -171,15 +174,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
             showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
 
-            // Check if sort needs to change
             if (gallerySortMode !== dualSortMode) {
-                // Fetch for dual mode
                 fetch(`/api/images?sort=${dualSortMode}`).then(r => r.json()).then(data => {
                     allImagesUrls = data.images;
-                    DualView.enter(allImagesUrls, 0, dualInterval, handleDualExit);
+                    // 昇順への復帰かつ以前の位置がある場合は復元を優先、そうでなければ同じ画像を探す
+                    let targetIndex;
+                    if (dualSortMode === 'asc' && lastDualIndex >= 0) {
+                        targetIndex = lastDualIndex;
+                    } else {
+                        const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                        targetIndex = (newIdx >= 0) ? newIdx : 0;
+                    }
+                    DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
                 }).catch(console.error);
             } else {
-                DualView.enter(allImagesUrls, index, dualInterval, handleDualExit);
+                // ソートが同じ場合：昇順なら復元、ランダムなら現在のギャラリー位置を使用
+                const targetIndex = (dualSortMode === 'asc' && lastDualIndex >= 0) ? lastDualIndex : index;
+                DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
             }
         } else if (DualView.isActive) {
             const index = DualView.currentIndex; // DualView needs an index getter
@@ -188,10 +199,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleDualExit(exitIndex) {
+        if (dualSortMode === 'asc') {
+            lastDualIndex = exitIndex; // ソート（昇順）モード終了時の位置を保存
+        }
         localStorage.setItem(STORAGE_KEY_MODE, 'gallery');
         updateSortIcon();
         updateModeIcon();
-        
+
         const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
         showModeOverlay('ギャラリーモード', gallerySortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
 
@@ -204,13 +218,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleSort() {
         if (DualView.isActive) {
+            const currentImgUrl = allImagesUrls[DualView.currentIndex];
+            const wasAsc = (dualSortMode === 'asc');
+
+            if (wasAsc) {
+                // ソート（昇順）から切り替える際、現在の位置を保存しておく
+                lastDualIndex = DualView.currentIndex;
+            }
+
             dualSortMode = (dualSortMode === 'random' ? 'asc' : 'random');
             localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
             updateSortIcon();
-            
+
             fetch(`/api/images?sort=${dualSortMode}`).then(r => r.json()).then(data => {
                 allImagesUrls = data.images;
-                DualView.updateImagesAndReset(allImagesUrls, 0);
+
+                let targetIndex = 0;
+                if (dualSortMode === 'asc' && lastDualIndex >= 0) {
+                    // ソート（昇順）に戻る場合は、以前の表示位置を優先して復元する
+                    targetIndex = lastDualIndex;
+                } else {
+                    // それ以外（ランダムへ切替等）は、今の画像を維持しようとする
+                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                    if (newIdx >= 0) targetIndex = newIdx;
+                }
+
+                DualView.updateImagesAndReset(allImagesUrls, targetIndex);
                 const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
                 showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
             });
@@ -366,11 +399,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const urlObj = new URL(url, window.location.origin);
             const pathStr = urlObj.searchParams.get('path');
             if (!pathStr) return '';
-            
+
             if (pathStr.includes('|')) {
                 return pathStr.split('|')[0];
             }
-            
+
             const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
             if (lastSlash >= 0) {
                 return pathStr.substring(0, lastSlash);
@@ -391,14 +424,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function skipFolder(direction) {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
-        
+
         if (currentSort !== 'asc') {
             showModeOverlay('フォルダスキップは昇順(A-Z)ソート時のみ有効です', '', 0);
             return;
         }
-        
+
         if (allImagesUrls.length === 0) return;
-        
+
         let currentIndex = 0;
         if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
             currentIndex = DualView.currentIndex;
@@ -407,10 +440,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             return;
         }
-        
+
         const currentFolder = getFolderPath(allImagesUrls[currentIndex]);
         let targetIndex = currentIndex;
-        
+
         if (direction > 0) {
             // Next folder
             for (let i = currentIndex + 1; i < allImagesUrls.length; i++) {
@@ -428,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
             while (startOfCurrent > 0 && getFolderPath(allImagesUrls[startOfCurrent - 1]) === currentFolder) {
                 startOfCurrent--;
             }
-            
+
             if (currentIndex > startOfCurrent) {
                 targetIndex = startOfCurrent;
             } else {
@@ -447,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-        
+
         const folderName = getFolderDisplayName(allImagesUrls[targetIndex]);
         showModeOverlay('フォルダ移動', folderName, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>');
 
