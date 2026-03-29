@@ -22,6 +22,7 @@ const GalleryView = (() => {
     let isPaused = false;
     let savedSpeedForPause = 0;
     let indicatorTimeout = null;
+    let isRightToLeft = false;
 
     // Storage keys
     const STORAGE_KEY_SPEED = 'imageflow_scroll_speed';
@@ -325,8 +326,24 @@ const GalleryView = (() => {
 
         if (indicatorTimeout) clearTimeout(indicatorTimeout);
         indicatorTimeout = setTimeout(() => {
-            speedIndicatorElement.style.opacity = '0';
         }, 1500);
+    }
+
+    function setDirection(rtl) {
+        isRightToLeft = !!rtl;
+        if (galleryElement) {
+            if (isRightToLeft) {
+                galleryElement.classList.add('rtl');
+            } else {
+                galleryElement.classList.remove('rtl');
+            }
+        }
+    }
+
+    function toggleDirection() {
+        isRightToLeft = !isRightToLeft;
+        setDirection(isRightToLeft);
+        return isRightToLeft;
     }
 
     return {
@@ -338,9 +355,12 @@ const GalleryView = (() => {
         togglePause,
         changeColumnCount,
         updateImagesAndReset,
+        setDirection,
+        toggleDirection,
         get isActive() { return isActive; },
         get scrollSpeed() { return scrollSpeed; },
         get isPaused() { return isPaused; },
+        get isRightToLeft() { return isRightToLeft; },
         // Used for mode transitions
         get currentIndex() {
             const imagesInGallery = Array.from(galleryElement.querySelectorAll('img'));

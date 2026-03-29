@@ -51,10 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDirIcon();
 
     // Initial RTL setting
-    if (typeof DualView !== 'undefined') {
-        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
-        DualView.setDirection(isRtl);
-    }
+    const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
+    if (typeof DualView !== 'undefined') DualView.setDirection(isRtl);
+    if (typeof GalleryView !== 'undefined') GalleryView.setDirection(isRtl);
 
     loadImages();
 
@@ -88,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const modeIcon = document.getElementById('modeIcon');
 
         if (dirBtnWrapper) {
-            dirBtnWrapper.style.display = (mode === 'dual') ? 'block' : 'none';
+            dirBtnWrapper.style.display = 'block';
         }
 
         if (colBtnRow) {
@@ -295,9 +294,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleDirection() {
-        if (!DualView.isActive) return;
-        const newState = DualView.toggleDirection();
+        if (!DualView.isActive && !GalleryView.isActive) return;
+
+        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
+        const newState = !isRtl;
         localStorage.setItem(STORAGE_KEY_DUAL_RTL, newState);
+
+        if (typeof DualView !== 'undefined') DualView.setDirection(newState);
+        if (typeof GalleryView !== 'undefined') GalleryView.setDirection(newState);
+
         updateDirIcon();
         const dirText = newState ? '右から左へ' : '左から右へ';
         showModeOverlay('表示順変更', dirText, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>');
