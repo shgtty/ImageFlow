@@ -184,7 +184,6 @@ const DualView = (() => {
         if (renderId !== currentRenderId || !isActive) return;
         
         lastShownCount = pageInfo.count;
-        galleryElement.innerHTML = '';
 
         const container = document.createElement('div');
         container.style.display = 'flex';
@@ -199,12 +198,23 @@ const DualView = (() => {
         container.style.backgroundColor = '#000';
 
         const maxWidth = lastShownCount === 1 ? '100%' : '50%';
+        const loadPromises = [];
 
         for (let i = 0; i < lastShownCount; i++) {
             const idx = currentIndex + i;
             if (idx < images.length) {
                 const img = document.createElement('img');
-                img.src = images[idx];
+                
+                const loadPromise = new Promise((resolve) => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                    img.src = images[idx];
+                    if (img.complete) {
+                        resolve();
+                    }
+                });
+                loadPromises.push(loadPromise);
+
                 img.style.width = maxWidth;
                 img.style.height = '100%';
                 img.style.objectFit = 'contain';
@@ -226,6 +236,11 @@ const DualView = (() => {
             }
         }
 
+        await Promise.all(loadPromises);
+
+        if (renderId !== currentRenderId || !isActive) return;
+
+        galleryElement.innerHTML = '';
         galleryElement.appendChild(container);
         resetTimer(); 
         

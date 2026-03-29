@@ -264,13 +264,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 allImagesUrls = data.images;
 
                 let targetIndex = 0;
-                if (dualSortMode === 'asc' && lastDualIndex >= 0) {
-                    // ソート（昇順）に戻る場合は、以前の表示位置を優先して復元する
-                    targetIndex = lastDualIndex;
+                if (dualSortMode === 'asc') {
+                    if (lastDualIndex >= 0) {
+                        // ソート（昇順）に戻る場合は、以前の表示位置を優先して復元する
+                        targetIndex = lastDualIndex;
+                    } else {
+                        const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                        if (newIdx >= 0) targetIndex = newIdx;
+                    }
                 } else {
-                    // それ以外（ランダムへ切替等）は、今の画像を維持しようとする
-                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
-                    if (newIdx >= 0) targetIndex = newIdx;
+                    // ランダムへ切り替えた場合は維持せず、完全にランダムな最初のペアを表示する
+                    targetIndex = 0;
                 }
 
                 DualView.updateImagesAndReset(allImagesUrls, targetIndex);
