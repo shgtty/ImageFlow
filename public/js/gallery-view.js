@@ -8,11 +8,12 @@ const GalleryView = (() => {
     let statusElement = null;
     let statusBarElement = null;
     let speedIndicatorElement = null;
-    
+
     let allImagesUrls = [];
     let currentIndex = 0;
     const BATCH_SIZE = 15;
     let columns = [];
+    let columnHeights = [];
     let columnCount = 3;
     let pendingImages = 0;
 
@@ -31,12 +32,12 @@ const GalleryView = (() => {
         statusElement = document.getElementById('status');
         statusBarElement = document.getElementById('status-bar');
         speedIndicatorElement = document.getElementById('speed-indicator');
-        
+
         // Initial values from localStorage
         columnCount = parseInt(localStorage.getItem(STORAGE_KEY_COLUMNS)) || 3;
         if (columnCount < 1) columnCount = 1;
         if (columnCount > 10) columnCount = 10;
-        
+
         scrollSpeed = parseFloat(localStorage.getItem(STORAGE_KEY_SPEED)) || 0;
     }
 
@@ -48,19 +49,19 @@ const GalleryView = (() => {
             return;
         }
         isActive = true;
-        
+
         allImagesUrls = imageUrls;
         currentIndex = startIndex;
         pendingImages = 0;
         currentOptions = options;
-        
+
         // Restore speed if needed
         if (options.restoreSpeed !== false) {
             scrollSpeed = parseFloat(localStorage.getItem(STORAGE_KEY_SPEED)) || 0;
         }
 
         renderInitial();
-        
+
         if (scrollSpeed !== 0) {
             startAutoScroll();
         }
@@ -73,7 +74,7 @@ const GalleryView = (() => {
         currentIndex = startIndex;
         pendingImages = 0;
         if (options) currentOptions = Object.assign(currentOptions, options);
-        
+
         renderInitial();
         if (scrollSpeed !== 0) {
             startAutoScroll();
@@ -83,10 +84,10 @@ const GalleryView = (() => {
     function exit() {
         if (!isActive) return;
         isActive = false;
-        
+
         stopAutoScroll();
         window.removeEventListener('scroll', handleManualScroll);
-        
+
         // Clear gallery
         galleryElement.innerHTML = '';
         columns = [];
@@ -94,8 +95,9 @@ const GalleryView = (() => {
 
     function renderInitial() {
         galleryElement.innerHTML = '';
+        galleryElement.classList.add('loading'); // 初期構築中の「上寄せ」や「ガタつき」を見せない
         columns = [];
-        
+
         // Initialize columns
         for (let i = 0; i < columnCount; i++) {
             const col = document.createElement('div');
@@ -103,12 +105,15 @@ const GalleryView = (() => {
             columns.push(col);
             galleryElement.appendChild(col);
         }
+        columnHeights = new Array(columnCount).fill(0);
 
         // Render first batch
-        // If we have a startIndex, we might need to skip some images or just start from there
-        // Actually the original script just starts from 0 or skips when re-entering?
-        // Let's stick to the original logic: render from currentIndex
         renderNextBatch(30);
+
+        // 構造ができあがってからフェードインさせる
+        setTimeout(() => {
+            galleryElement.classList.remove('loading');
+        }, 200);
     }
 
     function renderNextBatch(count = BATCH_SIZE) {
@@ -120,31 +125,38 @@ const GalleryView = (() => {
         for (let i = currentIndex; i < max; i++) {
             const img = document.createElement('img');
             img.dataset.index = i;
-            
-            img.onload = () => { 
-                let shortestCol = columns[0];
-                let minHeight = shortestCol.offsetHeight;
-                
+
+            img.onload = () => {
+                let shortestIdx = 0;
+                let minH = columnHeights[0];
+
                 for (let j = 1; j < columnCount; j++) {
-                    if (columns[j].offsetHeight < minHeight) {
-                        shortestCol = columns[j];
-                        minHeight = columns[j].offsetHeight;
+                    if (columnHeights[j] < minH) {
+                        shortestIdx = j;
+                        minH = columnHeights[j];
                     }
                 }
-                
+
+                const shortestCol = columns[shortestIdx];
                 shortestCol.appendChild(img);
-                
+
+                // Estimate height based on aspect ratio to update columnHeights immediately
+                // This prevents subsequent images from all being assigned to the same column
+                const ratio = img.naturalHeight / img.naturalWidth;
+                const colWidth = shortestCol.offsetWidth || (window.innerWidth / columnCount);
+                columnHeights[shortestIdx] += (colWidth * ratio);
+
                 setTimeout(() => {
-                    img.classList.add('loaded'); 
+                    img.classList.add('loaded');
                 }, 10);
-                
+
                 pendingImages--;
             };
-            
+
             img.onerror = () => { pendingImages--; };
             img.src = allImagesUrls[i];
         }
-        
+
         currentIndex = max;
     }
 
@@ -174,9 +186,9 @@ const GalleryView = (() => {
         }
 
         window.scrollBy({ top: scrollSpeed, left: 0, behavior: 'instant' });
-        
+
         const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-        
+
         if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && window.scrollY >= maxScroll - 2000) {
             renderNextBatch(BATCH_SIZE);
         }
@@ -210,10 +222,10 @@ const GalleryView = (() => {
 
         scrollSpeed += delta;
         if (Math.abs(scrollSpeed) < 0.1) scrollSpeed = 0;
-        
+
         saveSpeed();
         updateSpeedIndicator();
-        
+
         if (scrollSpeed !== 0 && !isScrolling) {
             startAutoScroll();
         }
@@ -250,36 +262,44 @@ const GalleryView = (() => {
     function changeColumnCount(delta) {
         const newCount = columnCount + delta;
         if (newCount < 1 || newCount > 10) return;
-        
+
         columnCount = newCount;
         localStorage.setItem(STORAGE_KEY_COLUMNS, columnCount);
-        
+
         let existingImages = [];
         columns.forEach(col => {
             existingImages.push(...Array.from(col.children));
         });
-        
+
         existingImages.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
-        
+
         galleryElement.innerHTML = '';
         columns = [];
+        columnHeights = new Array(columnCount).fill(0);
+
         for (let i = 0; i < columnCount; i++) {
             const col = document.createElement('div');
             col.className = 'gallery-col';
             columns.push(col);
             galleryElement.appendChild(col);
         }
-        
+
         existingImages.forEach(img => {
-            let shortestCol = columns[0];
-            let minHeight = shortestCol.offsetHeight;
+            let shortestIdx = 0;
+            let minH = columnHeights[0];
             for (let j = 1; j < columnCount; j++) {
-                if (columns[j].offsetHeight < minHeight) {
-                    shortestCol = columns[j];
-                    minHeight = columns[j].offsetHeight;
+                if (columnHeights[j] < minH) {
+                    shortestIdx = j;
+                    minH = columnHeights[j];
                 }
             }
+
+            const shortestCol = columns[shortestIdx];
             shortestCol.appendChild(img);
+
+            const ratio = (img.naturalHeight && img.naturalWidth) ? (img.naturalHeight / img.naturalWidth) : 1;
+            const colWidth = shortestCol.offsetWidth || (window.innerWidth / columnCount);
+            columnHeights[shortestIdx] += (colWidth * ratio);
         });
 
         showIndicator(`Columns: ${columnCount}`);
@@ -329,7 +349,7 @@ const GalleryView = (() => {
             const viewportMiddle = window.innerHeight / 2;
             let closestImg = imagesInGallery[0];
             let minDistance = Infinity;
-            
+
             imagesInGallery.forEach(img => {
                 const rect = img.getBoundingClientRect();
                 const distance = Math.abs((rect.top + rect.bottom) / 2 - viewportMiddle);
