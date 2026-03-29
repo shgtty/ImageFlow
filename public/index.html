@@ -194,6 +194,99 @@
         #mode-overlay .image-count {
             margin-left: 8px;
         }
+
+        /* シークバーのスタイル */
+        #seekbar-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70%;
+            max-width: 900px;
+            height: 40px;
+            background: rgba(20, 20, 20, 0.75);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 1000;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #seekbar-container.user-hidden {
+            transform: translateX(-50%) translateY(80px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #seekbar {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #seekbar::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        #seekbar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #3498db;
+            margin-top: -6px;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.6);
+            border: 2px solid #fff;
+            transition: all 0.2s ease;
+        }
+
+        #seekbar:hover::-webkit-slider-thumb {
+            transform: scale(1.2);
+            background: #5dade2;
+        }
+
+        #seekbar-info {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85em;
+            font-weight: 600;
+            min-width: 100px;
+            text-align: right;
+            margin-left: 15px;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        #seekbar-tooltip {
+            position: absolute;
+            bottom: 50px;
+            left: 0;
+            background: rgba(40, 40, 40, 0.95);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.1s ease;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            z-index: 2000;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
     </style>
 </head>
 
@@ -286,6 +379,15 @@
             </button>
         </div>
 
+        <!-- シークバー切替ボタン -->
+        <div class="fab-wrapper">
+            <button class="fab" id="seekbarToggleBtn" title="シークバー表示切替 (S)">
+                <svg viewBox="0 0 24 24" id="seekbarToggleIcon">
+                    <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h6V7h-6V5h-2v6h2V9z" />
+                </svg>
+            </button>
+        </div>
+
         <!-- 再読み込みボタン -->
         <div class="fab-wrapper" style="margin-top: 10px;">
             <button class="fab" id="reloadBtn" title="画像を再読み込み">
@@ -295,6 +397,13 @@
                 </svg>
             </button>
         </div>
+    </div>
+
+    <!-- 画面下部のシークバー -->
+    <div id="seekbar-container" class="user-hidden">
+        <div id="seekbar-tooltip">0 / 0</div>
+        <input type="range" id="seekbar" min="0" value="0" step="1">
+        <div id="seekbar-info">0 / 0</div>
     </div>
 
     <div id="gallery"></div>

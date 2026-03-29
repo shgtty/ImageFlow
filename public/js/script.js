@@ -24,6 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const dirBtn = document.getElementById('dirBtn');
     const dirBtnWrapper = document.getElementById('dirBtnWrapper');
     const dirIcon = document.getElementById('dirIcon');
+    const seekbar = document.getElementById('seekbar');
+    const seekbarInfo = document.getElementById('seekbar-info');
+    const seekbarContainer = document.getElementById('seekbar-container');
+    const seekbarTooltip = document.getElementById('seekbar-tooltip');
+    const seekbarToggleBtn = document.getElementById('seekbarToggleBtn');
+    const seekbarToggleIcon = document.getElementById('seekbarToggleIcon');
 
     // --- State Management ---
     const STORAGE_KEY_MODE = 'imageflow_display_mode'; // 'gallery' or 'dual'
@@ -33,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_DUAL_RTL = 'imageflow_dual_rtl';
     const STORAGE_KEY_DUAL_INDEX = 'imageflow_dual_index';
     const STORAGE_KEY_GALLERY_INDEX = 'imageflow_gallery_index';
+    const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
 
     let allImagesUrls = [];
     let lastDualIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || -1; 
@@ -54,7 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
     if (typeof DualView !== 'undefined') DualView.setDirection(isRtl);
     if (typeof GalleryView !== 'undefined') GalleryView.setDirection(isRtl);
-
+ 
+    // Initial Seekbar visibility
+    const isSeekbarVisible = localStorage.getItem(STORAGE_KEY_SEEKBAR_VISIBLE) === 'true';
+    if (isSeekbarVisible) {
+        seekbarContainer.classList.remove('user-hidden');
+        if (seekbarToggleIcon) seekbarToggleIcon.style.color = '#3498db';
+    }
+ 
     loadImages();
 
     // --- State Persistence ---
@@ -64,7 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive && gallerySortMode === 'asc') {
             localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
         }
+        updateSeekbar();
     }, 2000);
+
+    // 高頻度な更新（再生中など）
+    setInterval(() => {
+        if ((typeof DualView !== 'undefined' && DualView.isActive && DualView.interval > 0 && !DualView.isPaused) ||
+            (typeof GalleryView !== 'undefined' && GalleryView.isActive && GalleryView.scrollSpeed !== 0 && !GalleryView.isPaused)) {
+            updateSeekbar();
+        }
+    }, 500);
 
     // --- Functions ---
 
@@ -136,6 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             allImagesUrls = data.images;
+            seekbar.max = Math.max(0, allImagesUrls.length - 1);
+            updateSeekbar();
+
             const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
             const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
             const iconHtml = mode === 'dual'
@@ -180,6 +206,33 @@ document.addEventListener('DOMContentLoaded', () => {
         modeOverlayTimer = setTimeout(() => {
             overlay.classList.remove('show');
         }, 3000);
+    }
+ 
+    function toggleSeekbar() {
+        if (!seekbarContainer) return;
+        const isHidden = seekbarContainer.classList.contains('user-hidden');
+        if (isHidden) {
+            seekbarContainer.classList.remove('user-hidden');
+            if (seekbarToggleIcon) seekbarToggleIcon.style.color = '#3498db';
+            localStorage.setItem(STORAGE_KEY_SEEKBAR_VISIBLE, 'true');
+        } else {
+            seekbarContainer.classList.add('user-hidden');
+            if (seekbarToggleIcon) seekbarToggleIcon.style.color = '';
+            localStorage.setItem(STORAGE_KEY_SEEKBAR_VISIBLE, 'false');
+        }
+    }
+
+    function updateSeekbar() {
+        if (!seekbar || allImagesUrls.length === 0) return;
+        let currentIndex = 0;
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+            currentIndex = DualView.currentIndex;
+        } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+            currentIndex = GalleryView.currentIndex;
+        }
+        seekbar.value = currentIndex;
+        seekbarInfo.textContent = `${currentIndex + 1} / ${allImagesUrls.length}`;
     }
 
 
@@ -319,6 +372,48 @@ document.addEventListener('DOMContentLoaded', () => {
     sortBtn.addEventListener('click', toggleSort);
     fullscreenBtn.addEventListener('click', toggleFullscreen);
     dirBtn.addEventListener('click', toggleDirection);
+    seekbarToggleBtn.addEventListener('click', toggleSeekbar);
+
+    seekbar.addEventListener('input', () => {
+        resetActivityTimer();
+        if (allImagesUrls.length === 0) return;
+        const index = parseInt(seekbar.value);
+        seekbarInfo.textContent = `${index + 1} / ${allImagesUrls.length}`;
+        
+        if (DualView.isActive) {
+            DualView.updateImagesAndReset(allImagesUrls, index, true);
+        } else if (GalleryView.isActive) {
+            GalleryView.updateImagesAndReset(allImagesUrls, index, { restoreSpeed: true });
+            window.scrollTo(0, 0);
+        }
+    });
+
+    seekbar.addEventListener('change', () => {
+        resetActivityTimer(); // 操作後はタイマーリセット
+    });
+
+    seekbar.addEventListener('mousemove', (e) => {
+        if (!seekbarTooltip || allImagesUrls.length === 0) return;
+        
+        const rect = seekbar.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const width = rect.width;
+        
+        const pct = Math.max(0, Math.min(1, offsetX / width));
+        const index = Math.round(pct * (allImagesUrls.length - 1));
+        
+        // ツールチップの表示更新
+        seekbarTooltip.textContent = `${index + 1} / ${allImagesUrls.length}`;
+        
+        // コンテナ内での相対座標で配置
+        const containerRect = seekbarContainer.getBoundingClientRect();
+        seekbarTooltip.style.left = `${e.clientX - containerRect.left}px`;
+        seekbarTooltip.style.opacity = '1';
+    });
+
+    seekbar.addEventListener('mouseleave', () => {
+        if (seekbarTooltip) seekbarTooltip.style.opacity = '0';
+    });
 
     scrollUpBtn.addEventListener('click', () => {
         if (GalleryView.isActive) {
@@ -365,6 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleSort();
         } else if (e.key === 'o' || e.key === 'O') {
             toggleDirection();
+        } else if (e.key === 's' || e.key === 'S') {
+            toggleSeekbar();
         } else if (e.key === 'f' || e.key === 'F') {
             toggleFullscreen();
         } else if (e.key === 'ArrowUp') {
