@@ -10,6 +10,26 @@ const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'in
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
+function getAllowedPaths() {
+    let folders = [];
+    try {
+        if (fs.existsSync(CONFIG_FILE)) {
+            const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
+            folders = content.split('\n')
+                             .map(line => line.trim())
+                             .filter(line => line && !line.startsWith('#'))
+                             .map(line => path.resolve(line))
+                             .filter(line => fs.existsSync(line));
+        } else {
+            const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
+            fs.writeFileSync(CONFIG_FILE, defaultFoldersText, 'utf-8');
+        }
+    } catch (err) {
+        console.error('Error handling folders.txt:', err);
+    }
+    return folders;
+}
+
 // 指定されたパス（ディレクトリまたは単一ファイル）を処理し、画像ファイルのリストを取得する
 function getImagesFromPath(targetPath) {
     let results = [];
@@ -61,22 +81,7 @@ const server = http.createServer((req, res) => {
 
     if (reqUrl.pathname === '/api/images') {
         const sortMode = reqUrl.searchParams.get('sort') || 'random';
-        let folders = [];
-        try {
-            if (fs.existsSync(CONFIG_FILE)) {
-                const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
-                folders = content.split('\n')
-                                 .map(line => line.trim())
-                                 // 「#」で始まる行はコメントとして除外。またディレクトリだけでなく直接入力されたファイル自体も許容する
-                                 .filter(line => line && !line.startsWith('#') && fs.existsSync(line));
-            } else {
-                // folders.txt がない場合は説明文つきのひな形を作成
-                const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
-                fs.writeFileSync(CONFIG_FILE, defaultFoldersText, 'utf-8');
-            }
-        } catch (err) {
-            console.error('Error handling folders.txt:', err);
-        }
+        let folders = getAllowedPaths();
         
         // フィルタリング設定ファイル（ホワイトリスト・ブラックリスト）の読み込み
         let includes = [];
@@ -185,7 +190,25 @@ const server = http.createServer((req, res) => {
         if (imgPath) {
             // ZIP内の仮想パスかどうかを判定
             const isZipEntry = imgPath.includes('|');
-            const actualExt = isZipEntry ? path.extname(imgPath.split('|')[1]).toLowerCase() : path.extname(imgPath).toLowerCase();
+            const [basePath, entryName] = isZipEntry ? imgPath.split('|') : [imgPath, null];
+
+            // Path Traversal check
+            const resolvedPath = path.resolve(basePath);
+            const allowedPaths = getAllowedPaths();
+            const isAllowed = allowedPaths.some(allowed => {
+                const relative = path.relative(allowed, resolvedPath);
+                // path.relative returns '' if they are the same,
+                // or a string not starting with '..' if resolvedPath is inside allowed.
+                return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+            });
+
+            if (!isAllowed) {
+                res.writeHead(403);
+                res.end('Access denied');
+                return;
+            }
+
+            const actualExt = isZipEntry ? path.extname(entryName).toLowerCase() : path.extname(resolvedPath).toLowerCase();
             
             let mimeType = 'image/jpeg';
             if (actualExt === '.png') mimeType = 'image/png';
@@ -201,10 +224,9 @@ const server = http.createServer((req, res) => {
 
             if (isZipEntry) {
                 // ZIPファイルの特定データをメモリに展開・バッファ提供フロー
-                const [zipPath, entryName] = imgPath.split('|');
-                if (fs.existsSync(zipPath)) {
+                if (fs.existsSync(resolvedPath)) {
                     try {
-                        const zip = new AdmZip(zipPath);
+                        const zip = new AdmZip(resolvedPath);
                         const buffer = zip.readFile(entryName); // メモリ上で伸長・展開
                         if (buffer) {
                             res.writeHead(200, headers);
@@ -215,10 +237,10 @@ const server = http.createServer((req, res) => {
                         console.error('Error extracting from zip:', e.message);
                     }
                 }
-            } else if (fs.existsSync(imgPath)) {
+            } else if (fs.existsSync(resolvedPath)) {
                 // 通常のファイル提供ストリーミングフロー
                 res.writeHead(200, headers);
-                const stream = fs.createReadStream(imgPath);
+                const stream = fs.createReadStream(resolvedPath);
                 stream.pipe(res);
                 return;
             }
