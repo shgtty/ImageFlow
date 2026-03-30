@@ -11,8 +11,7 @@ const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'ex
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 // 指定されたパス（ディレクトリまたは単一ファイル）を処理し、画像ファイルのリストを取得する
-function getImagesFromPath(targetPath) {
-    let results = [];
+function getImagesFromPath(targetPath, results = []) {
     try {
         const stat = fs.statSync(targetPath);
         
@@ -43,7 +42,7 @@ function getImagesFromPath(targetPath) {
             const list = fs.readdirSync(targetPath);
             for (const file of list) {
                 const filePath = path.join(targetPath, file);
-                results = results.concat(getImagesFromPath(filePath)); // 個別のファイルごとに関数を再帰呼び出し
+                getImagesFromPath(filePath, results); // 個別のファイルごとに関数を再帰呼び出し
             }
             return results;
         }
