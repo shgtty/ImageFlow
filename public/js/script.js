@@ -757,9 +757,18 @@ document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.classList.add('hide-cursor');
         }, 3000);
     }
-    ['mousemove', 'keydown', 'mousedown', 'touchstart', 'wheel'].forEach(type => {
+    ['mousemove', 'mousedown', 'touchstart', 'wheel'].forEach(type => {
         window.addEventListener(type, resetActivityTimer, { passive: true });
     });
+    window.addEventListener('keydown', (e) => {
+        // デュアルビューモード中でナビゲーションキー（カーソル、Home/End, PageUp/Down）操作の場合は、
+        // 没入感を維持するためFABなどのUIを表示しない。
+        const isNavKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key);
+        if (typeof DualView !== 'undefined' && DualView.isActive && isNavKey) {
+            return;
+        }
+        resetActivityTimer();
+    }, { passive: true });
     resetActivityTimer();
 
     window.addEventListener('mousedown', (e) => {
