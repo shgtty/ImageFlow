@@ -297,16 +297,40 @@ const GalleryView = (() => {
         const newCount = columnCount + delta;
         if (newCount < 1 || newCount > 10) return;
 
+        // 1. FIRST: 画像の現在位置とサイズを記録
+        const imgPositions = new Map();
+        let existingImages = [];
+        columns.forEach(col => {
+            Array.from(col.children).forEach(img => {
+                existingImages.push(img);
+                imgPositions.set(img, img.getBoundingClientRect());
+            });
+        });
+
+        // Current scroll center image to anchor around
+        const viewCenterY = window.innerHeight / 2;
+        let anchorImg = null;
+        let minDistance = Infinity;
+
+        existingImages.forEach(img => {
+            const rect = imgPositions.get(img);
+            if (!rect) return;
+            const distance = Math.abs((rect.top + rect.bottom) / 2 - viewCenterY);
+            if (distance < minDistance) {
+                minDistance = distance;
+                anchorImg = img;
+            }
+        });
+        
+        // anchorImg の元々の画面内Y座標（中心ベースなど）
+        const anchorOldCenterY = anchorImg ? (imgPositions.get(anchorImg).top + imgPositions.get(anchorImg).height / 2) : 0;
+
         columnCount = newCount;
         localStorage.setItem(STORAGE_KEY_COLUMNS, columnCount);
 
-        let existingImages = [];
-        columns.forEach(col => {
-            existingImages.push(...Array.from(col.children));
-        });
-
         existingImages.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
 
+        // 2. DOMの再構築
         galleryElement.innerHTML = '';
         columns = [];
         columnHeights = new Array(columnCount).fill(0);
@@ -334,6 +358,47 @@ const GalleryView = (() => {
             const ratio = (img.naturalHeight && img.naturalWidth) ? (img.naturalHeight / img.naturalWidth) : 1;
             const colWidth = shortestCol.offsetWidth || (window.innerWidth / columnCount);
             columnHeights[shortestIdx] += (colWidth * ratio);
+        });
+
+        // 3. 一旦ブラウザにレイアウトを計算させる為に、アンカー画像の新しい位置に基づいてスクロール位置を復元する
+        if (anchorImg) {
+            const newAnchorRect = anchorImg.getBoundingClientRect();
+            const newAnchorCenterY = newAnchorRect.top + newAnchorRect.height / 2;
+            const diffY = newAnchorCenterY - anchorOldCenterY;
+            window.scrollBy({ top: diffY, left: 0, behavior: 'instant' });
+        }
+
+        // 4. LAST, INVERT, PLAY: アニメーションの実行
+        existingImages.forEach(img => {
+            const oldPos = imgPositions.get(img);
+            if (!oldPos) return;
+
+            const newPos = img.getBoundingClientRect();
+            if (newPos.width === 0 || newPos.height === 0 || oldPos.width === 0 || oldPos.height === 0) return;
+
+            const deltaX = oldPos.left - newPos.left;
+            const deltaY = oldPos.top - newPos.top;
+            const scaleX = oldPos.width / newPos.width;
+            const scaleY = oldPos.height / newPos.height;
+
+            // 変化がない場合はスキップ
+            if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5 && Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) {
+                return;
+            }
+
+            img.animate([
+                {
+                    transformOrigin: 'top left',
+                    transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`
+                },
+                {
+                    transformOrigin: 'top left',
+                    transform: 'none'
+                }
+            ], {
+                duration: 400,
+                easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
+            });
         });
 
         showIndicator(`Columns: ${columnCount}`);
