@@ -78,6 +78,7 @@ const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
 
     const reqUrl = new URL(req.url, `http://${req.headers.host}`);
+    const rawPathname = req.url.split('?')[0];
 
     if (reqUrl.pathname === '/api/images') {
         const sortMode = reqUrl.searchParams.get('sort') || 'random';
@@ -252,15 +253,39 @@ const server = http.createServer((req, res) => {
     }
 
     // Serve static files from 'public' directory
-    let filePath = path.join(__dirname, '..', 'public', reqUrl.pathname === '/' ? 'index.html' : reqUrl.pathname);
-    const ext = path.extname(filePath);
+    const publicDir = path.resolve(__dirname, '..', 'public');
+    let requestedPath = (rawPathname === '/' || rawPathname === '') ? '/index.html' : rawPathname;
+
+    // Decode URI component to handle %2e etc.
+    try {
+        requestedPath = decodeURIComponent(requestedPath);
+    } catch (e) {
+        res.writeHead(400);
+        res.end('Bad Request');
+        return;
+    }
+
+    const filePath = path.join(publicDir, requestedPath);
+    const resolvedPath = path.resolve(filePath);
+
+    // Security check: ensure the resolved path is within the public directory
+    const relative = path.relative(publicDir, resolvedPath);
+    const isSafe = relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+
+    if (!isSafe) {
+        res.writeHead(403);
+        res.end('Access denied');
+        return;
+    }
+
+    const ext = path.extname(resolvedPath);
     let contentType = 'text/html';
     if (ext === '.js') contentType = 'text/javascript';
     if (ext === '.css') contentType = 'text/css';
 
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
         res.writeHead(200, { 'Content-Type': contentType });
-        fs.createReadStream(filePath).pipe(res);
+        fs.createReadStream(resolvedPath).pipe(res);
     } else {
         res.writeHead(404);
         res.end('Not found');
