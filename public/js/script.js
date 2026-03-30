@@ -531,32 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function getFolderPath(url) {
-        try {
-            const urlObj = new URL(url, window.location.origin);
-            const pathStr = urlObj.searchParams.get('path');
-            if (!pathStr) return '';
-
-            if (pathStr.includes('|')) {
-                return pathStr.split('|')[0];
-            }
-
-            const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
-            if (lastSlash >= 0) {
-                return pathStr.substring(0, lastSlash);
-            }
-            return pathStr;
-        } catch (e) {
-            return '';
-        }
-    }
-
-    function getFolderDisplayName(url) {
-        let pathStr = getFolderPath(url);
-        if (!pathStr) return '不明なフォルダ';
-        const parts = pathStr.split(/[/\\]/);
-        return parts[parts.length - 1] || pathStr;
-    }
 
     function skipFolder(direction) {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
