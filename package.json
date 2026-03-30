@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/shgtty/ImageFlow#readme",
   "dependencies": {
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "jsdom": "^29.0.1"
   }
 }
