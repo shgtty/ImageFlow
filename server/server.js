@@ -3,12 +3,37 @@ const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
 
+const zipCache = new Map();
+const MAX_CACHE_SIZE = 100;
+
 const PORT = 8000;
 // コマンドライン引数から各設定ファイル名を取得（指定がない場合はデフォルト名にフォールバック）
 const CONFIG_FILE = process.argv[2] || path.join(__dirname, '..', 'config', 'folders.txt');
 const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'include.txt');
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+
+function getZipInstance(zipPath) {
+    const stats = fs.statSync(zipPath);
+    const mtime = stats.mtimeMs;
+
+    if (zipCache.has(zipPath)) {
+        const cached = zipCache.get(zipPath);
+        if (cached.mtime === mtime) {
+            return cached.zip;
+        }
+    }
+
+    const zip = new AdmZip(zipPath);
+
+    // Simple LRU-like eviction: clear cache if it grows too large
+    if (zipCache.size >= MAX_CACHE_SIZE) {
+        zipCache.clear();
+    }
+
+    zipCache.set(zipPath, { zip, mtime });
+    return zip;
+}
 
 function getAllowedPaths() {
     let folders = [];
@@ -42,7 +67,7 @@ function getImagesFromPath(targetPath) {
                 results.push(targetPath);
             } else if (ext === '.zip') {
                 try {
-                    const zip = new AdmZip(targetPath);
+                    const zip = getZipInstance(targetPath);
                     const zipEntries = zip.getEntries();
                     for (const entry of zipEntries) {
                         if (!entry.isDirectory) {
@@ -226,7 +251,7 @@ const server = http.createServer((req, res) => {
                 // ZIPファイルの特定データをメモリに展開・バッファ提供フロー
                 if (fs.existsSync(resolvedPath)) {
                     try {
-                        const zip = new AdmZip(resolvedPath);
+                        const zip = getZipInstance(resolvedPath);
                         const buffer = zip.readFile(entryName); // メモリ上で伸長・展開
                         if (buffer) {
                             res.writeHead(200, headers);
