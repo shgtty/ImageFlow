@@ -308,6 +308,26 @@
             background: linear-gradient(90deg, #3498db, #5dade2);
             box-shadow: 0 0 2px #3498db;
         }
+
+        /* 色モードフィルタ */
+        .color-mode-gray img {
+            filter: grayscale(100%);
+        }
+        .color-mode-sepia img {
+            filter: sepia(100%);
+        }
+        .color-mode-invert img {
+            filter: invert(100%);
+        }
+        .color-mode-contrast img {
+            filter: contrast(200%);
+        }
+        .color-mode-saturate img {
+            filter: saturate(300%);
+        }
+        .color-mode-blur img {
+            filter: blur(8px);
+        }
     </style>
 </head>
 
@@ -419,6 +439,15 @@
             <button class="fab" id="seekbarToggleBtn" title="シークバー表示切替 (S)">
                 <svg viewBox="0 0 24 24" id="seekbarToggleIcon">
                     <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h6V7h-6V5h-2v6h2V9z" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- 色モード切替ボタン -->
+        <div class="fab-wrapper">
+            <button class="fab" id="colorModeBtn" title="色モード切替 (C)">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1-.23-.27-.38-.62-.38-1 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
                 </svg>
             </button>
         </div>

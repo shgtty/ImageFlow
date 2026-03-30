@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullscreenIcon = document.getElementById('fullscreenIcon');
     const includeToggleBtn = document.getElementById('includeToggleBtn');
     const includeToggleIcon = document.getElementById('includeToggleIcon');
+    const colorModeBtn = document.getElementById('colorModeBtn');
 
     // Gallery specific control buttons
     const scrollUpBtn = document.getElementById('scrollUpBtn');
@@ -43,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_GALLERY_INDEX = 'imageflow_gallery_index';
     const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
     const STORAGE_KEY_ENABLE_INCLUDE = 'imageflow_enable_include';
+    const STORAGE_KEY_COLOR_MODE = 'imageflow_color_mode';
 
     let isDraggingSeekbar = false;
     let allImagesUrls = [];
@@ -53,6 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
     let lastActiveDualInterval = 5;
     if (dualInterval > 0) lastActiveDualInterval = dualInterval;
+
+    let currentColorModeIndex = parseInt(localStorage.getItem(STORAGE_KEY_COLOR_MODE)) || 0;
 
     // --- Initialization ---
     if (typeof DualView !== 'undefined') DualView.init();
@@ -74,6 +78,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (seekbarToggleIcon) seekbarToggleIcon.style.color = '#3498db';
     }
  
+    // Initial Color Mode
+    const initColorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur'];
+    if (initColorModes[currentColorModeIndex]) {
+        document.body.classList.add(initColorModes[currentColorModeIndex]);
+    }
+
     updateIncludeIcon();
     loadImages();
 
@@ -427,6 +437,25 @@ document.addEventListener('DOMContentLoaded', () => {
         showModeOverlay('表示順変更', dirText, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>');
     }
 
+    function toggleColorMode() {
+        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur'];
+        const colorModeNames = ['無加工', 'グレイ', 'セピア', 'ネガティブ', '高コントラスト', '高彩度', 'ぼかし'];
+        
+        if (colorModes[currentColorModeIndex]) {
+            document.body.classList.remove(colorModes[currentColorModeIndex]);
+        }
+        
+        currentColorModeIndex = (currentColorModeIndex + 1) % colorModes.length;
+        localStorage.setItem(STORAGE_KEY_COLOR_MODE, currentColorModeIndex);
+        
+        if (colorModes[currentColorModeIndex]) {
+            document.body.classList.add(colorModes[currentColorModeIndex]);
+        }
+        
+        const paletteIcon = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1-.23-.27-.38-.62-.38-1 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>';
+        showModeOverlay('色モード', colorModeNames[currentColorModeIndex], null, paletteIcon);
+    }
+
     // --- Global Event Listeners ---
 
     reloadBtn.addEventListener('click', () => loadImages());
@@ -436,6 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dirBtn.addEventListener('click', toggleDirection);
     seekbarToggleBtn.addEventListener('click', toggleSeekbar);
     if(includeToggleBtn) includeToggleBtn.addEventListener('click', toggleInclude);
+    if(colorModeBtn) colorModeBtn.addEventListener('click', toggleColorMode);
 
     seekbar.addEventListener('mousedown', () => { isDraggingSeekbar = true; });
     seekbar.addEventListener('touchstart', () => { isDraggingSeekbar = true; }, { passive: true });
@@ -536,6 +566,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleSeekbar();
         } else if (e.key === 'i' || e.key === 'I') {
             toggleInclude();
+        } else if (e.key === 'c' || e.key === 'C') {
+            toggleColorMode();
         } else if (e.key === 'f' || e.key === 'F') {
             toggleFullscreen();
         } else if (e.key === 'ArrowUp') {
