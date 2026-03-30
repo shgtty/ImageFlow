@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSeekbar();
 
             const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
-            const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
+            const modeName = mode === 'dual' ? 'デュアルビュー' : 'ギャラリー';
             const iconHtml = mode === 'dual'
                 ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
                 : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateModeIcon();
 
             const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
-            showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
+            showModeOverlay('デュアルビュー', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
 
             if (gallerySortMode !== dualSortMode) {
                 fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateModeIcon();
 
         const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
-        showModeOverlay('ギャラリーモード', gallerySortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
+        showModeOverlay('ギャラリー', gallerySortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
 
         if (gallerySortMode !== dualSortMode) {
             loadImages();
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 DualView.updateImagesAndReset(allImagesUrls, targetIndex);
                 const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
-                showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
+                showModeOverlay('デュアルビュー', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
             });
         } else {
             gallerySortMode = (gallerySortMode === 'random' ? 'asc' : 'random');
@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateDirIcon();
         const dirText = newState ? '右から左へ' : '左から右へ';
-        showModeOverlay('表示順変更', dirText, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>');
+        showModeOverlay('表示順', dirText, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>');
     }
 
     // --- Global Event Listeners ---
@@ -657,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const folderName = getFolderDisplayName(allImagesUrls[targetIndex]);
-        showModeOverlay('フォルダ移動', folderName, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>');
+        showModeOverlay('フォルダ', folderName, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>');
 
         if (mode === 'dual') {
             DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
