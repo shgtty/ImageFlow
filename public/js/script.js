@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortIcon = document.getElementById('sortIcon');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
+    const includeToggleBtn = document.getElementById('includeToggleBtn');
+    const includeToggleIcon = document.getElementById('includeToggleIcon');
 
     // Gallery specific control buttons
     const scrollUpBtn = document.getElementById('scrollUpBtn');
@@ -40,8 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_DUAL_INDEX = 'imageflow_dual_index';
     const STORAGE_KEY_GALLERY_INDEX = 'imageflow_gallery_index';
     const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
+    const STORAGE_KEY_ENABLE_INCLUDE = 'imageflow_enable_include';
 
     let allImagesUrls = [];
+    let enableInclude = localStorage.getItem(STORAGE_KEY_ENABLE_INCLUDE) !== 'false';
     let lastDualIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || -1; 
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
@@ -69,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (seekbarToggleIcon) seekbarToggleIcon.style.color = '#3498db';
     }
  
+    updateIncludeIcon();
     loadImages();
 
     // --- State Persistence ---
@@ -149,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
 
         try {
-            const response = await fetch(`/api/images?sort=${currentSort}`);
+            const response = await fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`);
             if (!response.ok) throw new Error(`Server status: ${response.status}`);
             const data = await response.json();
 
@@ -222,6 +227,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateIncludeIcon() {
+        if (!includeToggleIcon) return;
+        if (enableInclude) {
+            includeToggleIcon.style.color = '#3498db';
+        } else {
+            includeToggleIcon.style.color = '';
+        }
+    }
+
+    function toggleInclude() {
+        enableInclude = !enableInclude;
+        localStorage.setItem(STORAGE_KEY_ENABLE_INCLUDE, enableInclude);
+        updateIncludeIcon();
+        
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        
+        let currentImgUrl = null;
+        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[DualView.currentIndex];
+        } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[GalleryView.currentIndex];
+        }
+
+        fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
+            .then(r => r.json())
+            .then(data => {
+                allImagesUrls = data.images;
+                seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                
+                const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
+                showModeOverlay('フィルター', enableInclude ? '有効' : '無効', allImagesUrls.length, iconHtml);
+                
+                let targetIndex = 0;
+                if (currentImgUrl) {
+                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                    if (newIdx >= 0) {
+                        targetIndex = newIdx;
+                    }
+                }
+
+                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                    DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
+                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                    GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
+                } else {
+                    loadImages();
+                }
+                updateSeekbar();
+            })
+            .catch(err => {
+                console.error('Error fetching filtered images:', err);
+                loadImages(); // フォールバック
+            });
+    }
+
     function updateSeekbar() {
         if (!seekbar || allImagesUrls.length === 0) return;
         let currentIndex = 0;
@@ -256,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
 
             if (gallerySortMode !== dualSortMode) {
-                fetch(`/api/images?sort=${dualSortMode}`).then(r => r.json()).then(data => {
+                fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
                     allImagesUrls = data.images;
                     // 昇順への復帰かつ以前の位置がある場合は復元を優先、そうでなければ同じ画像を探す
                     let targetIndex;
@@ -313,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
             updateSortIcon();
 
-            fetch(`/api/images?sort=${dualSortMode}`).then(r => r.json()).then(data => {
+            fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
                 allImagesUrls = data.images;
 
                 let targetIndex = 0;
@@ -373,6 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fullscreenBtn.addEventListener('click', toggleFullscreen);
     dirBtn.addEventListener('click', toggleDirection);
     seekbarToggleBtn.addEventListener('click', toggleSeekbar);
+    if(includeToggleBtn) includeToggleBtn.addEventListener('click', toggleInclude);
 
     seekbar.addEventListener('input', () => {
         resetActivityTimer();
@@ -462,6 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleDirection();
         } else if (e.key === 's' || e.key === 'S') {
             toggleSeekbar();
+        } else if (e.key === 'i' || e.key === 'I') {
+            toggleInclude();
         } else if (e.key === 'f' || e.key === 'F') {
             toggleFullscreen();
         } else if (e.key === 'ArrowUp') {

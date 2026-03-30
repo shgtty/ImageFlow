@@ -106,6 +106,7 @@ const server = http.createServer((req, res) => {
 
     if (reqUrl.pathname === '/api/images') {
         const sortMode = reqUrl.searchParams.get('sort') || 'random';
+        const enableInclude = reqUrl.searchParams.get('enableInclude') !== 'false';
         let folders = getAllowedPaths();
         
         // フィルタリング設定ファイル（ホワイトリスト・ブラックリスト）の読み込み
@@ -129,7 +130,9 @@ const server = http.createServer((req, res) => {
                     lines = lines.filter(l => l !== 'MODE:AND');
                 }
                 
-                includes = lines;
+                if (enableInclude) {
+                    includes = lines;
+                }
             } else {
                 const defaultIncludeText = `# ここに記述された文字列がファイルパスに含まれる画像のみを表示します（1行に1つ）\n# デフォルトはすべての単語を含む画像を表示する「AND検索」です。\n# どれか一つでも含むものを表示する「OR検索」に切り替えたい場合は、ファイル内に MODE:OR と記述してください。\n\n# 例:\nanime\nsummer\n`;
                 fs.writeFileSync(INCLUDE_FILE, defaultIncludeText, 'utf-8');
