@@ -160,6 +160,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function handleGalleryEnd() {
+        if (typeof GalleryView !== 'undefined') {
+            GalleryView.updateImagesAndReset(allImagesUrls, 0, { restoreSpeed: true });
+            window.scrollTo(0, 0);
+            if (gallerySortMode === 'asc') {
+                localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, 0);
+            }
+        }
+        if (gallerySortMode !== 'asc') {
+            loadImages();
+        }
+    }
+
     async function loadImages() {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
@@ -199,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetIndex = parseInt(localStorage.getItem(STORAGE_KEY_GALLERY_INDEX)) || 0;
                     if (targetIndex >= allImagesUrls.length) targetIndex = 0;
                 }
-                GalleryView.enter(allImagesUrls, targetIndex, { onEnd: () => loadImages() });
+                GalleryView.enter(allImagesUrls, targetIndex, { onEnd: handleGalleryEnd });
             }
         } catch (error) {
             console.error('Error fetching images:', error);
@@ -366,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gallerySortMode !== dualSortMode) {
             loadImages();
         } else {
-            GalleryView.enter(allImagesUrls, exitIndex, { onEnd: () => loadImages() });
+            GalleryView.enter(allImagesUrls, exitIndex, { onEnd: handleGalleryEnd });
         }
     }
 
