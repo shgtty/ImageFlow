@@ -71,9 +71,9 @@ const DualView = (() => {
             
             const width = window.innerWidth;
             if (e.clientX > width / 2) {
-                next();
+                isRightToLeft ? prev() : next();
             } else {
-                prev();
+                isRightToLeft ? next() : prev();
             }
         };
         window.addEventListener('click', currentClickHandler);
