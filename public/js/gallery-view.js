@@ -9,6 +9,7 @@ const GalleryView = (() => {
 
     let allImagesUrls = [];
     let currentIndex = 0;
+    let currentStartIndex = 0;
     const BATCH_SIZE = 15;
     let columns = [];
     let columnHeights = [];
@@ -49,6 +50,7 @@ const GalleryView = (() => {
 
         allImagesUrls = imageUrls;
         currentIndex = startIndex;
+        currentStartIndex = startIndex;
         pendingImages = 0;
         currentOptions = options;
 
@@ -69,6 +71,7 @@ const GalleryView = (() => {
     function updateImagesAndReset(imageUrls, startIndex = 0, options = {}) {
         allImagesUrls = imageUrls;
         currentIndex = startIndex;
+        currentStartIndex = startIndex;
         pendingImages = 0;
         if (options) currentOptions = Object.assign(currentOptions, options);
 
@@ -388,13 +391,22 @@ const GalleryView = (() => {
         // Used for mode transitions
         get currentIndex() {
             const imagesInGallery = Array.from(galleryElement.querySelectorAll('img'));
-            if (imagesInGallery.length === 0) return 0;
+            if (imagesInGallery.length === 0) return currentStartIndex;
 
             const viewportMiddle = window.innerHeight / 2;
             let closestImg = imagesInGallery[0];
             let minDistance = Infinity;
 
+            let minIdxImg = imagesInGallery[0];
+            let minIdx = parseInt(minIdxImg.dataset.index);
+
             imagesInGallery.forEach(img => {
+                const idx = parseInt(img.dataset.index);
+                if (idx < minIdx) {
+                    minIdx = idx;
+                    minIdxImg = img;
+                }
+
                 const rect = img.getBoundingClientRect();
                 const distance = Math.abs((rect.top + rect.bottom) / 2 - viewportMiddle);
                 if (distance < minDistance) {
@@ -402,6 +414,13 @@ const GalleryView = (() => {
                     closestImg = img;
                 }
             });
+
+            if (minIdxImg) {
+                const minIdxRect = minIdxImg.getBoundingClientRect();
+                if (minIdxRect.top < viewportMiddle && minIdxRect.bottom > 0) {
+                    return minIdx;
+                }
+            }
 
             return closestImg ? parseInt(closestImg.dataset.index) : 0;
         }
