@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
     const STORAGE_KEY_ENABLE_INCLUDE = 'imageflow_enable_include';
 
+    let isDraggingSeekbar = false;
     let allImagesUrls = [];
     let enableInclude = localStorage.getItem(STORAGE_KEY_ENABLE_INCLUDE) !== 'false';
     let lastDualIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || -1; 
@@ -284,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSeekbar() {
-        if (!seekbar || allImagesUrls.length === 0) return;
+        if (!seekbar || allImagesUrls.length === 0 || isDraggingSeekbar) return;
         let currentIndex = 0;
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
@@ -436,22 +437,31 @@ document.addEventListener('DOMContentLoaded', () => {
     seekbarToggleBtn.addEventListener('click', toggleSeekbar);
     if(includeToggleBtn) includeToggleBtn.addEventListener('click', toggleInclude);
 
+    seekbar.addEventListener('mousedown', () => { isDraggingSeekbar = true; });
+    seekbar.addEventListener('touchstart', () => { isDraggingSeekbar = true; }, { passive: true });
+
     seekbar.addEventListener('input', () => {
         resetActivityTimer();
+        isDraggingSeekbar = true;
         if (allImagesUrls.length === 0) return;
         const index = parseInt(seekbar.value);
         seekbarInfo.textContent = `${index + 1} / ${allImagesUrls.length}`;
         
         if (DualView.isActive) {
             DualView.updateImagesAndReset(allImagesUrls, index, true);
-        } else if (GalleryView.isActive) {
-            GalleryView.updateImagesAndReset(allImagesUrls, index, { restoreSpeed: true });
-            window.scrollTo(0, 0);
         }
     });
 
     seekbar.addEventListener('change', () => {
         resetActivityTimer(); // 操作後はタイマーリセット
+        isDraggingSeekbar = false;
+        if (allImagesUrls.length === 0) return;
+        const index = parseInt(seekbar.value);
+        
+        if (GalleryView.isActive) {
+            GalleryView.updateImagesAndReset(allImagesUrls, index, { restoreSpeed: true });
+            window.scrollTo(0, 0);
+        }
     });
 
     seekbar.addEventListener('mousemove', (e) => {

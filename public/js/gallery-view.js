@@ -22,6 +22,7 @@ const GalleryView = (() => {
     let savedSpeedForPause = 0;
     let indicatorTimeout = null;
     let isRightToLeft = false;
+    let currentRenderId = 0;
 
     // Storage keys
     const STORAGE_KEY_SPEED = 'imageflow_scroll_speed';
@@ -94,6 +95,7 @@ const GalleryView = (() => {
     }
 
     function renderInitial() {
+        currentRenderId++;
         galleryElement.innerHTML = '';
         galleryElement.classList.add('loading'); // 初期構築中の「上寄せ」や「ガタつき」を見せない
         columns = [];
@@ -118,6 +120,8 @@ const GalleryView = (() => {
 
     function renderNextBatch(count = BATCH_SIZE) {
         if (currentIndex >= allImagesUrls.length) return;
+
+        const myRenderId = currentRenderId;
 
         const max = Math.min(currentIndex + count, allImagesUrls.length);
         pendingImages += (max - currentIndex);
@@ -153,6 +157,8 @@ const GalleryView = (() => {
         let nextToPlace = 0;
 
         function processBatchQueue() {
+            if (myRenderId !== currentRenderId) return;
+            
             while (nextToPlace < totalInBatch && batchImages[nextToPlace].loaded) {
                 const currentObj = batchImages[nextToPlace];
                 if (!currentObj.error) {
