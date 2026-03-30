@@ -5,8 +5,6 @@
 const GalleryView = (() => {
     let isActive = false;
     let galleryElement = null;
-    let statusElement = null;
-    let statusBarElement = null;
     let speedIndicatorElement = null;
 
     let allImagesUrls = [];
@@ -30,8 +28,6 @@ const GalleryView = (() => {
 
     function init() {
         galleryElement = document.getElementById('gallery');
-        statusElement = document.getElementById('status');
-        statusBarElement = document.getElementById('status-bar');
         speedIndicatorElement = document.getElementById('speed-indicator');
 
         // Initial values from localStorage
