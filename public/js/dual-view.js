@@ -24,8 +24,16 @@ const DualView = (() => {
     let currentRenderId = 0;
     const dimensionCache = new Map(); // URL -> {width, height}
 
+    // Progress Bar logic
+    let progressStartTime = 0;
+    let progressAnimationFrameId = null;
+    let progressBar = null;
+    let progressContainer = null;
+
     function init() {
         galleryElement = document.getElementById('gallery');
+        progressBar = document.getElementById('countdown-progress-bar');
+        progressContainer = document.getElementById('countdown-progress-container');
     }
 
     /**
@@ -328,6 +336,11 @@ const DualView = (() => {
             clearTimeout(advanceTimer);
             advanceTimer = null;
         }
+        if (progressAnimationFrameId) {
+            cancelAnimationFrame(progressAnimationFrameId);
+            progressAnimationFrameId = null;
+        }
+        if (progressContainer) progressContainer.style.display = 'none';
     }
 
     function stopTimerByFinish() {
@@ -338,9 +351,38 @@ const DualView = (() => {
     function resetTimer() {
         stopTimer();
         if (advanceInterval > 0 && !isPaused) {
+            progressStartTime = Date.now();
+            if (progressContainer) progressContainer.style.display = 'block';
+            updateProgressBar();
+
             advanceTimer = setTimeout(() => {
                 next();
             }, advanceInterval * 1000);
+        }
+    }
+
+    function updateProgressBar() {
+        if (!isActive || isPaused || advanceInterval <= 0) {
+            if (progressAnimationFrameId) {
+                cancelAnimationFrame(progressAnimationFrameId);
+                progressAnimationFrameId = null;
+            }
+            return;
+        }
+
+        const elapsed = Date.now() - progressStartTime;
+        const duration = advanceInterval * 1000;
+        const progress = Math.min(100, (elapsed / duration) * 100);
+        const remaining = 100 - progress;
+
+        if (progressBar) {
+            progressBar.style.width = `${remaining}%`;
+        }
+
+        if (progress < 100) {
+            progressAnimationFrameId = requestAnimationFrame(updateProgressBar);
+        } else {
+            progressAnimationFrameId = null;
         }
     }
 

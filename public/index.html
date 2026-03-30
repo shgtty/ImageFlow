@@ -287,11 +287,37 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(5px);
         }
+
+        /* カウントダウンプログレスバー */
+        #countdown-progress-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.05);
+            z-index: 10000;
+            pointer-events: none;
+            overflow: hidden;
+            display: none; /* デフォルトは非表示 */
+        }
+
+        #countdown-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #5dade2);
+            box-shadow: 0 0 2px #3498db;
+        }
     </style>
 </head>
 
 <body>
     <div id="mode-overlay"></div>
+
+    <!-- カウントダウンプログレスバー -->
+    <div id="countdown-progress-container">
+        <div id="countdown-progress-bar"></div>
+    </div>
 
     <!-- 右下のアイコンボタン群 -->
     <div id="fab-container">
