@@ -397,7 +397,16 @@ const GalleryView = (() => {
             let closestImg = imagesInGallery[0];
             let minDistance = Infinity;
 
+            let minIdxImg = imagesInGallery[0];
+            let minIdx = parseInt(minIdxImg.dataset.index);
+
             imagesInGallery.forEach(img => {
+                const idx = parseInt(img.dataset.index);
+                if (idx < minIdx) {
+                    minIdx = idx;
+                    minIdxImg = img;
+                }
+
                 const rect = img.getBoundingClientRect();
                 const distance = Math.abs((rect.top + rect.bottom) / 2 - viewportMiddle);
                 if (distance < minDistance) {
@@ -405,6 +414,13 @@ const GalleryView = (() => {
                     closestImg = img;
                 }
             });
+
+            if (minIdxImg) {
+                const minIdxRect = minIdxImg.getBoundingClientRect();
+                if (minIdxRect.top < viewportMiddle && minIdxRect.bottom > 0) {
+                    return minIdx;
+                }
+            }
 
             return closestImg ? parseInt(closestImg.dataset.index) : 0;
         }
