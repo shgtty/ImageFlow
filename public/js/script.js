@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
     let lastActiveDualInterval = 5;
     if (dualInterval > 0) lastActiveDualInterval = dualInterval;
+    let lastActiveGallerySpeed = parseFloat(localStorage.getItem('imageflow_scroll_speed')) || 2.0;
+    if (lastActiveGallerySpeed === 0) lastActiveGallerySpeed = 2.0;
 
     let currentColorModeIndex = parseInt(localStorage.getItem(STORAGE_KEY_COLOR_MODE)) || 0;
 
@@ -214,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 GalleryView.enter(allImagesUrls, targetIndex, { onEnd: handleGalleryEnd });
             }
+            updateStopBtnIcon();
         } catch (error) {
             console.error('Error fetching images:', error);
             showModeOverlay('サーバーと通信できません', '', 0);
@@ -318,6 +321,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         seekbar.value = currentIndex;
         seekbarInfo.textContent = `${currentIndex + 1} / ${allImagesUrls.length}`;
+        updateStopBtnIcon();
+    }
+
+    function updateStopBtnIcon() {
+        if (!stopBtn) return;
+        const svg = stopBtn.querySelector('svg');
+        if (!svg) return;
+
+        const isStopped = (typeof DualView !== 'undefined' && DualView.isActive && (DualView.interval === 0 || DualView.isPaused)) ||
+                         (typeof GalleryView !== 'undefined' && GalleryView.isActive && (GalleryView.scrollSpeed === 0 || GalleryView.isPaused));
+
+        if (isStopped) {
+            // Play Icon
+            svg.innerHTML = '<path d="M8 5v14l11-7z" />';
+            stopBtn.title = '再生開始 (Space)';
+        } else {
+            // Stop Icon
+            svg.innerHTML = '<path d="M6 6h12v12H6z" />';
+            stopBtn.title = '停止 (Space)';
+        }
     }
 
 
@@ -358,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetIndex = (dualSortMode === 'asc' && lastDualIndex >= 0) ? lastDualIndex : index;
                 DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
             }
+            updateStopBtnIcon();
         } else if (DualView.isActive) {
             const index = DualView.currentIndex; // DualView needs an index getter
             DualView.exit();
@@ -381,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             GalleryView.enter(allImagesUrls, exitIndex, { onEnd: handleGalleryEnd });
         }
+        updateStopBtnIcon();
     }
 
     function toggleSort() {
@@ -471,14 +496,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Global Event Listeners ---
 
-    reloadBtn.addEventListener('click', () => loadImages());
-    modeBtn.addEventListener('click', toggleMode);
-    sortBtn.addEventListener('click', toggleSort);
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
-    dirBtn.addEventListener('click', toggleDirection);
-    seekbarToggleBtn.addEventListener('click', toggleSeekbar);
-    if(includeToggleBtn) includeToggleBtn.addEventListener('click', toggleInclude);
-    if(colorModeBtn) colorModeBtn.addEventListener('click', toggleColorMode);
+    reloadBtn.addEventListener('click', (e) => { e.stopPropagation(); loadImages(); });
+    modeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMode(); });
+    sortBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSort(); });
+    fullscreenBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
+    dirBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleDirection(); });
+    seekbarToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSeekbar(); });
+    if(includeToggleBtn) includeToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInclude(); });
+    if(colorModeBtn) colorModeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleColorMode(); });
 
     seekbar.addEventListener('mousedown', () => { isDraggingSeekbar = true; });
     seekbar.addEventListener('touchstart', () => { isDraggingSeekbar = true; }, { passive: true });
@@ -530,33 +555,60 @@ document.addEventListener('DOMContentLoaded', () => {
         if (seekbarTooltip) seekbarTooltip.style.opacity = '0';
     });
 
-    scrollUpBtn.addEventListener('click', () => {
+    scrollUpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (GalleryView.isActive) {
             GalleryView.changeScrollSpeed(-1);
+            if (GalleryView.scrollSpeed !== 0) lastActiveGallerySpeed = GalleryView.scrollSpeed;
         } else if (DualView.isActive) {
             changeDualInterval(-1);
         }
+        updateStopBtnIcon();
     });
-    scrollDownBtn.addEventListener('click', () => {
+    scrollDownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (GalleryView.isActive) {
             GalleryView.changeScrollSpeed(1);
+            if (GalleryView.scrollSpeed !== 0) lastActiveGallerySpeed = GalleryView.scrollSpeed;
         } else if (DualView.isActive) {
             changeDualInterval(1);
         }
+        updateStopBtnIcon();
     });
-    stopBtn.addEventListener('click', () => {
+    stopBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (DualView.isActive) {
-            // 永続化（保存）だけ 0 にする（次回リロード時に停止で開始するため）
-            localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, 0);
-            DualView.stop();
+            if (DualView.interval === 0 || DualView.isPaused) {
+                if (DualView.interval === 0) {
+                    dualInterval = lastActiveDualInterval;
+                    localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
+                    DualView.setAutoAdvance(dualInterval);
+                } else {
+                    DualView.togglePause();
+                }
+            } else {
+                localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, 0);
+                DualView.stop();
+            }
         } else if (GalleryView.isActive) {
-            GalleryView.stop();
+            if (GalleryView.scrollSpeed === 0 || GalleryView.isPaused) {
+                if (GalleryView.scrollSpeed === 0 && !GalleryView.isPaused) {
+                    GalleryView.changeScrollSpeed(lastActiveGallerySpeed);
+                } else {
+                    GalleryView.togglePause();
+                }
+            } else {
+                GalleryView.stop();
+            }
         }
+        updateStopBtnIcon();
     });
-    colMinusBtn.addEventListener('click', () => {
+    colMinusBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (GalleryView.isActive) GalleryView.changeColumnCount(-1);
     });
-    colPlusBtn.addEventListener('click', () => {
+    colPlusBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (GalleryView.isActive) GalleryView.changeColumnCount(1);
     });
 
@@ -587,6 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             if (GalleryView.isActive) {
                 GalleryView.changeScrollSpeed(-1);
+                if (GalleryView.scrollSpeed !== 0) lastActiveGallerySpeed = GalleryView.scrollSpeed;
             } else if (DualView.isActive) {
                 DualView.prev(undefined, true);
             }
@@ -594,6 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             if (GalleryView.isActive) {
                 GalleryView.changeScrollSpeed(1);
+                if (GalleryView.scrollSpeed !== 0) lastActiveGallerySpeed = GalleryView.scrollSpeed;
             } else if (DualView.isActive) {
                 DualView.next(undefined, true);
             }
@@ -629,8 +683,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     DualView.togglePause();
                 }
             } else if (GalleryView.isActive) {
-                GalleryView.togglePause();
+                if (GalleryView.scrollSpeed === 0 && !GalleryView.isPaused) {
+                    GalleryView.changeScrollSpeed(lastActiveGallerySpeed);
+                } else {
+                    GalleryView.togglePause();
+                }
             }
+            updateStopBtnIcon();
         } else if (e.key === 'Home') {
             if (DualView.isActive) {
                 e.preventDefault();
@@ -743,6 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastActiveDualInterval = dualInterval;
         localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
         DualView.setAutoAdvance(dualInterval);
+        updateStopBtnIcon();
     }
 
     // --- UI Auto-Hide ---
