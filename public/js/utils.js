@@ -41,6 +41,36 @@ function getFolderDisplayName(url, base) {
     return parts[parts.length - 1] || pathStr;
 }
 
+/**
+ * Gets the filename from an image URL.
+ * @param {string} url - The image URL.
+ * @param {string} [base] - Optional base URL for parsing relative URLs.
+ * @returns {string} The filename.
+ */
+function getFilename(url, base) {
+    try {
+        const urlObj = new URL(url, base || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost'));
+        let pathStr = urlObj.searchParams.get('path');
+        
+        if (!pathStr) {
+            pathStr = decodeURIComponent(urlObj.pathname);
+        }
+        
+        let actualPath = pathStr;
+        if (pathStr.includes('|')) {
+            actualPath = pathStr.split('|')[1] || pathStr.split('|')[0];
+        }
+
+        const lastSlash = Math.max(actualPath.lastIndexOf('/'), actualPath.lastIndexOf('\\'));
+        if (lastSlash >= 0) {
+            return actualPath.substring(lastSlash + 1);
+        }
+        return actualPath;
+    } catch (e) {
+        return '';
+    }
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getFolderPath, getFolderDisplayName };
+    module.exports = { getFolderPath, getFolderDisplayName, getFilename };
 }

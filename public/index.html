@@ -327,11 +327,32 @@
         .color-mode-blur img {
             filter: blur(8px);
         }
+
+        /* カーソル下のファイル名ツールチップ */
+        #cursor-tooltip {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 500;
+            white-space: nowrap; /* テキストを折り返さない */
+            opacity: 0;
+            transition: opacity 0.1s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transform: translate(15px, 15px); /* Offset from cursor */
+        }
     </style>
 </head>
 
 <body>
     <div id="mode-overlay"></div>
+    <div id="cursor-tooltip"></div>
 
     <!-- カウントダウンプログレスバー -->
     <div id="countdown-progress-container">
@@ -448,6 +469,15 @@
             <button class="fab" id="colorModeBtn" title="色モード切替 (C)">
                 <svg viewBox="0 0 24 24">
                     <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1-.23-.27-.38-.62-.38-1 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- カーソルツールチップ切替ボタン -->
+        <div class="fab-wrapper">
+            <button class="fab" id="cursorTooltipBtn" title="ファイル名表示切替 (I)">
+                <svg viewBox="0 0 24 24" id="cursorTooltipIcon">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
                 </svg>
             </button>
         </div>

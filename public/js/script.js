@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const includeToggleBtn = document.getElementById('includeToggleBtn');
     const includeToggleIcon = document.getElementById('includeToggleIcon');
     const colorModeBtn = document.getElementById('colorModeBtn');
+    const cursorTooltipBtn = document.getElementById('cursorTooltipBtn');
+    const cursorTooltipIcon = document.getElementById('cursorTooltipIcon');
+    const cursorTooltip = document.getElementById('cursor-tooltip');
 
     // Gallery specific control buttons
     const scrollUpBtn = document.getElementById('scrollUpBtn');
@@ -46,10 +49,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
     const STORAGE_KEY_ENABLE_INCLUDE = 'imageflow_enable_include';
     const STORAGE_KEY_COLOR_MODE = 'imageflow_color_mode';
+    const STORAGE_KEY_CURSOR_TOOLTIP = 'imageflow_cursor_tooltip';
 
     let isDraggingSeekbar = false;
     let allImagesUrls = [];
     let enableInclude = localStorage.getItem(STORAGE_KEY_ENABLE_INCLUDE) !== 'false';
+    let enableCursorTooltip = localStorage.getItem(STORAGE_KEY_CURSOR_TOOLTIP) === 'true';
+    let lastMouseX = 0;
+    let lastMouseY = 0;
     let lastDualIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || -1; 
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
@@ -87,6 +94,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add(initColorModes[currentColorModeIndex]);
     }
 
+    // Initial Cursor Tooltip
+    if (cursorTooltipIcon) {
+        cursorTooltipIcon.style.color = enableCursorTooltip ? '#3498db' : '';
+    }
+
     updateIncludeIcon();
     loadImages();
 
@@ -105,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if ((typeof DualView !== 'undefined' && DualView.isActive && DualView.interval > 0 && !DualView.isPaused) ||
             (typeof GalleryView !== 'undefined' && GalleryView.isActive && GalleryView.scrollSpeed !== 0 && !GalleryView.isPaused)) {
             updateSeekbar();
+            updateCursorTooltipContent();
         }
     }, 500);
 
@@ -495,6 +508,62 @@ document.addEventListener('DOMContentLoaded', () => {
         showModeOverlay('色モード', colorModeNames[currentColorModeIndex], null, paletteIcon);
     }
 
+    function toggleCursorTooltip() {
+        enableCursorTooltip = !enableCursorTooltip;
+        localStorage.setItem(STORAGE_KEY_CURSOR_TOOLTIP, enableCursorTooltip);
+        if (cursorTooltipIcon) {
+            cursorTooltipIcon.style.color = enableCursorTooltip ? '#3498db' : '';
+        }
+        if (!enableCursorTooltip && cursorTooltip) {
+            cursorTooltip.style.opacity = '0';
+        }
+        const stateText = enableCursorTooltip ? '有効' : '無効';
+        const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+        showModeOverlay('ファイル名表示', stateText, null, iconHtml);
+        if (enableCursorTooltip) updateCursorTooltipContent();
+    }
+
+    function updateCursorTooltipContent() {
+        if (!enableCursorTooltip || !cursorTooltip) return;
+
+        // マウスカーソルが非表示状態（操作がない時など）なら、ツールチップも隠す
+        if (document.documentElement.classList.contains('hide-cursor')) {
+            cursorTooltip.style.opacity = '0';
+            return;
+        }
+
+        const target = document.elementFromPoint(lastMouseX, lastMouseY);
+        if (target && target.tagName === 'IMG') {
+            const filename = typeof getFilename === 'function' ? getFilename(target.src) : '';
+            if (filename) {
+                cursorTooltip.textContent = filename;
+                
+                // Position the tooltip at the current mouse position
+                cursorTooltip.style.left = `${lastMouseX}px`;
+                cursorTooltip.style.top = `${lastMouseY}px`;
+                
+                // Perform boundary checks for fixed tooltip layout
+                const tipRect = cursorTooltip.getBoundingClientRect();
+                let offsetX = 15;
+                let offsetY = 15;
+                
+                if (lastMouseX + tipRect.width + 15 > window.innerWidth) {
+                    offsetX = -(tipRect.width + 15);
+                }
+                if (lastMouseY + tipRect.height + 15 > window.innerHeight) {
+                    offsetY = -(tipRect.height + 15);
+                }
+                
+                cursorTooltip.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+                cursorTooltip.style.opacity = '1';
+            } else {
+                cursorTooltip.style.opacity = '0';
+            }
+        } else {
+            cursorTooltip.style.opacity = '0';
+        }
+    }
+
     // --- Global Event Listeners ---
 
     reloadBtn.addEventListener('click', (e) => { e.stopPropagation(); loadImages(); });
@@ -505,6 +574,14 @@ document.addEventListener('DOMContentLoaded', () => {
     seekbarToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSeekbar(); });
     if(includeToggleBtn) includeToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInclude(); });
     if(colorModeBtn) colorModeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleColorMode(); });
+    if(cursorTooltipBtn) cursorTooltipBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleCursorTooltip(); });
+
+    document.addEventListener('mousemove', (e) => {
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        if (!enableCursorTooltip || !cursorTooltip) return;
+        updateCursorTooltipContent();
+    });
 
     seekbar.addEventListener('mousedown', () => { isDraggingSeekbar = true; });
     seekbar.addEventListener('touchstart', () => { isDraggingSeekbar = true; }, { passive: true });
@@ -632,6 +709,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleSeekbar();
         } else if (e.key === 'c' || e.key === 'C') {
             toggleColorMode();
+        } else if (e.key === 'i' || e.key === 'I') {
+            toggleCursorTooltip();
         } else if (e.key === 'f' || e.key === 'F') {
             toggleInclude();
         } else if (e.key === 'Enter') {
