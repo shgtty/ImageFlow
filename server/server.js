@@ -151,6 +151,11 @@ const server = http.createServer((req, res) => {
         }
 
         let allImages = [];
+
+        // ⚡ Bolt Optimization: Pre-calculate lowercased filters to avoid redundant O(N*M) string operations per image
+        const includesLower = includes.map(inc => inc.toLowerCase());
+        const excludesLower = excludes.map(exc => exc.toLowerCase());
+
         for (const target of folders) {
             let images = getImagesFromPath(target);
             
@@ -160,21 +165,21 @@ const server = http.createServer((req, res) => {
                 const pathLower = imgPath.toLowerCase(); 
                 
                 // includes対象（ホワイトリスト）の判定
-                if (includes.length > 0) {
+                if (includesLower.length > 0) {
                     if (includeMode === 'AND') {
                         // AND: リストに書かれた文字列が「すべて」パスに含まれている必要がある
-                        const matchInclude = includes.every(inc => pathLower.includes(inc.toLowerCase()));
+                        const matchInclude = includesLower.every(inc => pathLower.includes(inc));
                         if (!matchInclude) return false;
                     } else {
                         // OR: どれか一つでも含まれていればOK
-                        const matchInclude = includes.some(inc => pathLower.includes(inc.toLowerCase()));
+                        const matchInclude = includesLower.some(inc => pathLower.includes(inc));
                         if (!matchInclude) return false;
                     }
                 }
                 
                 // excludes対象（ブラックリスト）の判定：一つでも含まれていたらNG
-                if (excludes.length > 0) {
-                    const matchExclude = excludes.some(exc => pathLower.includes(exc.toLowerCase()));
+                if (excludesLower.length > 0) {
+                    const matchExclude = excludesLower.some(exc => pathLower.includes(exc));
                     if (matchExclude) return false;
                 }
                 
