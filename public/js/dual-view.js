@@ -76,7 +76,7 @@ const DualView = (() => {
         currentClickHandler = (e) => {
             if (!isActive) return;
             if (e.target.closest('.fab')) return;
-            
+
             const width = window.innerWidth;
             if (e.clientX > width / 2) {
                 isRightToLeft ? prev() : next();
@@ -97,7 +97,7 @@ const DualView = (() => {
             }
         };
         window.addEventListener('wheel', currentWheelHandler, { passive: true });
-        
+
         showIndicator();
     }
 
@@ -142,7 +142,7 @@ const DualView = (() => {
             if (cached instanceof Promise) return cached;
             return cached;
         }
-        
+
         const promise = new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
@@ -185,12 +185,12 @@ const DualView = (() => {
 
     async function render() {
         if (!isActive) return;
-        
+
         const renderId = ++currentRenderId;
         const pageInfo = await calculatePageInfo(currentIndex);
-        
+
         if (renderId !== currentRenderId || !isActive) return;
-        
+
         lastShownCount = pageInfo.count;
 
         const container = document.createElement('div');
@@ -212,7 +212,7 @@ const DualView = (() => {
             const idx = currentIndex + i;
             if (idx < images.length) {
                 const img = document.createElement('img');
-                
+
                 const loadPromise = new Promise((resolve) => {
                     img.onload = resolve;
                     img.onerror = resolve;
@@ -229,7 +229,7 @@ const DualView = (() => {
                 img.style.display = 'block';
                 img.style.opacity = '1';
                 img.style.transition = 'none';
-                
+
                 if (lastShownCount === 2) {
                     if (isRightToLeft) {
                         img.style.objectPosition = (i === 0) ? 'left' : 'right';
@@ -239,7 +239,7 @@ const DualView = (() => {
                 } else {
                     img.style.objectPosition = 'center';
                 }
-                
+
                 container.appendChild(img);
             }
         }
@@ -250,8 +250,8 @@ const DualView = (() => {
 
         galleryElement.innerHTML = '';
         galleryElement.appendChild(container);
-        resetTimer(); 
-        
+        resetTimer();
+
         // Preload next
         preloadDimensions(currentIndex + lastShownCount, 4);
     }
@@ -290,15 +290,15 @@ const DualView = (() => {
             // Check if we can fit two portraits (prevIndex-1 and prevIndex)
             const dimsPrev = await getImageDims(images[prevIndex]);
             const dimsPrevPrev = await getImageDims(images[prevIndex - 1]);
-            
+
             const isPrevPortrait = dimsPrev.width <= dimsPrev.height;
             const isPrevPrevPortrait = dimsPrevPrev.width <= dimsPrevPrev.height;
-            
+
             if (isPrevPortrait && isPrevPrevPortrait) {
                 prevIndex = prevIndex - 1;
             }
         }
-        
+
         currentIndex = prevIndex;
         await render();
         if (!silent) showIndicator();
@@ -422,7 +422,7 @@ const DualView = (() => {
                 indicator.textContent = `Dual View: Manual | ${currentIndex + 1}${lastShownCount > 1 ? '-' + endIdx : ''} / ${images.length}`;
             }
             indicator.style.opacity = '1';
-            
+
             if (window.dualViewTimer) clearTimeout(window.dualViewTimer);
             window.dualViewTimer = setTimeout(() => {
                 indicator.style.opacity = '0';

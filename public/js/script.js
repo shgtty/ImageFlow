@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_DUAL_INTERVAL = 'imageflow_dual_interval';
     const STORAGE_KEY_DUAL_RTL = 'imageflow_dual_rtl';
     const STORAGE_KEY_DUAL_INDEX = 'imageflow_dual_index';
+    const STORAGE_KEY_DUAL_SPEED = 'imageflow_dual_speed';
     const STORAGE_KEY_GALLERY_INDEX = 'imageflow_gallery_index';
     const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
     const STORAGE_KEY_ENABLE_INCLUDE = 'imageflow_enable_include';
@@ -53,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
-    let lastActiveDualInterval = 5;
+    let lastActiveDualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_SPEED)) || 5;
     if (dualInterval > 0) lastActiveDualInterval = dualInterval;
     let lastActiveGallerySpeed = parseFloat(localStorage.getItem('imageflow_scroll_speed')) || 2.0;
     if (lastActiveGallerySpeed === 0) lastActiveGallerySpeed = 2.0;
@@ -800,6 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         lastActiveDualInterval = dualInterval;
+        localStorage.setItem(STORAGE_KEY_DUAL_SPEED, lastActiveDualInterval);
         localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
         DualView.setAutoAdvance(dualInterval);
         updateStopBtnIcon();
