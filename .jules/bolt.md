@@ -1,0 +1,3 @@
+## 2024-05-19 - Avoid redundant toLowerCase() in loops
+**Learning:** O(N * M) string operations, such as calling `.toLowerCase()` inside a nested array iteration (`filter` followed by `every`/`some`), can significantly slow down backend APIs dealing with large numbers of elements (like scanning thousands of image files).
+**Action:** When iterating over a large array and comparing against a smaller list of strings, always pre-calculate lowercased versions of the smaller list before entering the loop to ensure O(N + M) complexity for string casing instead of O(N * M).
