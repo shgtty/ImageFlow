@@ -630,11 +630,11 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleDirection();
         } else if (e.key === 's' || e.key === 'S') {
             toggleSeekbar();
-        } else if (e.key === 'i' || e.key === 'I') {
-            toggleInclude();
         } else if (e.key === 'c' || e.key === 'C') {
             toggleColorMode();
         } else if (e.key === 'f' || e.key === 'F') {
+            toggleInclude();
+        } else if (e.key === 'Enter') {
             toggleFullscreen();
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
