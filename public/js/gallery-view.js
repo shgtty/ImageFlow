@@ -235,7 +235,7 @@ const GalleryView = (() => {
             scrollSpeed = 0;
             saveSpeed();
             updateSpeedIndicator();
-        } else if (currentIndex >= allImagesUrls.length && window.scrollY >= maxScroll - 1 && scrollSpeed > 0) {
+        } else if (allImagesUrls.length > 0 && currentIndex >= allImagesUrls.length && window.scrollY >= maxScroll - 1 && scrollSpeed > 0) {
             // Loop reload
             isScrolling = false;
             if (currentOptions.onEnd) {

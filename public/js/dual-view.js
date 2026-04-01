@@ -350,7 +350,7 @@ const DualView = (() => {
 
     function resetTimer() {
         stopTimer();
-        if (advanceInterval > 0 && !isPaused) {
+        if (images.length > 0 && advanceInterval > 0 && !isPaused) {
             progressStartTime = Date.now();
             if (progressContainer) progressContainer.style.display = 'block';
             updateProgressBar();

@@ -199,6 +199,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.totalFound === 0) {
+                allImagesUrls = []; // Clear current list if nothing found
+                seekbar.max = 0;
+                seekbar.value = 0;
+                seekbarInfo.textContent = '0 / 0';
+                if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                    GalleryView.updateImagesAndReset([], 0);
+                }
+                if (typeof DualView !== 'undefined' && DualView.isActive) {
+                    DualView.updateImagesAndReset([], 0, true);
+                }
                 showModeOverlay('画像が見つかりませんでした (folders.txtを確認してください)', '', 0);
                 return;
             }
@@ -296,25 +306,41 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json())
             .then(data => {
                 allImagesUrls = data.images;
-                seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                const total = data.totalFound !== undefined ? data.totalFound : allImagesUrls.length;
                 
-                const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
-                showModeOverlay('フィルター', enableInclude ? '有効' : '無効', allImagesUrls.length, iconHtml);
-                
-                let targetIndex = 0;
-                if (currentImgUrl) {
-                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
-                    if (newIdx >= 0) {
-                        targetIndex = newIdx;
+                if (total === 0) {
+                    seekbar.max = 0;
+                    seekbar.value = 0;
+                    seekbarInfo.textContent = '0 / 0';
+                    if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                        GalleryView.updateImagesAndReset([], 0);
                     }
-                }
-
-                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
-                    DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
-                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
-                    GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
+                    if (typeof DualView !== 'undefined' && DualView.isActive) {
+                        DualView.updateImagesAndReset([], 0, true);
+                    }
+                    const filterStatus = enableInclude ? '有効' : '無効';
+                    showModeOverlay('画像が見つかりませんでした', `フィルター${filterStatus}`, 0);
                 } else {
-                    loadImages();
+                    seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                    
+                    const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
+                    showModeOverlay('フィルター', enableInclude ? '有効' : '無効', allImagesUrls.length, iconHtml);
+                    
+                    let targetIndex = 0;
+                    if (currentImgUrl) {
+                        const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                        if (newIdx >= 0) {
+                            targetIndex = newIdx;
+                        }
+                    }
+
+                    if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                        DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
+                    } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                        GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
+                    } else {
+                        loadImages();
+                    }
                 }
                 updateSeekbar();
             })
@@ -380,6 +406,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gallerySortMode !== dualSortMode) {
                 fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
                     allImagesUrls = data.images;
+                    
+                    if (allImagesUrls.length === 0) {
+                        seekbar.max = 0;
+                        seekbar.value = 0;
+                        seekbarInfo.textContent = '0 / 0';
+                        DualView.enter([], 0, dualInterval, handleDualExit);
+                        showModeOverlay('画像が見つかりませんでした', dualSortMode === 'asc' ? '昇順' : 'ランダム', 0);
+                        return;
+                    }
+
                     // 昇順への復帰かつ以前の位置がある場合は復元を優先、そうでなければ同じ画像を探す
                     let targetIndex;
                     if (dualSortMode === 'asc' && lastDualIndex >= 0) {
@@ -440,17 +476,24 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
                 allImagesUrls = data.images;
 
+                if (allImagesUrls.length === 0) {
+                    seekbar.max = 0;
+                    seekbar.value = 0;
+                    seekbarInfo.textContent = '0 / 0';
+                    DualView.updateImagesAndReset([], 0, true);
+                    showModeOverlay('画像が見つかりませんでした', dualSortMode === 'asc' ? '昇順' : 'ランダム', 0);
+                    return;
+                }
+
                 let targetIndex = 0;
                 if (dualSortMode === 'asc') {
                     if (lastDualIndex >= 0) {
-                        // ソート（昇順）に戻る場合は、以前の表示位置を優先して復元する
                         targetIndex = lastDualIndex;
                     } else {
                         const newIdx = allImagesUrls.indexOf(currentImgUrl);
                         if (newIdx >= 0) targetIndex = newIdx;
                     }
                 } else {
-                    // ランダムへ切り替えた場合は維持せず、完全にランダムな最初のペアを表示する
                     targetIndex = 0;
                 }
 
