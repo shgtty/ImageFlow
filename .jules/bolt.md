@@ -1,3 +1,6 @@
 ## 2024-05-19 - Avoid redundant toLowerCase() in loops
 **Learning:** O(N * M) string operations, such as calling `.toLowerCase()` inside a nested array iteration (`filter` followed by `every`/`some`), can significantly slow down backend APIs dealing with large numbers of elements (like scanning thousands of image files).
 **Action:** When iterating over a large array and comparing against a smaller list of strings, always pre-calculate lowercased versions of the smaller list before entering the loop to ensure O(N + M) complexity for string casing instead of O(N * M).
+## 2024-05-19 - Avoid layout thrashing in loops
+**Learning:** Interleaving DOM reads (`offsetWidth`, `getBoundingClientRect`, etc.) and DOM writes (`appendChild`, `style.xxx`) inside a loop forces the browser to recalculate layout (reflow) on every iteration. This causes severe main thread blocking and jank (Layout Thrashing), particularly when rendering many elements at once, like a batch of images in a masonry layout.
+**Action:** Always batch DOM reads and writes. Calculate dimensions (like column widths) *outside* the loop before making DOM modifications, or use `requestAnimationFrame` to schedule reads/writes properly.
