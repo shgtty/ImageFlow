@@ -159,6 +159,9 @@ const GalleryView = (() => {
         function processBatchQueue() {
             if (myRenderId !== currentRenderId) return;
             
+            // ⚡ Bolt Optimization: Cache column widths before DOM write loop to prevent layout thrashing
+            const colWidths = columns.map(col => col.offsetWidth || (window.innerWidth / columnCount));
+
             while (nextToPlace < totalInBatch && batchImages[nextToPlace].loaded) {
                 const currentObj = batchImages[nextToPlace];
                 if (!currentObj.error) {
@@ -178,7 +181,7 @@ const GalleryView = (() => {
                     shortestCol.appendChild(img);
 
                     const ratio = img.naturalHeight / img.naturalWidth;
-                    const colWidth = shortestCol.offsetWidth || (window.innerWidth / columnCount);
+                    const colWidth = colWidths[shortestIdx];
                     columnHeights[shortestIdx] += (colWidth * ratio);
 
                     // DOMに追加されてからフェードインさせるため、少し遅延を入れる
@@ -342,6 +345,9 @@ const GalleryView = (() => {
             galleryElement.appendChild(col);
         }
 
+        // ⚡ Bolt Optimization: Cache column widths before DOM write loop to prevent layout thrashing
+        const colWidths = columns.map(col => col.offsetWidth || (window.innerWidth / columnCount));
+
         existingImages.forEach(img => {
             let shortestIdx = 0;
             let minH = columnHeights[0];
@@ -356,7 +362,7 @@ const GalleryView = (() => {
             shortestCol.appendChild(img);
 
             const ratio = (img.naturalHeight && img.naturalWidth) ? (img.naturalHeight / img.naturalWidth) : 1;
-            const colWidth = shortestCol.offsetWidth || (window.innerWidth / columnCount);
+            const colWidth = colWidths[shortestIdx];
             columnHeights[shortestIdx] += (colWidth * ratio);
         });
 
