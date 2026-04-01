@@ -263,6 +263,23 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.classList.remove('show');
         }, 3000);
     }
+
+    function showDirectionArrow(isRtl) {
+        const overlay = document.getElementById('direction-overlay');
+        if (!overlay) return;
+
+        // 右から左(isRtl=true)なら左向きの矢印、左から右(isRtl=false)なら右向きの矢印を表示
+        const arrowPath = isRtl
+            ? '<path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>' // Left arrow
+            : '<path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>'; // Right arrow
+
+        overlay.innerHTML = `<svg viewBox="0 0 24 24">${arrowPath}</svg>`;
+        
+        // アニメーションの再実行（クラスの付け替え）
+        overlay.classList.remove('animate');
+        void overlay.offsetWidth; // 強制リフロー
+        overlay.classList.add('animate');
+    }
  
     function toggleSeekbar() {
         if (!seekbarContainer) return;
@@ -562,6 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof GalleryView !== 'undefined') GalleryView.setDirection(newState);
 
         updateDirIcon();
+        showDirectionArrow(newState);
         const dirText = newState ? '右から左へ' : '左から右へ';
         showModeOverlay('表示順変更', dirText, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>');
     }

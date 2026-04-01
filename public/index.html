@@ -352,12 +352,45 @@
             border: 1px solid rgba(255, 255, 255, 0.15);
             transform: translate(15px, 15px); /* Offset from cursor */
         }
+
+        /* 方向転換時のデカ矢印 */
+        #direction-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3000;
+            pointer-events: none;
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #direction-overlay svg {
+            width: 250px;
+            height: 250px;
+            fill: #fff;
+            filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.8));
+        }
+
+        @keyframes arrow-fade-in-out {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.1); }
+            80% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        }
+
+        #direction-overlay.animate {
+            animation: arrow-fade-in-out 0.6s ease-out forwards;
+        }
     </style>
 </head>
 
 <body>
     <div id="mode-overlay"></div>
     <div id="cursor-tooltip"></div>
+    <div id="direction-overlay"></div>
 
     <!-- カウントダウンプログレスバー -->
     <div id="countdown-progress-container">
