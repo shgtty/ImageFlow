@@ -459,54 +459,88 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleSort() {
-        if (DualView.isActive) {
-            const currentImgUrl = allImagesUrls[DualView.currentIndex];
-            const wasAsc = (dualSortMode === 'asc');
-
-            if (wasAsc) {
-                // ソート（昇順）から切り替える際、現在の位置を保存しておく
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        let currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        
+        let currentImgUrl = null;
+        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[DualView.currentIndex];
+            if (dualSortMode === 'asc') {
                 lastDualIndex = DualView.currentIndex;
                 localStorage.setItem(STORAGE_KEY_DUAL_INDEX, lastDualIndex);
             }
-
             dualSortMode = (dualSortMode === 'random' ? 'asc' : 'random');
             localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
-            updateSortIcon();
+            currentSort = dualSortMode;
+        } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[GalleryView.currentIndex];
+            if (gallerySortMode === 'asc') {
+                localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
+            }
+            gallerySortMode = (gallerySortMode === 'random' ? 'asc' : 'random');
+            localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
+            currentSort = gallerySortMode;
+        }
 
-            fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
+        updateSortIcon();
+
+        fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
+            .then(r => r.json())
+            .then(data => {
                 allImagesUrls = data.images;
 
                 if (allImagesUrls.length === 0) {
                     seekbar.max = 0;
                     seekbar.value = 0;
                     seekbarInfo.textContent = '0 / 0';
-                    DualView.updateImagesAndReset([], 0, true);
-                    showModeOverlay('画像が見つかりませんでした', dualSortMode === 'asc' ? '昇順' : 'ランダム', 0);
+                    if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                        DualView.updateImagesAndReset([], 0, true);
+                    } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                        GalleryView.updateImagesAndReset([], 0);
+                    }
+                    const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
+                    showModeOverlay('画像が見つかりませんでした', sortName, 0);
                     return;
                 }
 
                 let targetIndex = 0;
-                if (dualSortMode === 'asc') {
-                    if (lastDualIndex >= 0) {
-                        targetIndex = lastDualIndex;
+                if (currentImgUrl) {
+                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                    if (currentSort === 'asc') {
+                        // ランダム表示からソート表示（昇順）へ戻る場合は、以前の場所（lastDualIndex）を優先する
+                        if (mode === 'dual' && lastDualIndex >= 0) {
+                            targetIndex = lastDualIndex;
+                        } else if (mode === 'gallery') {
+                            const savedGalleryIndex = parseInt(localStorage.getItem(STORAGE_KEY_GALLERY_INDEX)) || 0;
+                            targetIndex = savedGalleryIndex;
+                        } else if (newIdx >= 0) {
+                            targetIndex = newIdx;
+                        }
                     } else {
-                        const newIdx = allImagesUrls.indexOf(currentImgUrl);
-                        if (newIdx >= 0) targetIndex = newIdx;
+                        // ソート表示からランダム表示へ移行する場合は、シャッフルされたリストの先頭から表示して画面を完全に再描画する
+                        targetIndex = 0;
                     }
-                } else {
-                    targetIndex = 0;
                 }
 
-                DualView.updateImagesAndReset(allImagesUrls, targetIndex);
-                const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
-                showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
+                seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
+
+                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                    DualView.updateImagesAndReset(allImagesUrls, targetIndex);
+                    const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
+                    showModeOverlay('デュアルビューモード', sortName, allImagesUrls.length, iconHtml);
+                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                    GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
+                    window.scrollTo(0, 0);
+                    const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
+                    showModeOverlay('ギャラリーモード', sortName, allImagesUrls.length, iconHtml);
+                }
+                updateSeekbar();
+            })
+            .catch(err => {
+                console.error('Error fetching sorted images:', err);
+                loadImages();
             });
-        } else {
-            gallerySortMode = (gallerySortMode === 'random' ? 'asc' : 'random');
-            localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
-            updateSortIcon();
-            loadImages();
-        }
     }
 
     function toggleFullscreen() {
