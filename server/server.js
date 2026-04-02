@@ -150,43 +150,40 @@ const server = http.createServer((req, res) => {
             console.error('Error reading filter files:', e);
         }
 
-        let allImages = [];
-
         // ⚡ Bolt Optimization: Pre-calculate lowercased filters to avoid redundant O(N*M) string operations per image
         const includesLower = includes.map(inc => inc.toLowerCase());
         const excludesLower = excludes.map(exc => exc.toLowerCase());
 
-        for (const target of folders) {
-            let images = getImagesFromPath(target);
-            
-            // フィルタの適用
-            images = images.filter(imgPath => {
-                // パスの大文字小文字を区別せずに判定
-                const pathLower = imgPath.toLowerCase(); 
-                
-                // includes対象（ホワイトリスト）の判定
-                if (includesLower.length > 0) {
-                    if (includeMode === 'AND') {
-                        // AND: リストに書かれた文字列が「すべて」パスに含まれている必要がある
-                        const matchInclude = includesLower.every(inc => pathLower.includes(inc));
-                        if (!matchInclude) return false;
-                    } else {
-                        // OR: どれか一つでも含まれていればOK
-                        const matchInclude = includesLower.some(inc => pathLower.includes(inc));
-                        if (!matchInclude) return false;
-                    }
-                }
-                
-                // excludes対象（ブラックリスト）の判定：一つでも含まれていたらNG
-                if (excludesLower.length > 0) {
-                    const matchExclude = excludesLower.some(exc => pathLower.includes(exc));
-                    if (matchExclude) return false;
-                }
-                
-                return true;
-            });
+        let allImages = [];
 
-            allImages = allImages.concat(images);
+        // ⚡ Bolt Optimization: Avoid memory overhead of Array.prototype.concat in loops by passing accumulator to getImagesFromPath
+        const allImagesRaw = [];
+        for (const target of folders) {
+            getImagesFromPath(target, allImagesRaw);
+        }
+
+        // Apply filters directly to allImagesRaw in-place or pushing to allImages to avoid mapping
+        for (let i = 0; i < allImagesRaw.length; i++) {
+            const imgPath = allImagesRaw[i];
+            const pathLower = imgPath.toLowerCase();
+            
+            let includeMatch = true;
+            if (includesLower.length > 0) {
+                if (includeMode === 'AND') {
+                    includeMatch = includesLower.every(inc => pathLower.includes(inc));
+                } else {
+                    includeMatch = includesLower.some(inc => pathLower.includes(inc));
+                }
+            }
+
+            let excludeMatch = false;
+            if (excludesLower.length > 0) {
+                excludeMatch = excludesLower.some(exc => pathLower.includes(exc));
+            }
+
+            if (includeMatch && !excludeMatch) {
+                allImages.push(imgPath);
+            }
         }
 
         if (sortMode === 'asc') {
