@@ -638,8 +638,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = document.elementFromPoint(lastMouseX, lastMouseY);
         if (target && target.tagName === 'IMG') {
             const filename = typeof getFilename === 'function' ? getFilename(target.src) : '';
+            const foldername = typeof getFolderDisplayName === 'function' ? getFolderDisplayName(target.src) : '';
             if (filename) {
-                cursorTooltip.textContent = filename;
+                cursorTooltip.textContent = foldername ? `${foldername} > ${filename}` : filename;
                 
                 // Position the tooltip at the current mouse position
                 cursorTooltip.style.left = `${lastMouseX}px`;
