@@ -36,6 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const seekbarTooltip = document.getElementById('seekbar-tooltip');
     const seekbarToggleBtn = document.getElementById('seekbarToggleBtn');
     const seekbarToggleIcon = document.getElementById('seekbarToggleIcon');
+    const modeOverlay = document.getElementById('mode-overlay');
+    let currentFilterDisplay = ''; 
+    let currentModeMessage = '';
+    let overlayHideTimer = null;
 
     // --- State Management ---
     const STORAGE_KEY_MODE = 'imageflow_display_mode'; // 'gallery' or 'dual'
@@ -216,12 +220,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     DualView.updateImagesAndReset([], 0, true);
                 }
                 showModeOverlay('画像が見つかりませんでした (folders.txtを確認してください)', '', 0);
+                updateFilterBar(data);
                 return;
             }
 
             allImagesUrls = data.images;
             seekbar.max = Math.max(0, allImagesUrls.length - 1);
             updateSeekbar();
+            updateFilterBar(data);
 
             const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
             const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
@@ -253,21 +259,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    let modeOverlayTimer = null;
     function showModeOverlay(modeName, sortName, count, iconHtml) {
-        const overlay = document.getElementById('mode-overlay');
-        if (!overlay) return;
+        if (!modeOverlay) return;
 
         const sortPart = sortName ? ` [${sortName}]` : '';
         const countPart = (typeof count === 'number' && count > 0) ? ` [${count}枚]` : '';
+        currentModeMessage = `${iconHtml || ''} <span>${modeName}${sortPart}${countPart}</span>`;
+        
+        displayOverlayTemporarily();
+    }
 
-        overlay.innerHTML = `${iconHtml || ''} <span>${modeName}${sortPart}${countPart}</span>`;
-        overlay.classList.add('show');
+    function updateFilterBar(data) {
+        if (!modeOverlay) return;
+        
+        if (!enableInclude || !data.filterInclude || data.filterInclude.length === 0) {
+            currentFilterDisplay = '';
+        } else {
+            const modeText = data.filterMode === 'OR' ? 'OR条件' : 'AND条件';
+            const keywords = data.filterInclude.join(', ');
+            currentFilterDisplay = `<span><span class="filter-label">${modeText}:</span> ${keywords}</span>`;
+        }
+        
+        displayOverlayTemporarily();
+    }
 
-        if (modeOverlayTimer) clearTimeout(modeOverlayTimer);
-        modeOverlayTimer = setTimeout(() => {
-            overlay.classList.remove('show');
+    function displayOverlayTemporarily() {
+        refreshOverlayContent();
+        modeOverlay.classList.add('show');
+
+        if (overlayHideTimer) clearTimeout(overlayHideTimer);
+        overlayHideTimer = setTimeout(() => {
+            modeOverlay.classList.remove('show');
+            // After fade-out, reset internal message state
+            setTimeout(() => {
+                currentModeMessage = '';
+                // currentFilterDisplay = ''; // Keep this or not? 
+                // User said "hide like notification", 
+                // so we don't want it to reappear alone later unless requested.
+            }, 400);
         }, 3000);
+    }
+
+    function refreshOverlayContent() {
+        if (!modeOverlay) return;
+        
+        let html = '';
+        if (currentModeMessage) {
+            html += currentModeMessage;
+        }
+        
+        if (currentFilterDisplay) {
+            const separator = currentModeMessage ? 
+                '<span style="opacity: 0.3; margin: 0 15px;">|</span>' : '';
+            html += separator + currentFilterDisplay;
+        }
+
+        modeOverlay.innerHTML = html;
     }
 
     function showDirectionArrow(isRtl) {
@@ -366,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 updateSeekbar();
+                updateFilterBar(data);
             })
             .catch(err => {
                 console.error('Error fetching filtered images:', err);
@@ -450,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         targetIndex = (newIdx >= 0) ? newIdx : 0;
                     }
                     DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
+                    updateFilterBar(data);
                 }).catch(console.error);
             } else {
                 // ソートが同じ場合：昇順なら復元、ランダムなら現在のギャラリー位置を使用
@@ -561,6 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showModeOverlay('ギャラリーモード', sortName, allImagesUrls.length, iconHtml);
                 }
                 updateSeekbar();
+                updateFilterBar(data);
             })
             .catch(err => {
                 console.error('Error fetching sorted images:', err);

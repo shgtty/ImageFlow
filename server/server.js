@@ -258,7 +258,9 @@ const server = http.createServer((req, res) => {
             totalFound: allImages.length,
             count: limitImages.length,
             images: imageUrls,
-            foldersUsed: folders
+            foldersUsed: folders,
+            filterMode: includeMode,
+            filterInclude: includes
         }));
         return;
     }
