@@ -23,6 +23,7 @@ const GalleryView = (() => {
     let indicatorTimeout = null;
     let isRightToLeft = false;
     let currentRenderId = 0;
+    let endDelayStartTime = 0;
 
     // Storage keys
     const STORAGE_KEY_SPEED = 'imageflow_scroll_speed';
@@ -209,6 +210,7 @@ const GalleryView = (() => {
     function startAutoScroll() {
         if (!isScrolling && scrollSpeed !== 0) {
             isScrolling = true;
+            endDelayStartTime = 0;
             requestAnimationFrame(autoScroll);
         }
     }
@@ -235,13 +237,33 @@ const GalleryView = (() => {
             scrollSpeed = 0;
             saveSpeed();
             updateSpeedIndicator();
-        } else if (allImagesUrls.length > 0 && currentIndex >= allImagesUrls.length && window.scrollY >= maxScroll - 1 && scrollSpeed > 0) {
+        } else if (allImagesUrls.length > 0 && currentIndex >= allImagesUrls.length && pendingImages === 0 && window.scrollY >= maxScroll - 1 && scrollSpeed > 0) {
+            // SCROLL DISTANCE = 0 leads to infinite instant loops. Prevent this if no scrolling is possible.
+            if (maxScroll <= 0) {
+                if (endDelayStartTime === 0) {
+                    endDelayStartTime = performance.now();
+                } else if (performance.now() - endDelayStartTime > 3000) {
+                    endDelayStartTime = 0;
+                    isScrolling = false;
+                    if (currentOptions.onEnd) {
+                        currentOptions.onEnd();
+                    }
+                    return;
+                }
+                
+                requestAnimationFrame(autoScroll);
+                return;
+            }
+            
             // Loop reload
+            endDelayStartTime = 0;
             isScrolling = false;
             if (currentOptions.onEnd) {
                 currentOptions.onEnd();
             }
             return;
+        } else {
+            endDelayStartTime = 0;
         }
 
         if (scrollSpeed !== 0) {
