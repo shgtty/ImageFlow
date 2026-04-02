@@ -55,6 +55,57 @@ function getAllowedPaths() {
     return folders;
 }
 
+// ⚡ Bolt Optimization: Recursive helper that takes Dirent array from withFileTypes to prevent redundant fs.statSync calls
+function processDirents(basePath, dirents, results) {
+    for (const dirent of dirents) {
+        const fullPath = path.join(basePath, dirent.name);
+
+        let isDir = dirent.isDirectory();
+        let isFil = dirent.isFile();
+
+        // ⚡ Bolt: Handle symlinks by falling back to statSync, preserving original behavior
+        if (dirent.isSymbolicLink()) {
+            try {
+                const stat = fs.statSync(fullPath);
+                isDir = stat.isDirectory();
+                isFil = stat.isFile();
+            } catch (err) {
+                continue; // Skip broken symlinks
+            }
+        }
+
+        if (isDir) {
+            try {
+                // ⚡ Bolt: Read subdirectories directly using withFileTypes
+                const subDirents = fs.readdirSync(fullPath, { withFileTypes: true });
+                processDirents(fullPath, subDirents, results);
+            } catch (err) {
+                // Ignore inaccessible directories
+            }
+        } else if (isFil) {
+            const ext = path.extname(dirent.name).toLowerCase();
+            if (VALID_EXTS.has(ext)) {
+                results.push(fullPath);
+            } else if (ext === '.zip') {
+                try {
+                    const zip = getZipInstance(fullPath);
+                    const zipEntries = zip.getEntries();
+                    for (const entry of zipEntries) {
+                        if (!entry.isDirectory) {
+                            const entryExt = path.extname(entry.entryName).toLowerCase();
+                            if (VALID_EXTS.has(entryExt)) {
+                                results.push(`${fullPath}|${entry.entryName}`);
+                            }
+                        }
+                    }
+                } catch (zipErr) {
+                    console.error(`Error reading ZIP file ${fullPath}:`, zipErr.message);
+                }
+            }
+        }
+    }
+}
+
 // 指定されたパス（ディレクトリまたは単一ファイル）を処理し、画像ファイルのリストを取得する
 function getImagesFromPath(targetPath, results = []) {
     try {
@@ -84,11 +135,9 @@ function getImagesFromPath(targetPath, results = []) {
         }
 
         if (stat.isDirectory()) {
-            const list = fs.readdirSync(targetPath);
-            for (const file of list) {
-                const filePath = path.join(targetPath, file);
-                getImagesFromPath(filePath, results); // 個別のファイルごとに関数を再帰呼び出し
-            }
+            // ⚡ Bolt Optimization: Use withFileTypes: true to avoid calling statSync on every file
+            const dirents = fs.readdirSync(targetPath, { withFileTypes: true });
+            processDirents(targetPath, dirents, results);
             return results;
         }
     } catch (err) {
