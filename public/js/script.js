@@ -130,10 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // 現在は昇順なので、ランダムへ切替えるためのアイコンを表示
             sortIcon.innerHTML = '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>';
             sortBtn.title = 'ランダム順に切替 (R)';
+            sortBtn.setAttribute('aria-label', sortBtn.title);
         } else {
             // 現在はランダムなので、昇順(A-Z)へ切替えるためのアイコンを表示
             sortIcon.innerHTML = '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>';
             sortBtn.title = '昇順(A-Z)に切替 (R)';
+            sortBtn.setAttribute('aria-label', sortBtn.title);
         }
     }
 
@@ -154,10 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // デュアルモード中なので、ギャラリーへ切替えるための "G" アイコンを表示
                 modeIcon.innerHTML = '<text x="50%" y="72%" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="currentColor">G</text>';
                 modeBtn.title = 'ギャラリー表示へ切替 (M)';
+                modeBtn.setAttribute('aria-label', modeBtn.title);
             } else {
                 // ギャラリーモード中なので、デュアルへ切替えるための "D" アイコンを表示
                 modeIcon.innerHTML = '<text x="50%" y="72%" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="currentColor">D</text>';
                 modeBtn.title = 'デュアル表示へ切替 (M)';
+                modeBtn.setAttribute('aria-label', modeBtn.title);
             }
         }
     }
@@ -168,10 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isRtl) {
             // 現在は右から(RTL)なので、左から(LTR)へ切り替えるためのアイコンを表示
             dirBtn.title = '左から右へ表示 (O)';
+            dirBtn.setAttribute('aria-label', dirBtn.title);
             dirIcon.style.color = '#3498db'; // アクティブ感
         } else {
             // 現在は左から(LTR)なので、右から(RTL)へ切り替えるためのアイコンを表示
             dirBtn.title = '右から左へ表示 (O)';
+            dirBtn.setAttribute('aria-label', dirBtn.title);
             dirIcon.style.color = '';
         }
     }
@@ -393,10 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Play Icon
             svg.innerHTML = '<path d="M8 5v14l11-7z" />';
             stopBtn.title = '再生開始 (Space)';
+            stopBtn.setAttribute('aria-label', stopBtn.title);
         } else {
             // Stop Icon
             svg.innerHTML = '<path d="M6 6h12v12H6z" />';
             stopBtn.title = '停止 (Space)';
+            stopBtn.setAttribute('aria-label', stopBtn.title);
         }
     }
 
