@@ -730,11 +730,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if(colorModeBtn) colorModeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleColorMode(); });
     if(cursorTooltipBtn) cursorTooltipBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleCursorTooltip(); });
 
+    // ⚡ Bolt Optimization: Throttle expensive elementFromPoint queries on mousemove
+    // High-frequency events (125-1000Hz) cause jank if they do synchronous hit testing.
+    // requestAnimationFrame bounds the work to display refresh rate (e.g. 60Hz).
+    let isTooltipUpdateScheduled = false;
     document.addEventListener('mousemove', (e) => {
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
         if (!enableCursorTooltip || !cursorTooltip) return;
-        updateCursorTooltipContent();
+
+        if (!isTooltipUpdateScheduled) {
+            isTooltipUpdateScheduled = true;
+            requestAnimationFrame(() => {
+                updateCursorTooltipContent();
+                isTooltipUpdateScheduled = false;
+            });
+        }
     });
 
     seekbar.addEventListener('mousedown', () => { isDraggingSeekbar = true; });
