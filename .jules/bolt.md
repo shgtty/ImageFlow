@@ -7,3 +7,6 @@
 ## 2024-05-19 - Avoid redundant fs.statSync loops with withFileTypes
 **Learning:** Using `fs.readdirSync` simply returns string file names. Using it inside a recursive crawler means making another `fs.statSync` system call on every single file just to check if it's a directory or a file. This generates significant blocking overhead on large directories.
 **Action:** Use `fs.readdirSync(path, { withFileTypes: true })` instead. This returns an array of `fs.Dirent` objects which immediately let you check `.isDirectory()` and `.isFile()` without extra system calls. *Crucially*, `Dirent` objects that are symlinks return `false` for both, so you must explicitly check `.isSymbolicLink()` and fallback to `fs.statSync` to maintain expected symlink resolution behaviors.
+## 2024-05-19 - Throttle expensive elementFromPoint queries on mousemove
+**Learning:** High-frequency event listeners like `mousemove` can fire 125-1000 times per second. Synchronously performing expensive operations like `document.elementFromPoint()` (which forces a hit-test and layout recalculation) on every event blocks the main thread and causes severe UI jank.
+**Action:** Always throttle or debounce expensive DOM queries inside high-frequency event listeners. Using `requestAnimationFrame` bounds the processing cost to the display refresh rate (e.g., 60Hz), making the application much smoother.
