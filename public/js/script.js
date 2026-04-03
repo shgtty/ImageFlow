@@ -341,10 +341,18 @@ document.addEventListener('DOMContentLoaded', () => {
             seekbarContainer.classList.remove('user-hidden');
             if (seekbarToggleIcon) seekbarToggleIcon.style.color = '#3498db';
             localStorage.setItem(STORAGE_KEY_SEEKBAR_VISIBLE, 'true');
+            if (seekbarToggleBtn) {
+                seekbarToggleBtn.title = 'シークバー非表示 (S)';
+                seekbarToggleBtn.setAttribute('aria-label', seekbarToggleBtn.title);
+            }
         } else {
             seekbarContainer.classList.add('user-hidden');
             if (seekbarToggleIcon) seekbarToggleIcon.style.color = '';
             localStorage.setItem(STORAGE_KEY_SEEKBAR_VISIBLE, 'false');
+            if (seekbarToggleBtn) {
+                seekbarToggleBtn.title = 'シークバー表示 (S)';
+                seekbarToggleBtn.setAttribute('aria-label', seekbarToggleBtn.title);
+            }
         }
     }
 
@@ -352,8 +360,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!includeToggleIcon) return;
         if (enableInclude) {
             includeToggleIcon.style.color = '#3498db';
+            if (includeToggleBtn) {
+                includeToggleBtn.title = 'フィルター無効にする (F)';
+                includeToggleBtn.setAttribute('aria-label', includeToggleBtn.title);
+            }
         } else {
             includeToggleIcon.style.color = '';
+            if (includeToggleBtn) {
+                includeToggleBtn.title = 'フィルター有効にする (F)';
+                includeToggleBtn.setAttribute('aria-label', includeToggleBtn.title);
+            }
         }
     }
 
@@ -659,6 +675,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const paletteIcon = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1-.23-.27-.38-.62-.38-1 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>';
         showModeOverlay('色モード', colorModeNames[currentColorModeIndex], null, paletteIcon);
+
+        if (colorModeBtn) {
+            colorModeBtn.title = `色モード変更 (${colorModeNames[currentColorModeIndex]}) (C)`;
+            colorModeBtn.setAttribute('aria-label', colorModeBtn.title);
+        }
     }
 
     function toggleCursorTooltip() {
@@ -674,6 +695,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
         showModeOverlay('ファイル名表示', stateText, null, iconHtml);
         if (enableCursorTooltip) updateCursorTooltipContent();
+
+        if (cursorTooltipBtn) {
+            cursorTooltipBtn.title = enableCursorTooltip ? 'ファイル名表示を無効にする (I)' : 'ファイル名表示を有効にする (I)';
+            cursorTooltipBtn.setAttribute('aria-label', cursorTooltipBtn.title);
+        }
     }
 
     function updateCursorTooltipContent() {
