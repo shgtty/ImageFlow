@@ -229,6 +229,7 @@ const DualView = (() => {
                 img.style.display = 'block';
                 img.style.opacity = '1';
                 img.style.transition = 'none';
+                img.alt = typeof getFilename === 'function' ? getFilename(images[idx]) : 'Image ' + (idx + 1);
 
                 if (lastShownCount === 2) {
                     if (isRightToLeft) {
