@@ -212,26 +212,31 @@ const server = http.createServer((req, res) => {
         }
 
         // Apply filters directly to allImagesRaw in-place or pushing to allImages to avoid mapping
-        for (let i = 0; i < allImagesRaw.length; i++) {
-            const imgPath = allImagesRaw[i];
-            const pathLower = imgPath.toLowerCase();
-            
-            let includeMatch = true;
-            if (includesLower.length > 0) {
-                if (includeMode === 'AND') {
-                    includeMatch = includesLower.every(inc => pathLower.includes(inc));
-                } else {
-                    includeMatch = includesLower.some(inc => pathLower.includes(inc));
+        // ⚡ Bolt Optimization: Skip O(N) string processing when no filters are set
+        if (includesLower.length === 0 && excludesLower.length === 0) {
+            allImages = allImagesRaw;
+        } else {
+            for (let i = 0; i < allImagesRaw.length; i++) {
+                const imgPath = allImagesRaw[i];
+                const pathLower = imgPath.toLowerCase();
+
+                let includeMatch = true;
+                if (includesLower.length > 0) {
+                    if (includeMode === 'AND') {
+                        includeMatch = includesLower.every(inc => pathLower.includes(inc));
+                    } else {
+                        includeMatch = includesLower.some(inc => pathLower.includes(inc));
+                    }
                 }
-            }
 
-            let excludeMatch = false;
-            if (excludesLower.length > 0) {
-                excludeMatch = excludesLower.some(exc => pathLower.includes(exc));
-            }
+                let excludeMatch = false;
+                if (excludesLower.length > 0) {
+                    excludeMatch = excludesLower.some(exc => pathLower.includes(exc));
+                }
 
-            if (includeMatch && !excludeMatch) {
-                allImages.push(imgPath);
+                if (includeMatch && !excludeMatch) {
+                    allImages.push(imgPath);
+                }
             }
         }
 

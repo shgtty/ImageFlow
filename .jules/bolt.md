@@ -10,3 +10,6 @@
 ## 2024-05-19 - Throttle expensive elementFromPoint queries on mousemove
 **Learning:** High-frequency event listeners like `mousemove` can fire 125-1000 times per second. Synchronously performing expensive operations like `document.elementFromPoint()` (which forces a hit-test and layout recalculation) on every event blocks the main thread and causes severe UI jank.
 **Action:** Always throttle or debounce expensive DOM queries inside high-frequency event listeners. Using `requestAnimationFrame` bounds the processing cost to the display refresh rate (e.g., 60Hz), making the application much smoother.
+## 2024-05-19 - Skip string operations when filters are empty
+**Learning:** In backend routes processing large arrays (e.g., thousands of image paths), executing `toLowerCase()` and evaluating string matches inside a loop when no filter configuration is provided by the user generates massive, unnecessary garbage collection overhead and string allocation.
+**Action:** Always implement a fast-path that checks if filter arrays are empty before entering O(N) iteration loops over large datasets. Bypassing the loop entirely ensures optimal performance for the default/unfiltered use-case.
