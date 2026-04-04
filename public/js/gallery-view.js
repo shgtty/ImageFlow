@@ -152,6 +152,7 @@ const GalleryView = (() => {
             };
 
             img.src = allImagesUrls[i];
+            img.alt = typeof getFilename === 'function' ? getFilename(allImagesUrls[i]) : 'Image ' + (i + 1);
         }
 
         // バッチ内で順序通りにDOMへ追加していくためのポインタ
