@@ -242,6 +242,37 @@ const server = http.createServer((req, res) => {
 
         if (sortMode === 'asc') {
             allImages.sort((a, b) => a.localeCompare(b));
+        } else if (sortMode === 'folder_random') {
+            // フォルダごとにグループ化
+            const folderGroups = new Map();
+            for (const imgPath of allImages) {
+                let folderPath = '';
+                if (imgPath.includes('|')) {
+                    folderPath = imgPath.split('|')[0];
+                } else {
+                    const lastSlash = Math.max(imgPath.lastIndexOf('/'), imgPath.lastIndexOf('\\'));
+                    folderPath = lastSlash >= 0 ? imgPath.substring(0, lastSlash) : imgPath;
+                }
+
+                if (!folderGroups.has(folderPath)) {
+                    folderGroups.set(folderPath, []);
+                }
+                folderGroups.get(folderPath).push(imgPath);
+            }
+
+            // フォルダの順序を一定にするため、フォルダパスでソート
+            const sortedFolders = Array.from(folderGroups.keys()).sort((a, b) => a.localeCompare(b));
+
+            allImages = [];
+            for (const folder of sortedFolders) {
+                const groupImages = folderGroups.get(folder);
+                // フォルダ内の画像をシャッフル
+                for (let i = groupImages.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [groupImages[i], groupImages[j]] = [groupImages[j], groupImages[i]];
+                }
+                allImages.push(...groupImages);
+            }
         } else {
             // Shuffle (Fisher-Yates)
             for (let i = allImages.length - 1; i > 0; i--) {
