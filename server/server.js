@@ -251,7 +251,7 @@ const server = http.createServer((req, res) => {
                     folderPath = imgPath.split('|')[0];
                 } else {
                     const lastSlash = Math.max(imgPath.lastIndexOf('/'), imgPath.lastIndexOf('\\'));
-                    folderPath = lastSlash >= 0 ? imgPath.substring(0, lastSlash) : imgPath;
+                    folderPath = lastSlash >= 0 ? imgPath.substring(0, lastSlash) : '/';
                 }
 
                 if (!folderGroups.has(folderPath)) {

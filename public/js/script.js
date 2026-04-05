@@ -131,20 +131,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
         if (currentSort === 'asc') {
-            // 現在は昇順なので、ランダムへ切替えるためのアイコンを表示
-            sortIcon.innerHTML = '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>';
-            sortBtn.title = 'ランダム順に切替 (R)';
-            sortBtn.setAttribute('aria-label', sortBtn.title);
-        } else if (currentSort === 'folder_random') {
-            // 現在はフォルダ内ランダムなので、昇順(A-Z)へ切替えるためのアイコンを表示
-            sortIcon.innerHTML = '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>';
-            sortBtn.title = '昇順(A-Z)に切替 (R)';
-            sortBtn.setAttribute('aria-label', sortBtn.title);
-        } else {
-            // 現在はランダムなので、フォルダ内ランダムへ切替えるためのアイコンを表示
+            // 現在は昇順なので、フォルダ内ランダムへ切替えるためのアイコンを表示
             // フォルダ + シャッフルっぽいアイコンを合成
             sortIcon.innerHTML = '<path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2zm10 14H4V6h5.17l2 2H20v10z"/> <path d="M14.5 15.5l2.04-2.04-1.42-1.42L12 15.17l-1.59-1.59-1.41 1.41L12 18l2.5-2.5z" transform="translate(1, -2)"/>';
             sortBtn.title = 'フォルダ内ランダム順に切替 (R)';
+            sortBtn.setAttribute('aria-label', sortBtn.title);
+        } else if (currentSort === 'folder_random') {
+            // 現在はフォルダ内ランダムなので、ランダムへ切替えるためのアイコンを表示
+            sortIcon.innerHTML = '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>';
+            sortBtn.title = 'ランダム順に切替 (R)';
+            sortBtn.setAttribute('aria-label', sortBtn.title);
+        } else {
+            // 現在はランダムなので、昇順(A-Z)へ切替えるためのアイコンを表示
+            sortIcon.innerHTML = '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>';
+            sortBtn.title = '昇順(A-Z)に切替 (R)';
             sortBtn.setAttribute('aria-label', sortBtn.title);
         }
     }
@@ -560,9 +560,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let currentImgUrl = null;
         const nextSortMode = (current) => {
-            if (current === 'random') return 'folder_random';
-            if (current === 'folder_random') return 'asc';
-            return 'random';
+            if (current === 'asc') return 'folder_random';
+            if (current === 'folder_random') return 'random';
+            return 'asc';
         };
 
         if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
@@ -997,8 +997,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
 
-        if (currentSort !== 'asc') {
-            showModeOverlay('フォルダスキップは昇順(A-Z)ソート時のみ有効です', '', 0);
+        if (currentSort !== 'asc' && currentSort !== 'folder_random') {
+            showModeOverlay('フォルダスキップは昇順またはフォルダ内ランダム時のみ有効です', '', 0);
             return;
         }
 
