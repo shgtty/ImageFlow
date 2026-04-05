@@ -13,3 +13,6 @@
 ## 2024-05-19 - Skip string operations when filters are empty
 **Learning:** In backend routes processing large arrays (e.g., thousands of image paths), executing `toLowerCase()` and evaluating string matches inside a loop when no filter configuration is provided by the user generates massive, unnecessary garbage collection overhead and string allocation.
 **Action:** Always implement a fast-path that checks if filter arrays are empty before entering O(N) iteration loops over large datasets. Bypassing the loop entirely ensures optimal performance for the default/unfiltered use-case.
+## 2024-05-19 - Throttle synchronous DOM reads in high-frequency scroll events
+**Learning:** High-frequency event listeners like `scroll` can fire dozens of times per second. Reading layout properties (e.g., `document.documentElement.scrollHeight`, `window.scrollY`) inside these handlers forces synchronous layout calculation, causing main thread blocking and stuttering.
+**Action:** Always throttle expensive layout reads inside scroll handlers by wrapping the execution logic in a `requestAnimationFrame` block to bound calculations to the display refresh rate.
