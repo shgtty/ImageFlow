@@ -801,26 +801,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    let seekbarTooltipAnimationFrame = null;
+    let latestSeekbarMouseX = 0;
     seekbar.addEventListener('mousemove', (e) => {
         if (!seekbarTooltip || allImagesUrls.length === 0) return;
         
-        const rect = seekbar.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const width = rect.width;
+        latestSeekbarMouseX = e.clientX;
         
-        const pct = Math.max(0, Math.min(1, offsetX / width));
-        const index = Math.round(pct * (allImagesUrls.length - 1));
-        
-        // ツールチップの表示更新
-        seekbarTooltip.textContent = `${index + 1} / ${allImagesUrls.length}`;
-        
-        // コンテナ内での相対座標で配置
-        const containerRect = seekbarContainer.getBoundingClientRect();
-        seekbarTooltip.style.left = `${e.clientX - containerRect.left}px`;
-        seekbarTooltip.style.opacity = '1';
+        if (!seekbarTooltipAnimationFrame) {
+            seekbarTooltipAnimationFrame = requestAnimationFrame(() => {
+                const rect = seekbar.getBoundingClientRect();
+                const offsetX = latestSeekbarMouseX - rect.left;
+                const width = rect.width;
+
+                const pct = Math.max(0, Math.min(1, offsetX / width));
+                const index = Math.round(pct * (allImagesUrls.length - 1));
+
+                // ツールチップの表示更新
+                seekbarTooltip.textContent = `${index + 1} / ${allImagesUrls.length}`;
+
+                // コンテナ内での相対座標で配置
+                const containerRect = seekbarContainer.getBoundingClientRect();
+                seekbarTooltip.style.left = `${latestSeekbarMouseX - containerRect.left}px`;
+                seekbarTooltip.style.opacity = '1';
+                seekbarTooltipAnimationFrame = null;
+            });
+        }
     });
 
     seekbar.addEventListener('mouseleave', () => {
+        if (seekbarTooltipAnimationFrame) {
+            cancelAnimationFrame(seekbarTooltipAnimationFrame);
+            seekbarTooltipAnimationFrame = null;
+        }
         if (seekbarTooltip) seekbarTooltip.style.opacity = '0';
     });
 

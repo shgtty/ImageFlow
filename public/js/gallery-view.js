@@ -200,12 +200,18 @@ const GalleryView = (() => {
         currentIndex = max;
     }
 
+    let isManualScrollScheduled = false;
     function handleManualScroll() {
-        if (!isActive) return;
-        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-        if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && window.scrollY >= maxScroll - 2000) {
-            renderNextBatch(BATCH_SIZE);
-        }
+        if (!isActive || isManualScrollScheduled) return;
+
+        isManualScrollScheduled = true;
+        requestAnimationFrame(() => {
+            const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+            if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && window.scrollY >= maxScroll - 2000) {
+                renderNextBatch(BATCH_SIZE);
+            }
+            isManualScrollScheduled = false;
+        });
     }
 
     function startAutoScroll() {
