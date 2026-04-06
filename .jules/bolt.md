@@ -13,3 +13,6 @@
 ## 2024-05-19 - Skip string operations when filters are empty
 **Learning:** In backend routes processing large arrays (e.g., thousands of image paths), executing `toLowerCase()` and evaluating string matches inside a loop when no filter configuration is provided by the user generates massive, unnecessary garbage collection overhead and string allocation.
 **Action:** Always implement a fast-path that checks if filter arrays are empty before entering O(N) iteration loops over large datasets. Bypassing the loop entirely ensures optimal performance for the default/unfiltered use-case.
+## 2024-05-19 - Avoid synchronous config reads on every request
+**Learning:** Performing synchronous file reads (`fs.readFileSync`) inside request handlers blocks the Node.js event loop, preventing the server from processing other concurrent requests. This is particularly problematic in high-traffic APIs or when the event loop is already busy with heavy tasks like directory traversal.
+**Action:** Cache configuration data in memory at startup. Use `fs.watch` to monitor configuration files for changes and update the in-memory cache asynchronously. This ensures that request handlers can access configuration data instantly without blocking the event loop.
