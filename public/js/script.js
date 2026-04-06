@@ -293,9 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // After fade-out, reset internal message state
             setTimeout(() => {
                 currentModeMessage = '';
-                // currentFilterDisplay = ''; // Keep this or not? 
-                // User said "hide like notification", 
-                // so we don't want it to reappear alone later unless requested.
             }, 400);
         }, 3000);
     }
