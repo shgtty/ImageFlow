@@ -200,18 +200,26 @@ const GalleryView = (() => {
         currentIndex = max;
     }
 
-    let isManualScrollScheduled = false;
-    function handleManualScroll() {
-        if (!isActive || isManualScrollScheduled) return;
+    let isManualScrollPending = false;
 
-        isManualScrollScheduled = true;
-        requestAnimationFrame(() => {
-            const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-            if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && window.scrollY >= maxScroll - 2000) {
-                renderNextBatch(BATCH_SIZE);
-            }
-            isManualScrollScheduled = false;
-        });
+    function handleManualScroll() {
+        if (!isActive) return;
+
+        // ⚡ Bolt Optimization: Throttle expensive layout queries (scrollHeight, innerHeight, scrollY) on scroll events
+        // Bound the checks to requestAnimationFrame to prevent layout thrashing and main thread blocking during fast scrolling
+        if (!isManualScrollPending) {
+            isManualScrollPending = true;
+            requestAnimationFrame(() => {
+                isManualScrollPending = false;
+                if (!isActive) return;
+
+                const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && window.scrollY >= maxScroll - 2000) {
+                    renderNextBatch(BATCH_SIZE);
+                }
+            });
+        }
+    }
     }
 
     function startAutoScroll() {
