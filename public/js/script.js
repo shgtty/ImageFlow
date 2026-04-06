@@ -131,7 +131,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
         if (currentSort === 'asc') {
-            // 現在は昇順なので、ランダムへ切替えるためのアイコンを表示
+            // 現在は昇順なので、フォルダ単位ランダムへ切替えるためのアイコンを表示
+            sortIcon.innerHTML = '<path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" opacity="0.4"/><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>';
+            sortBtn.title = 'フォルダ単位ランダムに切替 (R)';
+            sortBtn.setAttribute('aria-label', sortBtn.title);
+        } else if (currentSort === 'folder-random') {
+            // 現在はフォルダ単位ランダムなので、ランダムへ切替えるためのアイコンを表示
             sortIcon.innerHTML = '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>';
             sortBtn.title = 'ランダム順に切替 (R)';
             sortBtn.setAttribute('aria-label', sortBtn.title);
@@ -225,33 +230,49 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             allImagesUrls = data.images;
-            seekbar.max = Math.max(0, allImagesUrls.length - 1);
-            updateSeekbar();
-            updateFilterBar(data);
-
-            const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
-            const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
-            const iconHtml = mode === 'dual'
-                ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
-                : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
-
-            showModeOverlay(modeName, sortName, allImagesUrls.length, iconHtml);
-
-            // Startup based on mode
+            // Calculate targetIndex first so we know where we start
             let targetIndex = 0;
             if (mode === 'dual' && typeof DualView !== 'undefined') {
                 if (dualSortMode === 'asc') {
                     targetIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || 0;
                     if (targetIndex >= allImagesUrls.length) targetIndex = 0;
                 }
-                DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
             } else if (typeof GalleryView !== 'undefined') {
                 if (gallerySortMode === 'asc') {
                     targetIndex = parseInt(localStorage.getItem(STORAGE_KEY_GALLERY_INDEX)) || 0;
                     if (targetIndex >= allImagesUrls.length) targetIndex = 0;
                 }
+            }
+
+            seekbar.max = Math.max(0, allImagesUrls.length - 1);
+            updateSeekbar(); // Will update correctly based on updated getFolderBounds once mode enters. Wait, updateSeekbar relies on View state. We'll update it again afterward.
+            updateFilterBar(data);
+
+            const sortNames = {
+                'asc': '昇順',
+                'folder-random': 'フォルダ単位ランダム',
+                'random': 'ランダム'
+            };
+            const sortName = sortNames[currentSort] || 'ランダム';
+            const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
+            const iconHtml = mode === 'dual'
+                ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
+                : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
+
+            let displayCount = allImagesUrls.length;
+            if (currentSort === 'folder-random') {
+                displayCount = getFolderBounds(targetIndex).total;
+            }
+
+            showModeOverlay(modeName, sortName, displayCount, iconHtml);
+
+            // Startup based on mode
+            if (mode === 'dual' && typeof DualView !== 'undefined') {
+                DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
+            } else if (typeof GalleryView !== 'undefined') {
                 GalleryView.enter(allImagesUrls, targetIndex, { onEnd: handleGalleryEnd });
             }
+            updateSeekbar();
             updateStopBtnIcon();
         } catch (error) {
             console.error('Error fetching images:', error);
@@ -408,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     seekbar.max = Math.max(0, allImagesUrls.length - 1);
                     
                     const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
-                    showModeOverlay('フィルター', enableInclude ? '有効' : '無効', allImagesUrls.length, iconHtml);
+                    let displayCount = allImagesUrls.length;
                     
                     let targetIndex = 0;
                     if (currentImgUrl) {
@@ -418,6 +439,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
+                    if (currentSort === 'folder-random') {
+                        displayCount = getFolderBounds(targetIndex).total;
+                    }
+
+                    showModeOverlay('フィルター', enableInclude ? '有効' : '無効', displayCount, iconHtml);
+                    
                     if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
                         DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
                     } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
@@ -435,6 +462,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+    function getFolderBounds(globalIndex) {
+        if (!allImagesUrls || allImagesUrls.length === 0 || globalIndex < 0 || globalIndex >= allImagesUrls.length) return { start: 0, end: 0, total: 0, relativeIndex: 0 };
+        const currentFolder = getFolderPath(allImagesUrls[globalIndex]);
+        let start = globalIndex;
+        while (start > 0 && getFolderPath(allImagesUrls[start - 1]) === currentFolder) { start--; }
+        let end = globalIndex;
+        while (end + 1 < allImagesUrls.length && getFolderPath(allImagesUrls[end + 1]) === currentFolder) { end++; }
+        return { start, end, total: end - start + 1, relativeIndex: globalIndex - start };
+    }
+
     function updateSeekbar() {
         if (!seekbar || allImagesUrls.length === 0 || isDraggingSeekbar) return;
         let currentIndex = 0;
@@ -444,8 +481,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
             currentIndex = GalleryView.currentIndex;
         }
-        seekbar.value = currentIndex;
-        seekbarInfo.textContent = `${currentIndex + 1} / ${allImagesUrls.length}`;
+        
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        if (currentSort === 'folder-random') {
+            const bounds = getFolderBounds(currentIndex);
+            seekbar.max = Math.max(0, bounds.total - 1);
+            seekbar.value = bounds.relativeIndex;
+            seekbarInfo.textContent = `${bounds.relativeIndex + 1} / ${bounds.total}`;
+        } else {
+            seekbar.max = Math.max(0, allImagesUrls.length - 1);
+            seekbar.value = currentIndex;
+            seekbarInfo.textContent = `${currentIndex + 1} / ${allImagesUrls.length}`;
+        }
         updateStopBtnIcon();
     }
 
@@ -487,8 +534,17 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSortIcon();
             updateModeIcon();
 
+            const sortNames = {
+                'asc': '昇順',
+                'folder-random': 'フォルダ単位ランダム',
+                'random': 'ランダム'
+            };
             const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
-            showModeOverlay('デュアルビューモード', dualSortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
+            let displayCount = allImagesUrls.length;
+            if (dualSortMode === 'folder-random') {
+                displayCount = getFolderBounds(index).total;
+            }
+            showModeOverlay('デュアルビューモード', sortNames[dualSortMode] || 'ランダム', displayCount, iconHtml);
 
             if (gallerySortMode !== dualSortMode) {
                 fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
@@ -499,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         seekbar.value = 0;
                         seekbarInfo.textContent = '0 / 0';
                         DualView.enter([], 0, dualInterval, handleDualExit);
-                        showModeOverlay('画像が見つかりませんでした', dualSortMode === 'asc' ? '昇順' : 'ランダム', 0);
+                        showModeOverlay('画像が見つかりませんでした', sortNames[dualSortMode] || 'ランダム', 0);
                         return;
                     }
 
@@ -535,8 +591,17 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSortIcon();
         updateModeIcon();
 
+        const sortNames = {
+            'asc': '昇順',
+            'folder-random': 'フォルダ単位ランダム',
+            'random': 'ランダム'
+        };
         const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
-        showModeOverlay('ギャラリーモード', gallerySortMode === 'asc' ? '昇順' : 'ランダム', allImagesUrls.length, iconHtml);
+        let displayCount = allImagesUrls.length;
+        if (gallerySortMode === 'folder-random') {
+            displayCount = getFolderBounds(exitIndex).total;
+        }
+        showModeOverlay('ギャラリーモード', sortNames[gallerySortMode] || 'ランダム', displayCount, iconHtml);
 
         if (gallerySortMode !== dualSortMode) {
             loadImages();
@@ -550,6 +615,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         let currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
         
+        // asc -> folder-random -> random -> asc
+        const nextSortMode = (current) => {
+            if (current === 'asc') return 'folder-random';
+            if (current === 'folder-random') return 'random';
+            return 'asc';
+        };
+
         let currentImgUrl = null;
         if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
             currentImgUrl = allImagesUrls[DualView.currentIndex];
@@ -557,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastDualIndex = DualView.currentIndex;
                 localStorage.setItem(STORAGE_KEY_DUAL_INDEX, lastDualIndex);
             }
-            dualSortMode = (dualSortMode === 'random' ? 'asc' : 'random');
+            dualSortMode = nextSortMode(dualSortMode);
             localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
             currentSort = dualSortMode;
         } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive && allImagesUrls.length > 0) {
@@ -565,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gallerySortMode === 'asc') {
                 localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
             }
-            gallerySortMode = (gallerySortMode === 'random' ? 'asc' : 'random');
+            gallerySortMode = nextSortMode(gallerySortMode);
             localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
             currentSort = gallerySortMode;
         }
@@ -577,6 +649,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 allImagesUrls = data.images;
 
+                const sortNames = {
+                    'asc': '昇順',
+                    'folder-random': 'フォルダ単位ランダム',
+                    'random': 'ランダム'
+                };
+                const sortName = sortNames[currentSort] || 'ランダム';
+
                 if (allImagesUrls.length === 0) {
                     seekbar.max = 0;
                     seekbar.value = 0;
@@ -586,7 +665,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
                         GalleryView.updateImagesAndReset([], 0);
                     }
-                    const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
                     showModeOverlay('画像が見つかりませんでした', sortName, 0);
                     return;
                 }
@@ -595,7 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentImgUrl) {
                     const newIdx = allImagesUrls.indexOf(currentImgUrl);
                     if (currentSort === 'asc') {
-                        // ランダム表示からソート表示（昇順）へ戻る場合は、以前の場所（lastDualIndex）を優先する
+                        // ランダムやフォルダランダムからソート表示（昇順）へ戻る場合は、以前の場所（lastDualIndex/GALLERY_INDEX）を優先する
                         if (mode === 'dual' && lastDualIndex >= 0) {
                             targetIndex = lastDualIndex;
                         } else if (mode === 'gallery') {
@@ -604,24 +682,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else if (newIdx >= 0) {
                             targetIndex = newIdx;
                         }
+                    } else if (currentSort === 'folder-random') {
+                        // フォルダ内ランダムへの遷移: 遷移元の画像があった「フォルダ」を維持するため、同じ画像のインデックスを探す
+                        if (newIdx >= 0) {
+                            targetIndex = newIdx;
+                        } else {
+                            // フォールバック: とりあえず0から
+                            targetIndex = 0;
+                        }
                     } else {
-                        // ソート表示からランダム表示へ移行する場合は、シャッフルされたリストの先頭から表示して画面を完全に再描画する
+                        // ランダム表示へ移行する場合は、シャッフルされたリストの先頭から表示して画面を完全に再描画する
                         targetIndex = 0;
                     }
                 }
 
                 seekbar.max = Math.max(0, allImagesUrls.length - 1);
-                const sortName = currentSort === 'asc' ? '昇順' : 'ランダム';
+
+                let displayCount = allImagesUrls.length;
+                if (currentSort === 'folder-random') {
+                    displayCount = getFolderBounds(targetIndex).total;
+                }
 
                 if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
                     DualView.updateImagesAndReset(allImagesUrls, targetIndex);
                     const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
-                    showModeOverlay('デュアルビューモード', sortName, allImagesUrls.length, iconHtml);
+                    showModeOverlay('デュアルビューモード', sortName, displayCount, iconHtml);
                 } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
                     GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
                     window.scrollTo(0, 0);
                     const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
-                    showModeOverlay('ギャラリーモード', sortName, allImagesUrls.length, iconHtml);
+                    showModeOverlay('ギャラリーモード', sortName, displayCount, iconHtml);
                 }
                 updateSeekbar();
                 updateFilterBar(data);
@@ -779,11 +869,23 @@ document.addEventListener('DOMContentLoaded', () => {
         resetActivityTimer();
         isDraggingSeekbar = true;
         if (allImagesUrls.length === 0) return;
-        const index = parseInt(seekbar.value);
-        seekbarInfo.textContent = `${index + 1} / ${allImagesUrls.length}`;
+        const val = parseInt(seekbar.value);
+        let absoluteIndex = val;
+        let displayTotal = allImagesUrls.length;
+        
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        if (currentSort === 'folder-random') {
+            const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
+            const bounds = getFolderBounds(currentIndex);
+            absoluteIndex = bounds.start + val;
+            displayTotal = bounds.total;
+        }
+
+        seekbarInfo.textContent = `${val + 1} / ${displayTotal}`;
         
         if (DualView.isActive) {
-            DualView.updateImagesAndReset(allImagesUrls, index, true);
+            DualView.updateImagesAndReset(allImagesUrls, absoluteIndex, true);
         }
     });
 
@@ -791,10 +893,19 @@ document.addEventListener('DOMContentLoaded', () => {
         resetActivityTimer(); // 操作後はタイマーリセット
         isDraggingSeekbar = false;
         if (allImagesUrls.length === 0) return;
-        const index = parseInt(seekbar.value);
+        const val = parseInt(seekbar.value);
+        let absoluteIndex = val;
+        
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        if (currentSort === 'folder-random') {
+            const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
+            const bounds = getFolderBounds(currentIndex);
+            absoluteIndex = bounds.start + val;
+        }
         
         if (GalleryView.isActive) {
-            GalleryView.updateImagesAndReset(allImagesUrls, index, { restoreSpeed: true });
+            GalleryView.updateImagesAndReset(allImagesUrls, absoluteIndex, { restoreSpeed: true });
             window.scrollTo(0, 0);
         }
     });
@@ -813,10 +924,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const width = rect.width;
 
                 const pct = Math.max(0, Math.min(1, offsetX / width));
-                const index = Math.round(pct * (allImagesUrls.length - 1));
-
-                // ツールチップの表示更新
-                seekbarTooltip.textContent = `${index + 1} / ${allImagesUrls.length}`;
+                
+                const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+                const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+                if (currentSort === 'folder-random') {
+                    const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
+                    const bounds = getFolderBounds(currentIndex);
+                    const index = Math.round(pct * (bounds.total - 1));
+                    seekbarTooltip.textContent = `${index + 1} / ${bounds.total}`;
+                } else {
+                    const index = Math.round(pct * (allImagesUrls.length - 1));
+                    seekbarTooltip.textContent = `${index + 1} / ${allImagesUrls.length}`;
+                }
 
                 // コンテナ内での相対座標で配置
                 const containerRect = seekbarContainer.getBoundingClientRect();
@@ -996,8 +1115,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
 
-        if (currentSort !== 'asc') {
-            showModeOverlay('フォルダスキップは昇順(A-Z)ソート時のみ有効です', '', 0);
+        if (currentSort !== 'asc' && currentSort !== 'folder-random') {
+            showModeOverlay('フォルダスキップは昇順またはフォルダ単位ランダム時のみ有効です', '', 0);
             return;
         }
 

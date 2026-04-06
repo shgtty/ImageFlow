@@ -259,48 +259,75 @@ const DualView = (() => {
 
     async function next(step, silent = false) {
         const moveAmount = (typeof step === 'number') ? step : lastShownCount;
+        const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
+        const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
+        const folderRandom = currentSort === 'folder-random';
+        
+        const currentFolder = folderRandom && typeof getFolderPath === 'function' ? getFolderPath(images[currentIndex]) : null;
+
+        let nextIndex = currentIndex;
         if (currentIndex + moveAmount < images.length) {
-            currentIndex += moveAmount;
+            nextIndex += moveAmount;
         } else if (moveAmount > 1 && currentIndex + 1 < images.length) {
-            currentIndex += 1;
+            nextIndex += 1;
         } else {
-            // Loop back to start
-            currentIndex = 0;
+            nextIndex = 0;
         }
+
+        if (currentFolder) {
+            if (nextIndex === 0 || getFolderPath(images[nextIndex]) !== currentFolder) {
+                // Loop back to the start of the current folder
+                let startOfFolder = currentIndex;
+                while (startOfFolder > 0 && getFolderPath(images[startOfFolder - 1]) === currentFolder) {
+                    startOfFolder--;
+                }
+                nextIndex = startOfFolder;
+            }
+        }
+
+        currentIndex = nextIndex;
         await render();
         if (!silent) showIndicator();
     }
 
     async function prev(step, silent = false) {
+        const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
+        const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
+        const folderRandom = currentSort === 'folder-random';
+        const currentFolder = folderRandom && typeof getFolderPath === 'function' ? getFolderPath(images[currentIndex]) : null;
+
+        let targetIndex;
         if (currentIndex <= 0) {
-            // Loop back to end
-            await goToLast(silent);
-            return;
+            targetIndex = images.length - 1;
+        } else if (typeof step === 'number') {
+            targetIndex = Math.max(0, currentIndex - step);
+        } else {
+            let prevIndex = currentIndex - 1;
+            if (prevIndex > 0) {
+                const dimsPrev = await getImageDims(images[prevIndex]);
+                const dimsPrevPrev = await getImageDims(images[prevIndex - 1]);
+                const isPrevPortrait = dimsPrev.width <= dimsPrev.height;
+                const isPrevPrevPortrait = dimsPrevPrev.width <= dimsPrevPrev.height;
+                if (isPrevPortrait && isPrevPrevPortrait) {
+                    prevIndex = prevIndex - 1;
+                }
+            }
+            targetIndex = prevIndex;
         }
 
-        if (typeof step === 'number') {
-            currentIndex = Math.max(0, currentIndex - step);
-            await render();
-            if (!silent) showIndicator();
-            return;
-        }
-
-        // Determine previous page start (default behavior)
-        let prevIndex = currentIndex - 1;
-        if (prevIndex > 0) {
-            // Check if we can fit two portraits (prevIndex-1 and prevIndex)
-            const dimsPrev = await getImageDims(images[prevIndex]);
-            const dimsPrevPrev = await getImageDims(images[prevIndex - 1]);
-
-            const isPrevPortrait = dimsPrev.width <= dimsPrev.height;
-            const isPrevPrevPortrait = dimsPrevPrev.width <= dimsPrevPrev.height;
-
-            if (isPrevPortrait && isPrevPrevPortrait) {
-                prevIndex = prevIndex - 1;
+        if (currentFolder) {
+            if (targetIndex === images.length - 1 || getFolderPath(images[targetIndex]) !== currentFolder) {
+                // Loop forward to the end of the current folder
+                let endOfFolder = currentIndex;
+                while (endOfFolder + 1 < images.length && getFolderPath(images[endOfFolder + 1]) === currentFolder) {
+                    endOfFolder++;
+                }
+                targetIndex = endOfFolder;
+                // Basic portrait correction for end of folder if needed could go here, but simple endOfFolder is fine.
             }
         }
 
-        currentIndex = prevIndex;
+        currentIndex = targetIndex;
         await render();
         if (!silent) showIndicator();
     }
@@ -411,16 +438,34 @@ const DualView = (() => {
     function showIndicator(customText) {
         const indicator = document.getElementById('speed-indicator');
         if (indicator) {
+            let displayIndex = currentIndex;
+            let displayEndIdx = Math.min(currentIndex + lastShownCount, images.length);
+            let displayTotal = images.length;
+
+            const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
+            const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
+            
+            if (currentSort === 'folder-random' && typeof getFolderPath === 'function') {
+                const currentFolder = getFolderPath(images[currentIndex]);
+                let start = currentIndex;
+                while (start > 0 && getFolderPath(images[start - 1]) === currentFolder) { start--; }
+                let end = currentIndex;
+                while (end + 1 < images.length && getFolderPath(images[end + 1]) === currentFolder) { end++; }
+                
+                displayIndex = currentIndex - start;
+                displayTotal = end - start + 1;
+                // Since dual view can straddle folder bounds, cap endIdx at folder size
+                displayEndIdx = Math.min(displayIndex + lastShownCount, displayTotal);
+            }
+
             if (customText) {
                 indicator.textContent = customText;
             } else if (isPaused) {
                 indicator.textContent = `Dual View: Paused (Next in ${advanceInterval}s)`;
             } else if (advanceInterval > 0) {
-                const endIdx = Math.min(currentIndex + lastShownCount, images.length);
-                indicator.textContent = `Dual View: Auto (${advanceInterval}s) | ${currentIndex + 1}${lastShownCount > 1 ? '-' + endIdx : ''} / ${images.length}`;
+                indicator.textContent = `Dual View: Auto (${advanceInterval}s) | ${displayIndex + 1}${lastShownCount > 1 ? '-' + displayEndIdx : ''} / ${displayTotal}`;
             } else {
-                const endIdx = Math.min(currentIndex + lastShownCount, images.length);
-                indicator.textContent = `Dual View: Manual | ${currentIndex + 1}${lastShownCount > 1 ? '-' + endIdx : ''} / ${images.length}`;
+                indicator.textContent = `Dual View: Manual | ${displayIndex + 1}${lastShownCount > 1 ? '-' + displayEndIdx : ''} / ${displayTotal}`;
             }
             indicator.style.opacity = '1';
 

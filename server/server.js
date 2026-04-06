@@ -242,6 +242,29 @@ const server = http.createServer((req, res) => {
 
         if (sortMode === 'asc') {
             allImages.sort((a, b) => a.localeCompare(b));
+        } else if (sortMode === 'folder-random') {
+            const groups = new Map();
+            for (let i = 0; i < allImages.length; i++) {
+                const img = allImages[i];
+                const folderKey = img.includes('|') ? img.split('|')[0] : path.dirname(img);
+                if (!groups.has(folderKey)) {
+                    groups.set(folderKey, []);
+                }
+                groups.get(folderKey).push(img);
+            }
+            const sortedKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+            
+            allImages = [];
+            for (const key of sortedKeys) {
+                const groupImgs = groups.get(key);
+                for (let i = groupImgs.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [groupImgs[i], groupImgs[j]] = [groupImgs[j], groupImgs[i]];
+                }
+                for (let i = 0; i < groupImgs.length; i++) {
+                    allImages.push(groupImgs[i]);
+                }
+            }
         } else {
             // Shuffle (Fisher-Yates)
             for (let i = allImages.length - 1; i > 0; i--) {

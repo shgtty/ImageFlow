@@ -120,22 +120,46 @@ const GalleryView = (() => {
     }
 
     function renderNextBatch(count = BATCH_SIZE) {
-        if (currentIndex >= allImagesUrls.length) return;
+        if (allImagesUrls.length === 0) return;
+        if (currentIndex >= allImagesUrls.length) {
+            // Should normally not happen if we loop but just a safety check
+            currentIndex = 0;
+        }
 
         const myRenderId = currentRenderId;
-
-        const max = Math.min(currentIndex + count, allImagesUrls.length);
-        pendingImages += (max - currentIndex);
+        const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
+        const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
+        const folderRandom = currentSort === 'folder-random';
+        const currentFolder = folderRandom && typeof getFolderPath === 'function' ? getFolderPath(allImagesUrls[currentIndex]) : null;
 
         const batchImages = [];
-        let loadedCount = 0;
-        const totalInBatch = max - currentIndex;
+        let tempIndex = currentIndex;
 
-        // すべての画像を一度に並列で読み込み開始しつつ、表示順序はインデックス順を厳密に守る。
-        // これにより、フォルダスキップ時などに先頭の画像が正しい位置（一番上）に表示される。
-        for (let i = currentIndex; i < max; i++) {
+        for (let i = 0; i < count; i++) {
+            if (tempIndex >= allImagesUrls.length) {
+                if (folderRandom && currentFolder) {
+                    // Reached the end of the array, but since it's folder-random, it might mean the end of the folder is the end of the array. Wrap around!
+                    let startOfFolder = tempIndex - 1;
+                    while (startOfFolder > 0 && getFolderPath(allImagesUrls[startOfFolder - 1]) === currentFolder) {
+                        startOfFolder--;
+                    }
+                    tempIndex = startOfFolder;
+                } else {
+                    break; // Normal mode -> end
+                }
+            } else if (folderRandom && currentFolder && getFolderPath(allImagesUrls[tempIndex]) !== currentFolder) {
+               // Hit folder boundary
+               let startOfFolder = tempIndex - 1;
+               while (startOfFolder > 0 && getFolderPath(allImagesUrls[startOfFolder - 1]) === currentFolder) {
+                   startOfFolder--;
+               }
+               tempIndex = startOfFolder;
+            }
+
+            const activeIndex = tempIndex;
+
             const img = document.createElement('img');
-            img.dataset.index = i;
+            img.dataset.index = activeIndex;
 
             const obj = { img, loaded: false, error: false };
             batchImages.push(obj);
@@ -151,9 +175,16 @@ const GalleryView = (() => {
                 processBatchQueue();
             };
 
-            img.src = allImagesUrls[i];
-            img.alt = typeof getFilename === 'function' ? getFilename(allImagesUrls[i]) : 'Image ' + (i + 1);
+            img.src = allImagesUrls[activeIndex];
+            img.alt = typeof getFilename === 'function' ? getFilename(allImagesUrls[activeIndex]) : 'Image ' + (activeIndex + 1);
+            
+            tempIndex++;
         }
+
+        const totalInBatch = batchImages.length;
+        if (totalInBatch === 0) return;
+        
+        pendingImages += totalInBatch;
 
         // バッチ内で順序通りにDOMへ追加していくためのポインタ
         let nextToPlace = 0;
@@ -197,7 +228,7 @@ const GalleryView = (() => {
             }
         }
 
-        currentIndex = max;
+        currentIndex = tempIndex;
     }
 
     let isManualScrollPending = false;
@@ -251,8 +282,19 @@ const GalleryView = (() => {
             scrollSpeed = 0;
             saveSpeed();
             updateSpeedIndicator();
-        } else if (allImagesUrls.length > 0 && currentIndex >= allImagesUrls.length && pendingImages === 0 && window.scrollY >= maxScroll - 1 && scrollSpeed > 0) {
-            // SCROLL DISTANCE = 0 leads to infinite instant loops. Prevent this if no scrolling is possible.
+        } else if (allImagesUrls.length > 0 && pendingImages === 0 && window.scrollY >= maxScroll - 1 && scrollSpeed > 0) {
+            // Check if we hit the end of all galleries (in folder-random mode, currentIndex never reaches the end smoothly due to wrap around, but if maxScroll reached it will trigger reload)
+            const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
+            const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
+            const folderRandom = currentSort === 'folder-random';
+            
+            if (!folderRandom && currentIndex >= allImagesUrls.length) {
+                // Actually hit the end
+            } else if (!folderRandom) {
+                return // Not reached end yet
+            }
+            
+            // Loop reload logic
             if (maxScroll <= 0) {
                 if (endDelayStartTime === 0) {
                     endDelayStartTime = performance.now();
