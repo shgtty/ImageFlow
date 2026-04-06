@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { getFolderPath, getFolderDisplayName } = require('../public/js/utils.js');
+const { getFolderPath, getFolderDisplayName, getFilename } = require('../public/js/utils.js');
 
 const BASE_URL = 'http://localhost';
 
@@ -65,5 +65,46 @@ test('getFolderDisplayName utility', async (t) => {
     await t.test('handles root level file', () => {
         const url = `${BASE_URL}/image?path=C:\\image.jpg`;
         assert.strictEqual(getFolderDisplayName(url, BASE_URL), 'C:');
+    });
+});
+
+test('getFilename utility', async (t) => {
+    await t.test('extracts filename from Windows path', () => {
+        const url = `${BASE_URL}/image?path=C:\\Photos\\img.jpg`;
+        assert.strictEqual(getFilename(url, BASE_URL), 'img.jpg');
+    });
+
+    await t.test('extracts filename from Unix path', () => {
+        const url = `${BASE_URL}/image?path=/home/user/pictures/cat.png`;
+        assert.strictEqual(getFilename(url, BASE_URL), 'cat.png');
+    });
+
+    await t.test('extracts filename from ZIP entry', () => {
+        const url = `${BASE_URL}/image?path=C:\\Archive.zip|vacation/beach.png`;
+        assert.strictEqual(getFilename(url, BASE_URL), 'beach.png');
+    });
+
+    await t.test('extracts filename from ZIP entry (no internal folder)', () => {
+        const url = `${BASE_URL}/image?path=C:\\Archive.zip|photo.jpg`;
+        assert.strictEqual(getFilename(url, BASE_URL), 'photo.jpg');
+    });
+
+    await t.test('falls back to pathname if path parameter is missing', () => {
+        const url = `${BASE_URL}/assets/logo.svg`;
+        assert.strictEqual(getFilename(url, BASE_URL), 'logo.svg');
+    });
+
+    await t.test('handles filenames with no slashes', () => {
+        const url = `${BASE_URL}/image?path=justname.jpg`;
+        assert.strictEqual(getFilename(url, BASE_URL), 'justname.jpg');
+    });
+
+    await t.test('handles empty or missing input', () => {
+        const url = `${BASE_URL}/image?path=`;
+        assert.strictEqual(getFilename(url, BASE_URL), 'image'); // urlObj.pathname is '/image'
+    });
+
+    await t.test('handles invalid URLs gracefully', () => {
+        assert.strictEqual(getFilename('://'), '');
     });
 });
