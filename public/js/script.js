@@ -262,9 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function showModeOverlay(modeName, sortName, count, iconHtml) {
         if (!modeOverlay) return;
 
-        const sortPart = sortName ? ` [${sortName}]` : '';
+        const safeModeName = escapeHTML(modeName);
+        const sortPart = sortName ? ` [${escapeHTML(sortName)}]` : '';
         const countPart = (typeof count === 'number' && count > 0) ? ` [${count}枚]` : '';
-        currentModeMessage = `${iconHtml || ''} <span>${modeName}${sortPart}${countPart}</span>`;
+        currentModeMessage = `${iconHtml || ''} <span>${safeModeName}${sortPart}${countPart}</span>`;
         
         displayOverlayTemporarily();
     }
@@ -276,8 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFilterDisplay = '';
         } else {
             const modeText = data.filterMode === 'OR' ? 'OR条件' : 'AND条件';
-            const keywords = data.filterInclude.join(', ');
-            currentFilterDisplay = `<span><span class="filter-label">${modeText}:</span> ${keywords}</span>`;
+            const keywords = data.filterInclude.map(k => escapeHTML(k)).join(', ');
+            currentFilterDisplay = `<span><span class="filter-label">${escapeHTML(modeText)}:</span> ${keywords}</span>`;
         }
         
         displayOverlayTemporarily();

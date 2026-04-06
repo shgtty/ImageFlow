@@ -71,6 +71,21 @@ function getFilename(url, base) {
     }
 }
 
+/**
+ * Escapes HTML special characters in a string.
+ * @param {string} str - The string to escape.
+ * @returns {string} The escaped string.
+ */
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getFolderPath, getFolderDisplayName, getFilename };
+    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML };
 }
