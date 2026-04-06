@@ -16,3 +16,6 @@
 ## 2024-05-19 - Avoid synchronous config reads on every request
 **Learning:** Performing synchronous file reads (`fs.readFileSync`) inside request handlers blocks the Node.js event loop, preventing the server from processing other concurrent requests. This is particularly problematic in high-traffic APIs or when the event loop is already busy with heavy tasks like directory traversal.
 **Action:** Cache configuration data in memory at startup. Use `fs.watch` to monitor configuration files for changes and update the in-memory cache asynchronously. This ensures that request handlers can access configuration data instantly without blocking the event loop.
+## 2024-05-19 - Throttle synchronous DOM reads in high-frequency scroll events
+**Learning:** High-frequency event listeners like `scroll` can fire dozens of times per second. Reading layout properties (e.g., `document.documentElement.scrollHeight`, `window.scrollY`) inside these handlers forces synchronous layout calculation, causing main thread blocking and stuttering.
+**Action:** Always throttle expensive layout reads inside scroll handlers by wrapping the execution logic in a `requestAnimationFrame` block to bound calculations to the display refresh rate.
