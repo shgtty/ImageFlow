@@ -13,14 +13,6 @@ const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'in
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
-// Configuration cache
-let cachedFolders = [];
-let cachedIncludes = [];
-let cachedExcludes = [];
-let cachedIncludeMode = 'AND';
-let cachedIncludesLower = [];
-let cachedExcludesLower = [];
-
 function getZipInstance(zipPath) {
     const stats = fs.statSync(zipPath);
     const mtime = stats.mtimeMs;
@@ -43,11 +35,12 @@ function getZipInstance(zipPath) {
     return zip;
 }
 
-function loadFolders() {
+function getAllowedPaths() {
+    let folders = [];
     try {
         if (fs.existsSync(CONFIG_FILE)) {
             const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
-            cachedFolders = content.split('\n')
+            folders = content.split('\n')
                              .map(line => line.trim())
                              .filter(line => line && !line.startsWith('#'))
                              .map(line => path.resolve(line))
@@ -55,59 +48,11 @@ function loadFolders() {
         } else {
             const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
             fs.writeFileSync(CONFIG_FILE, defaultFoldersText, 'utf-8');
-            cachedFolders = [];
         }
     } catch (err) {
         console.error('Error handling folders.txt:', err);
     }
-}
-
-function loadFilters() {
-    try {
-        let includes = [];
-        let excludes = [];
-        let includeMode = 'AND';
-
-        if (fs.existsSync(INCLUDE_FILE)) {
-            let lines = fs.readFileSync(INCLUDE_FILE, 'utf-8')
-                         .split('\n')
-                         .map(l => l.trim())
-                         .filter(l => l && !l.startsWith('#'));
-
-            if (lines.includes('MODE:OR')) {
-                includeMode = 'OR';
-                lines = lines.filter(l => l !== 'MODE:OR');
-            } else if (lines.includes('MODE:AND')) {
-                includeMode = 'AND';
-                lines = lines.filter(l => l !== 'MODE:AND');
-            }
-            includes = lines;
-        } else {
-            const defaultIncludeText = `# ここに記述された文字列がファイルパスに含まれる画像のみを表示します（1行に1つ）\n# デフォルトはすべての単語を含む画像を表示する「AND検索」です。\n# どれか一つでも含むものを表示する「OR検索」に切り替えたい場合は、ファイル内に MODE:OR と記述してください。\n\n# 例:\nanime\nsummer\n`;
-            fs.writeFileSync(INCLUDE_FILE, defaultIncludeText, 'utf-8');
-        }
-
-        if (fs.existsSync(EXCLUDE_FILE)) {
-            excludes = fs.readFileSync(EXCLUDE_FILE, 'utf-8')
-                         .split('\n')
-                         .map(l => l.trim())
-                         .filter(l => l && !l.startsWith('#'));
-        } else {
-            fs.writeFileSync(EXCLUDE_FILE, '# ここに記述された文字列がファイルパスに含まれる画像を除外します（1行に1つ）\n# 例: thumbnail\n', 'utf-8');
-        }
-
-        cachedIncludes = includes;
-        cachedExcludes = excludes;
-        cachedIncludeMode = includeMode;
-        cachedIncludesLower = includes.map(inc => inc.toLowerCase());
-        cachedExcludesLower = excludes.map(exc => exc.toLowerCase());
-    } catch(e) {
-        console.error('Error reading filter files:', e);
-    }
-}
-
-function getAllowedPaths() {
-    return cachedFolders;
+    return folders;
 }
 
 // ⚡ Bolt Optimization: Recursive helper that takes Dirent array from withFileTypes to prevent redundant fs.statSync calls
@@ -213,13 +158,50 @@ const server = http.createServer((req, res) => {
         const enableInclude = reqUrl.searchParams.get('enableInclude') !== 'false';
         let folders = getAllowedPaths();
         
-        // Use cached filtering configuration
-        let includes = enableInclude ? cachedIncludes : [];
-        let excludes = cachedExcludes;
-        let includeMode = cachedIncludeMode;
+        // フィルタリング設定ファイル（ホワイトリスト・ブラックリスト）の読み込み
+        let includes = [];
+        let excludes = [];
+        let includeMode = 'AND'; // デフォルトの判定モードをANDに変更
         
-        const includesLower = enableInclude ? cachedIncludesLower : [];
-        const excludesLower = cachedExcludesLower;
+        try {
+            if (fs.existsSync(INCLUDE_FILE)) {
+                let lines = fs.readFileSync(INCLUDE_FILE, 'utf-8')
+                             .split('\n')
+                             .map(l => l.trim())
+                             .filter(l => l && !l.startsWith('#'));
+
+                // モード切り替え行の検出
+                if (lines.includes('MODE:OR')) {
+                    includeMode = 'OR';
+                    lines = lines.filter(l => l !== 'MODE:OR');
+                } else if (lines.includes('MODE:AND')) {
+                    includeMode = 'AND';
+                    lines = lines.filter(l => l !== 'MODE:AND');
+                }
+
+                if (enableInclude) {
+                    includes = lines;
+                }
+            } else {
+                const defaultIncludeText = `# ここに記述された文字列がファイルパスに含まれる画像のみを表示します（1行に1つ）\n# デフォルトはすべての単語を含む画像を表示する「AND検索」です。\n# どれか一つでも含むものを表示する「OR検索」に切り替えたい場合は、ファイル内に MODE:OR と記述してください。\n\n# 例:\nanime\nsummer\n`;
+                fs.writeFileSync(INCLUDE_FILE, defaultIncludeText, 'utf-8');
+            }
+
+            if (fs.existsSync(EXCLUDE_FILE)) {
+                excludes = fs.readFileSync(EXCLUDE_FILE, 'utf-8')
+                             .split('\n')
+                             .map(l => l.trim())
+                             .filter(l => l && !l.startsWith('#'));
+            } else {
+                fs.writeFileSync(EXCLUDE_FILE, '# ここに記述された文字列がファイルパスに含まれる画像を除外します（1行に1つ）\n# 例: thumbnail\n', 'utf-8');
+            }
+        } catch(e) {
+            console.error('Error reading filter files:', e);
+        }
+
+        // ⚡ Bolt Optimization: Pre-calculate lowercased filters to avoid redundant O(N*M) string operations per image
+        const includesLower = includes.map(inc => inc.toLowerCase());
+        const excludesLower = excludes.map(exc => exc.toLowerCase());
 
         let allImages = [];
 
@@ -394,32 +376,6 @@ const server = http.createServer((req, res) => {
         res.end('Not found');
     }
 });
-
-// Initialize cache
-loadFolders();
-loadFilters();
-
-// Setup file watchers
-function watchFile(filename, reloadFn) {
-    let debounceTimer;
-    try {
-        fs.watch(filename, (event) => {
-            if (event === 'change') {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => {
-                    console.log(`Config file changed: ${filename}. Reloading...`);
-                    reloadFn();
-                }, 100);
-            }
-        });
-    } catch (err) {
-        console.error(`Error watching ${filename}:`, err);
-    }
-}
-
-watchFile(CONFIG_FILE, loadFolders);
-watchFile(INCLUDE_FILE, loadFilters);
-watchFile(EXCLUDE_FILE, loadFilters);
 
 server.listen(PORT, () => {
     console.log(`=========================================`);

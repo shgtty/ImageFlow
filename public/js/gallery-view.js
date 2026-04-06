@@ -220,7 +220,6 @@ const GalleryView = (() => {
             });
         }
     }
-    }
 
     function startAutoScroll() {
         if (!isScrolling && scrollSpeed !== 0) {
