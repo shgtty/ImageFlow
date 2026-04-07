@@ -16,3 +16,7 @@
 ## 2024-05-19 - Avoid layout thrashing inside scroll and mousemove event listeners
 **Learning:** Synchronous DOM reads (like `scrollHeight`, `scrollY`, or `getBoundingClientRect()`) inside high-frequency event listeners (`scroll`, `mousemove`) cause the browser to perform expensive hit-testing and synchronous layout recalculations, severely blocking the main thread and resulting in UI jank.
 **Action:** Always throttle these expensive synchronous DOM reads using `requestAnimationFrame`. This bounds the processing to the display refresh rate and prevents layout thrashing during continuous scrolling or mouse movement.
+
+## 2024-05-19 - Avoid synchronous file reads inside request handlers
+**Learning:** Performing synchronous file operations like `fs.readFileSync` inside high-frequency request routes (such as serving thousands of images via a `/image` endpoint or an `/api/images` data fetch) completely blocks the Node.js event loop for all users.
+**Action:** Always cache file contents in memory at startup. For configuration files that might change, use `fs.watch` to asynchronously update the memory cache instead of reading from disk on every request.
