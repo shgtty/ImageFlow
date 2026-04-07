@@ -13,6 +13,106 @@ const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'in
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
+// ⚡ Bolt Optimization: Memory cache for configuration to avoid synchronous file reads blocking event loop
+const cachedConfig = {
+    folders: [],
+    includes: [],
+    excludes: [],
+    includeMode: 'AND',
+    includesLower: [],
+    excludesLower: []
+};
+
+function loadFolders() {
+    try {
+        if (!fs.existsSync(CONFIG_FILE)) {
+            const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
+            fs.writeFileSync(CONFIG_FILE, defaultFoldersText, 'utf-8');
+        }
+        const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
+        cachedConfig.folders = content.split('\n')
+                         .map(line => line.trim())
+                         .filter(line => line && !line.startsWith('#'))
+                         .map(line => path.resolve(line))
+                         .filter(line => fs.existsSync(line));
+    } catch (err) {
+        console.error('Error handling folders.txt:', err);
+    }
+}
+
+function loadIncludes() {
+    try {
+        if (!fs.existsSync(INCLUDE_FILE)) {
+            const defaultIncludeText = `# ここに記述された文字列がファイルパスに含まれる画像のみを表示します（1行に1つ）\n# デフォルトはすべての単語を含む画像を表示する「AND検索」です。\n# どれか一つでも含むものを表示する「OR検索」に切り替えたい場合は、ファイル内に MODE:OR と記述してください。\n\n# 例:\nanime\nsummer\n`;
+            fs.writeFileSync(INCLUDE_FILE, defaultIncludeText, 'utf-8');
+        }
+        let lines = fs.readFileSync(INCLUDE_FILE, 'utf-8')
+                     .split('\n')
+                     .map(l => l.trim())
+                     .filter(l => l && !l.startsWith('#'));
+
+        if (lines.includes('MODE:OR')) {
+            cachedConfig.includeMode = 'OR';
+            lines = lines.filter(l => l !== 'MODE:OR');
+        } else if (lines.includes('MODE:AND')) {
+            cachedConfig.includeMode = 'AND';
+            lines = lines.filter(l => l !== 'MODE:AND');
+        } else {
+            cachedConfig.includeMode = 'AND';
+        }
+
+        cachedConfig.includes = lines;
+        cachedConfig.includesLower = cachedConfig.includes.map(inc => inc.toLowerCase());
+    } catch (err) {
+        console.error('Error handling include.txt:', err);
+    }
+}
+
+function loadExcludes() {
+    try {
+        if (!fs.existsSync(EXCLUDE_FILE)) {
+            fs.writeFileSync(EXCLUDE_FILE, '# ここに記述された文字列がファイルパスに含まれる画像を除外します（1行に1つ）\n# 例: thumbnail\n', 'utf-8');
+        }
+        cachedConfig.excludes = fs.readFileSync(EXCLUDE_FILE, 'utf-8')
+                     .split('\n')
+                     .map(l => l.trim())
+                     .filter(l => l && !l.startsWith('#'));
+        cachedConfig.excludesLower = cachedConfig.excludes.map(exc => exc.toLowerCase());
+    } catch (err) {
+        console.error('Error handling exclude.txt:', err);
+    }
+}
+
+// Initial load
+loadFolders();
+loadIncludes();
+loadExcludes();
+
+function watchFile(filePath, reloadFunc, label) {
+    if (!fs.existsSync(path.dirname(filePath))) {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    }
+    let watchDebounceTimeout = null;
+    fs.watch(filePath, (eventType) => {
+        if (eventType === 'change' || eventType === 'rename') {
+            if (watchDebounceTimeout) clearTimeout(watchDebounceTimeout);
+            watchDebounceTimeout = setTimeout(() => {
+                try {
+                    reloadFunc();
+                    console.log(`[Config Watcher] Reloaded ${label} (${eventType})`);
+                } catch(e) {
+                    // Ignore transient read errors during save
+                }
+            }, 100);
+        }
+    });
+}
+
+// Watch for changes
+watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
+watchFile(INCLUDE_FILE, loadIncludes, 'include.txt');
+watchFile(EXCLUDE_FILE, loadExcludes, 'exclude.txt');
+
 function getZipInstance(zipPath) {
     const stats = fs.statSync(zipPath);
     const mtime = stats.mtimeMs;
@@ -36,23 +136,7 @@ function getZipInstance(zipPath) {
 }
 
 function getAllowedPaths() {
-    let folders = [];
-    try {
-        if (fs.existsSync(CONFIG_FILE)) {
-            const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
-            folders = content.split('\n')
-                             .map(line => line.trim())
-                             .filter(line => line && !line.startsWith('#'))
-                             .map(line => path.resolve(line))
-                             .filter(line => fs.existsSync(line));
-        } else {
-            const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
-            fs.writeFileSync(CONFIG_FILE, defaultFoldersText, 'utf-8');
-        }
-    } catch (err) {
-        console.error('Error handling folders.txt:', err);
-    }
-    return folders;
+    return cachedConfig.folders;
 }
 
 // ⚡ Bolt Optimization: Recursive helper that takes Dirent array from withFileTypes to prevent redundant fs.statSync calls
@@ -158,50 +242,18 @@ const server = http.createServer((req, res) => {
         const enableInclude = reqUrl.searchParams.get('enableInclude') !== 'false';
         let folders = getAllowedPaths();
         
-        // フィルタリング設定ファイル（ホワイトリスト・ブラックリスト）の読み込み
+        // ⚡ Bolt Optimization: Use cached configuration arrays instead of synchronous file reads
         let includes = [];
-        let excludes = [];
-        let includeMode = 'AND'; // デフォルトの判定モードをANDに変更
+        let includesLower = [];
+        let includeMode = cachedConfig.includeMode;
         
-        try {
-            if (fs.existsSync(INCLUDE_FILE)) {
-                let lines = fs.readFileSync(INCLUDE_FILE, 'utf-8')
-                             .split('\n')
-                             .map(l => l.trim())
-                             .filter(l => l && !l.startsWith('#'));
-
-                // モード切り替え行の検出
-                if (lines.includes('MODE:OR')) {
-                    includeMode = 'OR';
-                    lines = lines.filter(l => l !== 'MODE:OR');
-                } else if (lines.includes('MODE:AND')) {
-                    includeMode = 'AND';
-                    lines = lines.filter(l => l !== 'MODE:AND');
-                }
-
-                if (enableInclude) {
-                    includes = lines;
-                }
-            } else {
-                const defaultIncludeText = `# ここに記述された文字列がファイルパスに含まれる画像のみを表示します（1行に1つ）\n# デフォルトはすべての単語を含む画像を表示する「AND検索」です。\n# どれか一つでも含むものを表示する「OR検索」に切り替えたい場合は、ファイル内に MODE:OR と記述してください。\n\n# 例:\nanime\nsummer\n`;
-                fs.writeFileSync(INCLUDE_FILE, defaultIncludeText, 'utf-8');
-            }
-
-            if (fs.existsSync(EXCLUDE_FILE)) {
-                excludes = fs.readFileSync(EXCLUDE_FILE, 'utf-8')
-                             .split('\n')
-                             .map(l => l.trim())
-                             .filter(l => l && !l.startsWith('#'));
-            } else {
-                fs.writeFileSync(EXCLUDE_FILE, '# ここに記述された文字列がファイルパスに含まれる画像を除外します（1行に1つ）\n# 例: thumbnail\n', 'utf-8');
-            }
-        } catch(e) {
-            console.error('Error reading filter files:', e);
+        if (enableInclude) {
+            includes = cachedConfig.includes;
+            includesLower = cachedConfig.includesLower;
         }
 
-        // ⚡ Bolt Optimization: Pre-calculate lowercased filters to avoid redundant O(N*M) string operations per image
-        const includesLower = includes.map(inc => inc.toLowerCase());
-        const excludesLower = excludes.map(exc => exc.toLowerCase());
+        const excludes = cachedConfig.excludes;
+        const excludesLower = cachedConfig.excludesLower;
 
         let allImages = [];
 
