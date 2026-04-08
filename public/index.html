@@ -345,6 +345,29 @@
             vertical-align: top;
         }
 
+        /* ブラウン管モード */
+        .color-mode-crt img {
+            filter: contrast(1.2) saturate(1.5) brightness(1.1);
+        }
+
+        /* スキャンラインと色収差風オーバーレイ */
+        .color-mode-crt::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.7) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.2), rgba(0, 255, 0, 0.1), rgba(0, 0, 255, 0.2));
+            z-index: 10000; /* 全面を覆う */
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            opacity: 1.0;
+        }
+
         /* カーソル下のファイル名ツールチップ */
         #cursor-tooltip {
             position: fixed;

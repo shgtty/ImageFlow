@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
  
     // Initial Color Mode
-    const initColorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel'];
+    const initColorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel', 'color-mode-crt'];
     if (initColorModes[currentColorModeIndex]) {
         document.body.classList.add(initColorModes[currentColorModeIndex]);
     }
@@ -753,8 +753,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleColorMode() {
-        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel'];
-        const colorModeNames = ['無加工', 'グレイ', 'セピア', 'ネガティブ', '高コントラスト', '高彩度', 'ぼかし', 'ドット絵'];
+        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel', 'color-mode-crt'];
+        const colorModeNames = ['無加工', 'グレイ', 'セピア', 'ネガティブ', '高コントラスト', '高彩度', 'ぼかし', 'ドット絵', 'ブラウン管'];
         
         if (colorModes[currentColorModeIndex]) {
             document.body.classList.remove(colorModes[currentColorModeIndex]);
@@ -1257,7 +1257,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset UI Components
         // 1. Color Mode
-        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel'];
+        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel', 'color-mode-crt'];
         colorModes.forEach(cls => { if (cls) document.body.classList.remove(cls); });
 
         // 2. Cursor Tooltip
