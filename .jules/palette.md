@@ -5,3 +5,7 @@
 ## 2024-05-21 - Use aria-live for transient notifications
 **Learning:** Toast notifications (like the mode overlay) appear briefly on screen. Sighted users see them, but screen readers miss them because they don't receive focus. By adding `role="status"` and `aria-live="polite"` to the notification container, assistive technology will automatically announce the text when the content changes, without interrupting the user.
 **Action:** Always ensure dynamic, visually transient notification elements include `aria-live` attributes to guarantee screen reader users receive the same feedback as sighted users.
+
+## 2024-05-22 - Synchronize aria-valuetext for range inputs
+**Learning:** For `<input type="range">` elements, screen readers announce only their raw numerical value (e.g., "15") by default. When the UI displays contextual information like "15 / 100", screen reader users miss this context. By synchronizing the `aria-valuetext` attribute with the visible text, we provide critical context and parity with sighted users.
+**Action:** Always set `aria-valuetext` on range sliders when a formatted display value is available and updated dynamically.

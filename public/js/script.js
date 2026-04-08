@@ -218,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 seekbar.max = 0;
                 seekbar.value = 0;
                 seekbarInfo.textContent = '0 / 0';
+                seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
                 if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
                     GalleryView.updateImagesAndReset([], 0);
                 }
@@ -417,6 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     seekbar.max = 0;
                     seekbar.value = 0;
                     seekbarInfo.textContent = '0 / 0';
+                    seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
                     if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
                         GalleryView.updateImagesAndReset([], 0);
                     }
@@ -488,10 +490,12 @@ document.addEventListener('DOMContentLoaded', () => {
             seekbar.max = Math.max(0, bounds.total - 1);
             seekbar.value = bounds.relativeIndex;
             seekbarInfo.textContent = `${bounds.relativeIndex + 1} / ${bounds.total}`;
+            seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
         } else {
             seekbar.max = Math.max(0, allImagesUrls.length - 1);
             seekbar.value = currentIndex;
             seekbarInfo.textContent = `${currentIndex + 1} / ${allImagesUrls.length}`;
+            seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
         }
         updateStopBtnIcon();
     }
@@ -554,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         seekbar.max = 0;
                         seekbar.value = 0;
                         seekbarInfo.textContent = '0 / 0';
+                        seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
                         DualView.enter([], 0, dualInterval, handleDualExit);
                         showModeOverlay('画像が見つかりませんでした', sortNames[dualSortMode] || 'ランダム', 0);
                         return;
@@ -660,6 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     seekbar.max = 0;
                     seekbar.value = 0;
                     seekbarInfo.textContent = '0 / 0';
+                    seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
                     if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
                         DualView.updateImagesAndReset([], 0, true);
                     } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
@@ -883,6 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         seekbarInfo.textContent = `${val + 1} / ${displayTotal}`;
+        seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
         
         if (DualView.isActive) {
             DualView.updateImagesAndReset(allImagesUrls, absoluteIndex, true);
