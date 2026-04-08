@@ -339,6 +339,11 @@
         .color-mode-blur img {
             filter: blur(8px);
         }
+        .color-mode-pixel img {
+            filter: url(#pixelate);
+            transform: scale(1.01);
+            vertical-align: top;
+        }
 
         /* カーソル下のファイル名ツールチップ */
         #cursor-tooltip {
@@ -578,6 +583,24 @@
     </div>
 
     <div id="gallery"></div>
+
+    <svg width="0" height="0" style="position: absolute;">
+        <filter id="pixelate" color-interpolation-filters="sRGB">
+            <feFlood x="0" y="0" width="1" height="1" />
+            <feComposite width="10" height="10" />
+            <feTile result="grid" />
+            <feComposite in="SourceGraphic" in2="grid" operator="in" />
+            <feComponentTransfer result="snapped">
+                <feFuncA type="discrete" tableValues="0 1" />
+            </feComponentTransfer>
+            <feMorphology operator="dilate" radius="5" in="snapped" />
+            <feComponentTransfer>
+                <feFuncR type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+                <feFuncG type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+                <feFuncB type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+            </feComponentTransfer>
+        </filter>
+    </svg>
 
     <script src="js/utils.js"></script>
     <script src="js/dual-view.js"></script>

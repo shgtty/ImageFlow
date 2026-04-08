@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
  
     // Initial Color Mode
-    const initColorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur'];
+    const initColorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel'];
     if (initColorModes[currentColorModeIndex]) {
         document.body.classList.add(initColorModes[currentColorModeIndex]);
     }
@@ -753,8 +753,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleColorMode() {
-        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur'];
-        const colorModeNames = ['無加工', 'グレイ', 'セピア', 'ネガティブ', '高コントラスト', '高彩度', 'ぼかし'];
+        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel'];
+        const colorModeNames = ['無加工', 'グレイ', 'セピア', 'ネガティブ', '高コントラスト', '高彩度', 'ぼかし', 'ドット絵'];
         
         if (colorModes[currentColorModeIndex]) {
             document.body.classList.remove(colorModes[currentColorModeIndex]);
