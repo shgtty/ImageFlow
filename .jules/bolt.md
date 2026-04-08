@@ -20,3 +20,6 @@
 ## 2024-05-19 - Avoid synchronous file reads inside request handlers
 **Learning:** Performing synchronous file operations like `fs.readFileSync` inside high-frequency request routes (such as serving thousands of images via a `/image` endpoint or an `/api/images` data fetch) completely blocks the Node.js event loop for all users.
 **Action:** Always cache file contents in memory at startup. For configuration files that might change, use `fs.watch` to asynchronously update the memory cache instead of reading from disk on every request.
+## 2024-05-19 - Avoid new URL() parsing in tight loops
+**Learning:** Using the native `new URL()` constructor to parse search parameters is computationally expensive (approx. 3-4x slower than basic string methods). When executed in tight loops over large datasets (like iterating through thousands of image URLs to determine folder groupings), this overhead blocks the main thread and causes UI jank.
+**Action:** When extracting simple known parameters (like `?path=`) from thousands of strings during rendering or sorting, use fast string parsing (`indexOf`, `substring`) as a primary optimization path, falling back to `new URL()` only for complex edge cases.
