@@ -34,7 +34,7 @@ const GalleryView = (() => {
         speedIndicatorElement = document.getElementById('speed-indicator');
 
         // Initial values from localStorage
-        columnCount = parseInt(localStorage.getItem(STORAGE_KEY_COLUMNS)) || 3;
+        columnCount = parseInt(localStorage.getItem(STORAGE_KEY_COLUMNS)) || 2;
         if (columnCount < 1) columnCount = 1;
         if (columnCount > 10) columnCount = 10;
 

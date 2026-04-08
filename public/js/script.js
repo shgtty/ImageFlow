@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isDraggingSeekbar = false;
     let allImagesUrls = [];
-    let enableInclude = localStorage.getItem(STORAGE_KEY_ENABLE_INCLUDE) !== 'false';
+    let enableInclude = localStorage.getItem(STORAGE_KEY_ENABLE_INCLUDE) === 'true';
     let enableCursorTooltip = localStorage.getItem(STORAGE_KEY_CURSOR_TOOLTIP) === 'true';
     let lastMouseX = 0;
     let lastMouseY = 0;
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'random';
     let dualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
-    let lastActiveDualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_SPEED)) || 5;
+    let lastActiveDualInterval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_SPEED)) || 10;
     if (dualInterval > 0) lastActiveDualInterval = dualInterval;
     let lastActiveGallerySpeed = parseFloat(localStorage.getItem('imageflow_scroll_speed')) || 2.0;
     if (lastActiveGallerySpeed === 0) lastActiveGallerySpeed = 2.0;
@@ -1112,6 +1112,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 DualView.goToLast(true);
             }
+        } else if (e.key === '0') {
+            resetAllSettings();
         } else if (e.key === 'PageUp') {
             e.preventDefault();
             skipFolder(-1);
@@ -1216,6 +1218,82 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
         DualView.setAutoAdvance(dualInterval);
         updateStopBtnIcon();
+    }
+
+    function resetAllSettings() {
+        // Stop current playback
+        if (typeof GalleryView !== 'undefined' && GalleryView.isActive) GalleryView.stop();
+        if (typeof DualView !== 'undefined' && DualView.isActive) DualView.stop();
+
+        // Clear LocalStorage
+        const keysToRemove = [
+            STORAGE_KEY_MODE,
+            STORAGE_KEY_GALLERY_SORT,
+            STORAGE_KEY_DUAL_SORT,
+            STORAGE_KEY_DUAL_INTERVAL,
+            STORAGE_KEY_DUAL_RTL,
+            STORAGE_KEY_DUAL_INDEX,
+            STORAGE_KEY_DUAL_SPEED,
+            STORAGE_KEY_GALLERY_INDEX,
+            STORAGE_KEY_SEEKBAR_VISIBLE,
+            STORAGE_KEY_ENABLE_INCLUDE,
+            STORAGE_KEY_COLOR_MODE,
+            STORAGE_KEY_CURSOR_TOOLTIP,
+            'imageflow_scroll_speed',
+            'imageflow_column_count'
+        ];
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+
+        // Reset internal variables
+        enableInclude = false;
+        enableCursorTooltip = false;
+        lastDualIndex = -1;
+        gallerySortMode = 'random';
+        dualSortMode = 'random';
+        dualInterval = 0;
+        lastActiveDualInterval = 10;
+        lastActiveGallerySpeed = 2.0;
+        currentColorModeIndex = 0;
+
+        // Reset UI Components
+        // 1. Color Mode
+        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel'];
+        colorModes.forEach(cls => { if (cls) document.body.classList.remove(cls); });
+
+        // 2. Cursor Tooltip
+        if (cursorTooltipIcon) cursorTooltipIcon.style.color = '';
+        if (cursorTooltip) cursorTooltip.style.opacity = '0';
+
+        // 3. Seekbar Visibility
+        if (seekbarContainer) seekbarContainer.classList.add('user-hidden');
+        if (seekbarToggleIcon) seekbarToggleIcon.style.color = '';
+        if (seekbarToggleBtn) {
+            seekbarToggleBtn.title = 'シークバー表示 (S)';
+            seekbarToggleBtn.setAttribute('aria-label', seekbarToggleBtn.title);
+        }
+
+        // 4. Icons & Titles
+        updateSortIcon();
+        updateModeIcon();
+        updateDirIcon();
+        updateIncludeIcon();
+
+        // 5. Views Re-Sync
+        if (typeof DualView !== 'undefined') {
+            DualView.setDirection(false);
+            DualView.setAutoAdvance(0);
+        }
+        if (typeof GalleryView !== 'undefined') {
+            GalleryView.setDirection(false);
+            GalleryView.init(); // Re-read column count from storage (now reset to null/default 2)
+        }
+
+        // Show feedback
+        const resetIcon = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+        showModeOverlay('全設定を初期化しました', '', 0, resetIcon);
+
+        // Reload everything
+        loadImages();
     }
 
     // --- UI Auto-Hide ---
