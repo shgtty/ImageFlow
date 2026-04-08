@@ -10,8 +10,17 @@
  */
 function getFolderPath(url, base) {
     try {
-        const urlObj = new URL(url, base || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost'));
-        const pathStr = urlObj.searchParams.get('path');
+        // ⚡ Bolt Optimization: Use fast regex parsing to avoid expensive new URL() constructor overhead in tight loops
+        let pathStr = null;
+        const match = /[?&]path=([^&#]*)/.exec(url);
+        if (match) {
+            // URLSearchParams converts '+' to space, simulate this before decoding
+            pathStr = decodeURIComponent(match[1].replace(/\+/g, ' '));
+        } else {
+            const urlObj = new URL(url, base || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost'));
+            pathStr = urlObj.searchParams.get('path');
+        }
+
         if (!pathStr) return '';
 
         if (pathStr.includes('|')) {
@@ -49,11 +58,20 @@ function getFolderDisplayName(url, base) {
  */
 function getFilename(url, base) {
     try {
-        const urlObj = new URL(url, base || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost'));
-        let pathStr = urlObj.searchParams.get('path');
+        // ⚡ Bolt Optimization: Use fast regex parsing to avoid expensive new URL() constructor overhead in tight loops
+        let pathStr = null;
+        const match = /[?&]path=([^&#]*)/.exec(url);
+        if (match) {
+            // URLSearchParams converts '+' to space, simulate this before decoding
+            pathStr = decodeURIComponent(match[1].replace(/\+/g, ' '));
+        }
         
         if (!pathStr) {
-            pathStr = decodeURIComponent(urlObj.pathname);
+            const urlObj = new URL(url, base || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost'));
+            pathStr = urlObj.searchParams.get('path');
+            if (!pathStr) {
+                pathStr = decodeURIComponent(urlObj.pathname);
+            }
         }
         
         let actualPath = pathStr;
