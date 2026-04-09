@@ -385,24 +385,30 @@ const server = http.createServer((req, res) => {
 
             if (isZipEntry) {
                 // ZIPファイルの特定データをメモリに展開・バッファ提供フロー
-                if (fs.existsSync(resolvedPath)) {
-                    try {
-                        const zip = getZipInstance(resolvedPath);
-                        const buffer = zip.readFile(entryName); // メモリ上で伸長・展開
-                        if (buffer) {
-                            res.writeHead(200, headers);
-                            res.end(buffer); // メモリ上のバッファを直接レスポンスするためHDD消費なし
-                            return;
-                        }
-                    } catch (e) {
-                        console.error('Error extracting from zip:', e.message);
+                try {
+                    const zip = getZipInstance(resolvedPath);
+                    const buffer = zip.readFile(entryName); // メモリ上で伸長・展開
+                    if (buffer) {
+                        res.writeHead(200, headers);
+                        res.end(buffer); // メモリ上のバッファを直接レスポンスするためHDD消費なし
+                        return;
                     }
+                } catch (e) {
+                    console.error('Error extracting from zip:', e.message);
+                    // fallthrough to 404
                 }
-            } else if (fs.existsSync(resolvedPath)) {
+            } else {
                 // 通常のファイル提供ストリーミングフロー
-                res.writeHead(200, headers);
+                // ⚡ Bolt Optimization: Use async stream error handling instead of blocking fs.existsSync (TOCTOU anti-pattern)
                 const stream = fs.createReadStream(resolvedPath);
-                stream.pipe(res);
+                stream.on('open', () => {
+                    res.writeHead(200, headers);
+                    stream.pipe(res);
+                });
+                stream.on('error', (err) => {
+                    res.writeHead(404);
+                    res.end('Image not found');
+                });
                 return;
             }
         }

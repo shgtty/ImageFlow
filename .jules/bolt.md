@@ -23,3 +23,7 @@
 ## 2024-05-19 - Avoid new URL() parsing in tight loops
 **Learning:** Using the native `new URL()` constructor to parse search parameters is computationally expensive (approx. 3-4x slower than basic string methods). When executed in tight loops over large datasets (like iterating through thousands of image URLs to determine folder groupings), this overhead blocks the main thread and causes UI jank.
 **Action:** When extracting simple known parameters (like `?path=`) from thousands of strings during rendering or sorting, use fast string parsing (`indexOf`, `substring`) as a primary optimization path, falling back to `new URL()` only for complex edge cases.
+
+## 2024-06-25 - Avoid synchronous fs operations inside streaming request handlers
+**Learning:** Performing a synchronous file operation like `fs.existsSync` inside high-frequency endpoints (like `/image` which can be called hundreds of times per second) blocks the Node.js main event loop for all concurrent users (TOCTOU anti-pattern).
+**Action:** Use asynchronous stream events (like `.on('error')`) to handle missing files or access errors when streaming static assets using `fs.createReadStream`, rather than blocking to check existence beforehand.
