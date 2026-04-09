@@ -208,6 +208,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
 
+        if (reloadBtn) {
+            reloadBtn.disabled = true;
+            const svg = reloadBtn.querySelector('svg');
+            if (svg) svg.classList.add('spin');
+        }
+
         try {
             const response = await fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`);
             if (!response.ok) throw new Error(`Server status: ${response.status}`);
@@ -278,6 +284,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error fetching images:', error);
             showModeOverlay('サーバーと通信できません', '', 0);
+        } finally {
+            if (reloadBtn) {
+                reloadBtn.disabled = false;
+                const svg = reloadBtn.querySelector('svg');
+                if (svg) svg.classList.remove('spin');
+            }
         }
     }
 
