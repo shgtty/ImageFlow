@@ -1083,7 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (DualView.isActive) {
                 isRtl ? DualView.next(1, true) : DualView.prev(1, true);
             } else if (GalleryView.isActive) {
-                isRtl ? GalleryView.changeColumnCount(1) : GalleryView.changeColumnCount(-1);
+                GalleryView.changeColumnCount(-1);
             }
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
@@ -1091,7 +1091,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (DualView.isActive) {
                 isRtl ? DualView.prev(1, true) : DualView.next(1, true);
             } else if (GalleryView.isActive) {
-                isRtl ? GalleryView.changeColumnCount(-1) : GalleryView.changeColumnCount(1);
+                GalleryView.changeColumnCount(1);
             }
         } else if (e.key === 'Escape') {
             if (document.fullscreenElement) {
