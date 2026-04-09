@@ -9,3 +9,7 @@
 ## 2024-05-22 - Synchronize aria-valuetext for range inputs
 **Learning:** For `<input type="range">` elements, screen readers announce only their raw numerical value (e.g., "15") by default. When the UI displays contextual information like "15 / 100", screen reader users miss this context. By synchronizing the `aria-valuetext` attribute with the visible text, we provide critical context and parity with sighted users.
 **Action:** Always set `aria-valuetext` on range sliders when a formatted display value is available and updated dynamically.
+
+## 2024-05-23 - Provide visual feedback for asynchronous actions
+**Learning:** Actions that trigger asynchronous operations, like fetching data from an API, must provide immediate visual feedback. A button without a loading state or disabled state can lead users to think the app is unresponsive and click repeatedly, causing race conditions and a frustrating UX.
+**Action:** Always disable buttons and provide a loading indicator (e.g., a spinning icon or "loading..." text) while a network request is pending, ensuring it is reset in a `finally` block to handle both success and error states.
