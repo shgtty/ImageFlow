@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDirIcon();
 
     // Initial RTL setting
-    const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
+    const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) !== 'false';
     if (typeof DualView !== 'undefined') DualView.setDirection(isRtl);
     if (typeof GalleryView !== 'undefined') GalleryView.setDirection(isRtl);
  
@@ -177,17 +177,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateDirIcon() {
         if (!dirIcon) return;
-        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
+        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) !== 'false';
         if (isRtl) {
             // 現在は右から(RTL)なので、左から(LTR)へ切り替えるためのアイコンを表示
             dirBtn.title = '左から右へ表示 (O)';
             dirBtn.setAttribute('aria-label', dirBtn.title);
-            dirIcon.style.color = '#3498db'; // アクティブ感
+            dirIcon.style.color = ''; // 初期値(RTL)は色なし
         } else {
             // 現在は左から(LTR)なので、右から(RTL)へ切り替えるためのアイコンを表示
             dirBtn.title = '右から左へ表示 (O)';
             dirBtn.setAttribute('aria-label', dirBtn.title);
-            dirIcon.style.color = '';
+            dirIcon.style.color = '#3498db'; // 変更後(LTR)にアクティブ色
         }
     }
 
@@ -751,7 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleDirection() {
         if (!DualView.isActive && !GalleryView.isActive) return;
 
-        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) === 'true';
+        const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) !== 'false';
         const newState = !isRtl;
         localStorage.setItem(STORAGE_KEY_DUAL_RTL, newState);
 
@@ -1077,17 +1077,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (e.key === 'ArrowLeft') {
             e.preventDefault();
+            const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) !== 'false';
             if (DualView.isActive) {
-                DualView.prev(1, true);
+                isRtl ? DualView.next(1, true) : DualView.prev(1, true);
             } else if (GalleryView.isActive) {
-                GalleryView.changeColumnCount(-1);
+                isRtl ? GalleryView.changeColumnCount(1) : GalleryView.changeColumnCount(-1);
             }
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
+            const isRtl = localStorage.getItem(STORAGE_KEY_DUAL_RTL) !== 'false';
             if (DualView.isActive) {
-                DualView.next(1, true);
+                isRtl ? DualView.prev(1, true) : DualView.next(1, true);
             } else if (GalleryView.isActive) {
-                GalleryView.changeColumnCount(1);
+                isRtl ? GalleryView.changeColumnCount(-1) : GalleryView.changeColumnCount(1);
             }
         } else if (e.key === 'Escape') {
             if (document.fullscreenElement) {
@@ -1292,11 +1294,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 5. Views Re-Sync
         if (typeof DualView !== 'undefined') {
-            DualView.setDirection(false);
+            DualView.setDirection(true);
             DualView.setAutoAdvance(0);
         }
         if (typeof GalleryView !== 'undefined') {
-            GalleryView.setDirection(false);
+            GalleryView.setDirection(true);
             GalleryView.init(); // Re-read column count from storage (now reset to null/default 2)
         }
 
