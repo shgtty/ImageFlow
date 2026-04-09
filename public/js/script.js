@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_CURSOR_TOOLTIP = 'imageflow_cursor_tooltip';
 
     let isDraggingSeekbar = false;
+    let isResetting = false;
     let allImagesUrls = [];
     let enableInclude = localStorage.getItem(STORAGE_KEY_ENABLE_INCLUDE) === 'true';
     let enableCursorTooltip = localStorage.getItem(STORAGE_KEY_CURSOR_TOOLTIP) === 'true';
@@ -600,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleDualExit(exitIndex) {
+        if (isResetting) return;
         if (dualSortMode === 'asc') {
             lastDualIndex = exitIndex; // ソート（昇順）モード終了時の位置を保存
             localStorage.setItem(STORAGE_KEY_DUAL_INDEX, exitIndex);
@@ -1235,9 +1237,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetAllSettings() {
-        // Stop current playback
-        if (typeof GalleryView !== 'undefined' && GalleryView.isActive) GalleryView.stop();
-        if (typeof DualView !== 'undefined' && DualView.isActive) DualView.stop();
+        // Stop current playback and ensure views are fully exited
+        isResetting = true;
+        if (typeof GalleryView !== 'undefined' && GalleryView.isActive) GalleryView.exit();
+        if (typeof DualView !== 'undefined' && DualView.isActive) DualView.exit();
+        isResetting = false;
 
         // Clear LocalStorage
         const keysToRemove = [
