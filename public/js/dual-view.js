@@ -87,8 +87,15 @@ const DualView = (() => {
         window.addEventListener('click', currentClickHandler);
 
         // Handle wheel for navigation
+        let lastWheelTime = 0;
         currentWheelHandler = (e) => {
             if (!isActive) return;
+
+            // ⚡ Bolt Optimization: Throttle high-frequency wheel events to prevent redundant image fetch requests and layout thrashing
+            const now = Date.now();
+            if (now - lastWheelTime < 250) return;
+            lastWheelTime = now;
+
             // deltaY > 0 is scroll down (next)
             if (e.deltaY > 0) {
                 next();

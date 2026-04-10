@@ -27,3 +27,6 @@
 ## 2024-06-25 - Avoid synchronous fs operations inside streaming request handlers
 **Learning:** Performing a synchronous file operation like `fs.existsSync` inside high-frequency endpoints (like `/image` which can be called hundreds of times per second) blocks the Node.js main event loop for all concurrent users (TOCTOU anti-pattern).
 **Action:** Use asynchronous stream events (like `.on('error')`) to handle missing files or access errors when streaming static assets using `fs.createReadStream`, rather than blocking to check existence beforehand.
+## 2026-04-10 - Throttle wheel events for discrete navigation
+**Learning:** High-frequency `wheel` events (e.g. from trackpads or free-scrolling mice) can trigger dozens of times per second. If these events are directly bound to discrete navigation functions (like `next()` or `prev()`) that also trigger network requests (e.g., fetching image dimensions via `getImageDims`), it causes severe UI skipping, layout thrashing, and floods the browser's connection queue.
+**Action:** Always add time-based throttling (e.g., 250ms) to `wheel` event listeners when they are used to trigger discrete, network-bound navigation state changes.
