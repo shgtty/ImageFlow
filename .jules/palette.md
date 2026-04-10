@@ -13,3 +13,7 @@
 ## 2024-05-23 - Provide visual feedback for asynchronous actions
 **Learning:** Actions that trigger asynchronous operations, like fetching data from an API, must provide immediate visual feedback. A button without a loading state or disabled state can lead users to think the app is unresponsive and click repeatedly, causing race conditions and a frustrating UX.
 **Action:** Always disable buttons and provide a loading indicator (e.g., a spinning icon or "loading..." text) while a network request is pending, ensuring it is reset in a `finally` block to handle both success and error states.
+
+## 2024-05-24 - Provide focus-visible styles for input range sliders
+**Learning:** In highly customized web apps with dark backgrounds, default focus outlines for range sliders can be unnoticeable, breaking keyboard accessibility. When implementing custom thumbs for sliders, we also need to account for when the element itself receives keyboard focus and provide an explicit visual indicator.
+**Action:** Provide `:focus-visible` styles with sufficient outline offsets and thumb pseudo-class highlighting (`:focus-visible::-webkit-slider-thumb`) to ensure the slider is clearly identifiable during keyboard navigation.
