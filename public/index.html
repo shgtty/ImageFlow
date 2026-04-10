@@ -243,6 +243,12 @@
             cursor: pointer;
         }
 
+        #seekbar:focus-visible {
+            outline: 2px solid #3498db;
+            outline-offset: 4px;
+            border-radius: 2px;
+        }
+
         #seekbar::-webkit-slider-runnable-track {
             width: 100%;
             height: 6px;
@@ -262,7 +268,8 @@
             transition: all 0.2s ease;
         }
 
-        #seekbar:hover::-webkit-slider-thumb {
+        #seekbar:hover::-webkit-slider-thumb,
+        #seekbar:focus-visible::-webkit-slider-thumb {
             transform: scale(1.2);
             background: #5dade2;
         }
