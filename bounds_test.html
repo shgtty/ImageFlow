@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script>
+    // This script models the current "folder bounds" calculation
+    // which has an O(N) complexity for finding the start/end of the folder boundaries.
+
+    // Actually, wait, the while loop only runs until it hits a different folder string!
+    // It's not O(N) over the *entire* array, it's O(folder_size).
+    // If a folder has 5000 images, it's O(5000), which is ~5000 getFolderPath calls.
+    // That could cause a little jank, but maybe not massive jank.
+
+    // What if we cache it globally in script.js?
+    // Let's check script.js for "let cachedFolderBounds = null"
+</script>
+</body>
+</html>
