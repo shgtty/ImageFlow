@@ -17,6 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const cursorTooltipBtn = document.getElementById('cursorTooltipBtn');
     const cursorTooltipIcon = document.getElementById('cursorTooltipIcon');
     const cursorTooltip = document.getElementById('cursor-tooltip');
+    
+    // File selection UI elements
+    const fileSelectBtn = document.getElementById('fileSelectBtn');
+    const fileSelectBtnWrapper = document.getElementById('fileSelectBtnWrapper');
+    const fileSelectModal = document.getElementById('file-select-modal');
+    const closeFileModal = document.getElementById('close-file-modal');
+    const fileListContainer = document.getElementById('file-list');
 
     // Gallery specific control buttons
     const scrollUpBtn = document.getElementById('scrollUpBtn');
@@ -219,6 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`);
             if (!response.ok) throw new Error(`Server status: ${response.status}`);
             const data = await response.json();
+
+            if (fileSelectBtnWrapper) {
+                fileSelectBtnWrapper.style.display = data.isConfigDir ? 'block' : 'none';
+            }
 
             if (data.totalFound === 0) {
                 allImagesUrls = []; // Clear current list if nothing found
@@ -886,6 +897,99 @@ document.addEventListener('DOMContentLoaded', () => {
     if(includeToggleBtn) includeToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInclude(); });
     if(colorModeBtn) colorModeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleColorMode(); });
     if(cursorTooltipBtn) cursorTooltipBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleCursorTooltip(); });
+
+    if(fileSelectBtn) {
+        fileSelectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fetch('/api/config-files')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.error) {
+                        alert(res.error);
+                        return;
+                    }
+                    fileListContainer.innerHTML = '';
+                    res.files.forEach(file => {
+                        const div = document.createElement('div');
+                        div.className = 'file-item';
+                        if (file === res.current) {
+                            div.classList.add('active');
+                            div.textContent = `${file} (選択中)`;
+                        } else {
+                            div.textContent = file;
+                        }
+                        div.addEventListener('click', () => {
+                            fetch('/api/set-config-file', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ file: file })
+                            }).then(r => r.json()).then(postRes => {
+                                if (postRes.success) {
+                                    fileSelectModal.style.display = 'none';
+                                    
+                                    const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+                                    const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+                                    
+                                    fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            allImagesUrls = data.images || [];
+                                            
+                                            if (allImagesUrls.length === 0) {
+                                                seekbar.max = 0;
+                                                seekbar.value = 0;
+                                                seekbarInfo.textContent = '0 / 0';
+                                                seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+                                                
+                                                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                                    DualView.updateImagesAndReset([], 0, true);
+                                                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                                    GalleryView.updateImagesAndReset([], 0);
+                                                }
+                                                showModeOverlay('画像が見つかりませんでした', `ファイル: ${file}`, 0);
+                                                return;
+                                            }
+
+                                            seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                                            
+                                            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                                DualView.updateImagesAndReset(allImagesUrls, 0, true);
+                                            } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                                GalleryView.updateImagesAndReset(allImagesUrls, 0, { restoreSpeed: true });
+                                                window.scrollTo(0, 0);
+                                            } else {
+                                                loadImages();
+                                            }
+                                            
+                                            updateSeekbar();
+                                            updateFilterBar(data);
+                                            
+                                            let displayCount = allImagesUrls.length;
+                                            if (currentSort === 'folder-random') {
+                                                displayCount = getFolderBounds(0).total;
+                                            }
+                                            showModeOverlay('設定変更', `ファイル: ${file}`, displayCount);
+                                        })
+                                        .catch(err => {
+                                            console.error('Error post-set fetch:', err);
+                                            loadImages();
+                                        });
+                                }
+                            });
+                        });
+                        fileListContainer.appendChild(div);
+                    });
+                    fileSelectModal.style.display = 'block';
+                })
+                .catch(console.error);
+        });
+    }
+
+    if(closeFileModal) {
+        closeFileModal.addEventListener('click', () => {
+            fileSelectModal.style.display = 'none';
+        });
+    }
 
     // ⚡ Bolt Optimization: Throttle expensive elementFromPoint queries on mousemove
     // High-frequency events (125-1000Hz) cause jank if they do synchronous hit testing.

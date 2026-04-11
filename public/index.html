@@ -473,6 +473,31 @@
             color: #3498db;
             margin-right: 5px;
         }
+
+        /* ファイルリスト内のアイテムスタイル */
+        .file-item {
+            padding: 12px 16px;
+            font-size: 1.1em;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .file-item:hover {
+            background: rgba(52, 152, 219, 0.3);
+        }
+
+        .file-item.active {
+            background: rgba(52, 152, 219, 0.6);
+            font-weight: bold;
+        }
+
+        #close-file-modal:hover {
+            background: #555;
+        }
     </style>
 </head>
 
@@ -618,6 +643,15 @@
                 </svg>
             </button>
         </div>
+
+        <!-- ファイル選択ボタン (ディレクトリ指定時のみ表示) -->
+        <div class="fab-wrapper" id="fileSelectBtnWrapper" style="display: none; margin-top: 10px;">
+            <button class="fab" id="fileSelectBtn" title="設定ファイルを選択" aria-label="ファイル選択">
+                <svg viewBox="0 0 24 24">
+                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                </svg>
+            </button>
+        </div>
     </div>
 
     <!-- 画面下部のシークバー -->
@@ -646,6 +680,15 @@
             </feComponentTransfer>
         </filter>
     </svg>
+
+    <!-- ファイル選択モーダル -->
+    <div id="file-select-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); padding:30px; border-radius:16px; z-index:9999; color:white; min-width:500px; max-width:90vw; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px);">
+        <h3 style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px;">設定ファイルを選択</h3>
+        <div id="file-list" style="max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+        <div style="margin-top:24px; text-align:right;">
+            <button id="close-file-modal" style="padding:10px 24px; font-size:1.1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">閉じる</button>
+        </div>
+    </div>
 
     <script src="js/utils.js"></script>
     <script src="js/dual-view.js"></script>
