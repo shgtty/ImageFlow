@@ -453,11 +453,22 @@ const DualView = (() => {
             const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
             
             if (currentSort === 'folder-random' && typeof getFolderPath === 'function') {
-                const currentFolder = getFolderPath(images[currentIndex]);
+                // ⚡ Bolt Optimization: Avoid redundant getFolderPath recalculations per UI update if possible, though since DualView doesn't have access to getFolderBounds cache directly from script.js, we do it inline here for now. Wait, script.js cache is scoped.
+                // We'll keep it as is, or we can add a local cache here too.
                 let start = currentIndex;
-                while (start > 0 && getFolderPath(images[start - 1]) === currentFolder) { start--; }
                 let end = currentIndex;
-                while (end + 1 < images.length && getFolderPath(images[end + 1]) === currentFolder) { end++; }
+
+                // Cache check
+                if (showIndicator.cache && showIndicator.cache.urls === images &&
+                    currentIndex >= showIndicator.cache.start && currentIndex <= showIndicator.cache.end) {
+                    start = showIndicator.cache.start;
+                    end = showIndicator.cache.end;
+                } else {
+                    const currentFolder = getFolderPath(images[currentIndex]);
+                    while (start > 0 && getFolderPath(images[start - 1]) === currentFolder) { start--; }
+                    while (end + 1 < images.length && getFolderPath(images[end + 1]) === currentFolder) { end++; }
+                    showIndicator.cache = { start, end, urls: images };
+                }
                 
                 displayIndex = currentIndex - start;
                 displayTotal = end - start + 1;

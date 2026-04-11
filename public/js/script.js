@@ -477,14 +477,37 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+    let cachedFolderBoundsIndex = -1;
+    let cachedFolderBoundsResult = null;
+    let cachedFolderBoundsUrls = null;
+
     function getFolderBounds(globalIndex) {
         if (!allImagesUrls || allImagesUrls.length === 0 || globalIndex < 0 || globalIndex >= allImagesUrls.length) return { start: 0, end: 0, total: 0, relativeIndex: 0 };
+
+        // ⚡ Bolt Optimization: Cache O(N) folder bounds calculation to prevent massive UI jank during seekbar updates or rapid navigation in folder-random mode
+        if (cachedFolderBoundsUrls === allImagesUrls && cachedFolderBoundsResult &&
+            globalIndex >= cachedFolderBoundsResult.start && globalIndex <= cachedFolderBoundsResult.end) {
+            return {
+                start: cachedFolderBoundsResult.start,
+                end: cachedFolderBoundsResult.end,
+                total: cachedFolderBoundsResult.total,
+                relativeIndex: globalIndex - cachedFolderBoundsResult.start
+            };
+        }
+
         const currentFolder = getFolderPath(allImagesUrls[globalIndex]);
         let start = globalIndex;
         while (start > 0 && getFolderPath(allImagesUrls[start - 1]) === currentFolder) { start--; }
         let end = globalIndex;
         while (end + 1 < allImagesUrls.length && getFolderPath(allImagesUrls[end + 1]) === currentFolder) { end++; }
-        return { start, end, total: end - start + 1, relativeIndex: globalIndex - start };
+
+        const bounds = { start, end, total: end - start + 1, relativeIndex: globalIndex - start };
+
+        cachedFolderBoundsUrls = allImagesUrls;
+        cachedFolderBoundsIndex = globalIndex;
+        cachedFolderBoundsResult = { start: bounds.start, end: bounds.end, total: bounds.total };
+
+        return bounds;
     }
 
     function updateSeekbar() {
