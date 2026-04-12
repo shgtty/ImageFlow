@@ -385,8 +385,11 @@ const server = http.createServer((req, res) => {
             }
         }
 
+        // ⚡ Bolt Optimization: Pre-instantiate Intl.Collator for massive sorting performance gains over String.prototype.localeCompare
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
         if (sortMode === 'asc') {
-            allImages.sort((a, b) => a.localeCompare(b));
+            allImages.sort(collator.compare);
         } else if (sortMode === 'folder-random') {
             const groups = new Map();
             for (let i = 0; i < allImages.length; i++) {
@@ -397,7 +400,7 @@ const server = http.createServer((req, res) => {
                 }
                 groups.get(folderKey).push(img);
             }
-            const sortedKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+            const sortedKeys = Array.from(groups.keys()).sort(collator.compare);
             
             allImages = [];
             for (const key of sortedKeys) {
