@@ -48,6 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentModeMessage = '';
     let overlayHideTimer = null;
 
+    let previousFocus = null;
+
     // --- State Management ---
     const STORAGE_KEY_MODE = 'imageflow_display_mode'; // 'gallery' or 'dual'
     const STORAGE_KEY_GALLERY_SORT = 'imageflow_gallery_sort';
@@ -910,15 +912,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     fileListContainer.innerHTML = '';
                     res.files.forEach(file => {
-                        const div = document.createElement('div');
-                        div.className = 'file-item';
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'file-item';
                         if (file === res.current) {
-                            div.classList.add('active');
-                            div.textContent = `${file} (選択中)`;
+                            btn.classList.add('active');
+                            btn.textContent = `${file} (選択中)`;
                         } else {
-                            div.textContent = file;
+                            btn.textContent = file;
                         }
-                        div.addEventListener('click', () => {
+                        btn.addEventListener('click', () => {
                             fetch('/api/set-config-file', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -926,6 +929,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             }).then(r => r.json()).then(postRes => {
                                 if (postRes.success) {
                                     fileSelectModal.style.display = 'none';
+                                    if (previousFocus) {
+                                        previousFocus.focus();
+                                    }
                                     
                                     const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
                                     const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
@@ -977,9 +983,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             });
                         });
-                        fileListContainer.appendChild(div);
+                        fileListContainer.appendChild(btn);
                     });
+                    previousFocus = document.activeElement;
                     fileSelectModal.style.display = 'block';
+                    const firstBtn = fileSelectModal.querySelector('button.file-item');
+                    if (firstBtn) {
+                        firstBtn.focus();
+                    } else if (closeFileModal) {
+                        closeFileModal.focus();
+                    }
                 })
                 .catch(console.error);
         });
@@ -988,6 +1001,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if(closeFileModal) {
         closeFileModal.addEventListener('click', () => {
             fileSelectModal.style.display = 'none';
+            if (previousFocus) {
+                previousFocus.focus();
+            }
         });
     }
 
@@ -1221,6 +1237,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 GalleryView.changeColumnCount(1);
             }
         } else if (e.key === 'Escape') {
+            if (fileSelectModal.style.display === 'block') {
+                fileSelectModal.style.display = 'none';
+                if (previousFocus) {
+                    previousFocus.focus();
+                }
+                return;
+            }
             if (document.fullscreenElement) {
                 document.exitFullscreen();
             } else {
