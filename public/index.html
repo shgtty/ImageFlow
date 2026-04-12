@@ -484,6 +484,11 @@
             transition: background 0.2s;
             display: flex;
             align-items: center;
+            border: none;
+            text-align: left;
+            font-family: inherit;
+            color: inherit;
+            width: 100%;
         }
 
         .file-item:hover {
@@ -682,8 +687,8 @@
     </svg>
 
     <!-- ファイル選択モーダル -->
-    <div id="file-select-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); padding:30px; border-radius:16px; z-index:9999; color:white; min-width:500px; max-width:90vw; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px);">
-        <h3 style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px;">設定ファイルを選択</h3>
+    <div id="file-select-modal" role="dialog" aria-modal="true" aria-labelledby="file-select-title" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); padding:30px; border-radius:16px; z-index:9999; color:white; min-width:500px; max-width:90vw; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px);">
+        <h3 id="file-select-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px;">設定ファイルを選択</h3>
         <div id="file-list" style="max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
         <div style="margin-top:24px; text-align:right;">
             <button id="close-file-modal" style="padding:10px 24px; font-size:1.1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">閉じる</button>

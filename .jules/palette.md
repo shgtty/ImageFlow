@@ -17,3 +17,7 @@
 ## 2024-05-24 - Provide focus-visible styles for input range sliders
 **Learning:** In highly customized web apps with dark backgrounds, default focus outlines for range sliders can be unnoticeable, breaking keyboard accessibility. When implementing custom thumbs for sliders, we also need to account for when the element itself receives keyboard focus and provide an explicit visual indicator.
 **Action:** Provide `:focus-visible` styles with sufficient outline offsets and thumb pseudo-class highlighting (`:focus-visible::-webkit-slider-thumb`) to ensure the slider is clearly identifiable during keyboard navigation.
+
+## 2024-05-25 - Implement accessible custom modals
+**Learning:** Custom UI modals (like the file selector) are completely invisible to screen readers unless marked with `role="dialog"` and `aria-modal="true"`. Furthermore, without managing focus (shifting focus into the modal when opened, and restoring it to the previous active element when closed), keyboard users lose their place in the UI and struggle to interact with the new content.
+**Action:** Always ensure custom modals have `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, and explicit JavaScript logic to manage focus state changes and support the `Escape` key for closing.
