@@ -7,8 +7,34 @@ const zipCache = new Map();
 const MAX_CACHE_SIZE = 100;
 
 const PORT = 8000;
-// コマンドライン引数から各設定ファイル名を取得（指定がない場合はデフォルト名にフォールバック）
-const CONFIG_FILE = process.argv[2] || path.join(__dirname, '..', 'config', 'folders.txt');
+let initialArg = process.argv[2] || path.join(__dirname, '..', 'config', 'folders.txt');
+let CONFIG_FILE = initialArg;
+let configDir = null;
+
+if (fs.existsSync(initialArg) && fs.statSync(initialArg).isDirectory()) {
+    configDir = initialArg;
+    // 設定フォルダ内に前回の設定ファイル名を保存する
+    const lastConfStatePath = path.join(configDir, '.last_config.state');
+    let activeConf = null;
+    if (fs.existsSync(lastConfStatePath)) {
+        const saved = fs.readFileSync(lastConfStatePath, 'utf8').trim();
+        if (saved && fs.existsSync(path.join(configDir, saved))) {
+            activeConf = saved;
+        }
+    }
+    if (!activeConf) {
+        let files = [];
+        try {
+            files = fs.readdirSync(configDir).filter(f => f.endsWith('.txt'));
+        } catch(e) {}
+        if (files.length > 0) {
+            activeConf = files[0];
+        } else {
+            activeConf = 'folders.txt';
+        }
+    }
+    CONFIG_FILE = path.join(configDir, activeConf);
+}
 const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'include.txt');
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
@@ -88,12 +114,13 @@ loadFolders();
 loadIncludes();
 loadExcludes();
 
+let configWatcher = null;
 function watchFile(filePath, reloadFunc, label) {
     if (!fs.existsSync(path.dirname(filePath))) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
     }
     let watchDebounceTimeout = null;
-    fs.watch(filePath, (eventType) => {
+    const watcher = fs.watch(filePath, (eventType) => {
         if (eventType === 'change' || eventType === 'rename') {
             if (watchDebounceTimeout) clearTimeout(watchDebounceTimeout);
             watchDebounceTimeout = setTimeout(() => {
@@ -106,10 +133,11 @@ function watchFile(filePath, reloadFunc, label) {
             }, 100);
         }
     });
+    return watcher;
 }
 
 // Watch for changes
-watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
+configWatcher = watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
 watchFile(INCLUDE_FILE, loadIncludes, 'include.txt');
 watchFile(EXCLUDE_FILE, loadExcludes, 'exclude.txt');
 
@@ -237,6 +265,71 @@ const server = http.createServer((req, res) => {
     const reqUrl = new URL(req.url, `http://${req.headers.host}`);
     const rawPathname = req.url.split('?')[0];
 
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+
+    if (reqUrl.pathname === '/api/config-files') {
+        if (!configDir) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Config directory is not set' }));
+            return;
+        }
+        try {
+            const files = fs.readdirSync(configDir).filter(f => f.toLowerCase().endsWith('.txt'));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                files: files,
+                current: path.basename(CONFIG_FILE)
+            }));
+        } catch (e) {
+            res.writeHead(500);
+            res.end(JSON.stringify({ error: 'Failed to read config directory' }));
+        }
+        return;
+    }
+
+    if (reqUrl.pathname === '/api/set-config-file') {
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    if (data.file && configDir) {
+                        const newConfigPath = path.join(configDir, data.file);
+                        if (fs.existsSync(newConfigPath)) {
+                            // Update CONFIG_FILE and save to state
+                            CONFIG_FILE = newConfigPath;
+                            const lastConfStatePath = path.join(configDir, '.last_config.state');
+                            fs.writeFileSync(lastConfStatePath, data.file, 'utf8');
+
+                            // Re-watch the new file
+                            if (configWatcher) {
+                                configWatcher.close();
+                            }
+                            configWatcher = watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
+
+                            // Reload settings
+                            loadFolders();
+
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ success: true, file: data.file }));
+                            return;
+                        }
+                    }
+                } catch(e) {
+                    console.error('Error changing config file:', e);
+                }
+                res.writeHead(400);
+                res.end(JSON.stringify({ error: 'Bad Request' }));
+            });
+            return;
+        }
+    }
+
     if (reqUrl.pathname === '/api/images') {
         const sortMode = reqUrl.searchParams.get('sort') || 'random';
         const enableInclude = reqUrl.searchParams.get('enableInclude') !== 'false';
@@ -292,8 +385,11 @@ const server = http.createServer((req, res) => {
             }
         }
 
+        // ⚡ Bolt Optimization: Pre-instantiate Intl.Collator for massive sorting performance gains over String.prototype.localeCompare
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
         if (sortMode === 'asc') {
-            allImages.sort((a, b) => a.localeCompare(b));
+            allImages.sort(collator.compare);
         } else if (sortMode === 'folder-random') {
             const groups = new Map();
             for (let i = 0; i < allImages.length; i++) {
@@ -304,7 +400,7 @@ const server = http.createServer((req, res) => {
                 }
                 groups.get(folderKey).push(img);
             }
-            const sortedKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+            const sortedKeys = Array.from(groups.keys()).sort(collator.compare);
             
             allImages = [];
             for (const key of sortedKeys) {
@@ -340,7 +436,8 @@ const server = http.createServer((req, res) => {
             images: imageUrls,
             foldersUsed: folders,
             filterMode: includeMode,
-            filterInclude: includes
+            filterInclude: includes,
+            isConfigDir: !!configDir
         }));
         return;
     }

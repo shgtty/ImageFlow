@@ -30,3 +30,9 @@
 ## 2026-04-10 - Throttle wheel events for discrete navigation
 **Learning:** High-frequency `wheel` events (e.g. from trackpads or free-scrolling mice) can trigger dozens of times per second. If these events are directly bound to discrete navigation functions (like `next()` or `prev()`) that also trigger network requests (e.g., fetching image dimensions via `getImageDims`), it causes severe UI skipping, layout thrashing, and floods the browser's connection queue.
 **Action:** Always add time-based throttling (e.g., 250ms) to `wheel` event listeners when they are used to trigger discrete, network-bound navigation state changes.
+## 2024-08-01 - Avoid redundant O(N) array scans during rapid UI updates
+**Learning:** Functions like `getFolderBounds` that scan an entire array (O(N) complexity) to find boundary limits can cause massive UI jank if they are attached to high-frequency events like `mousemove` (e.g. updating a seekbar's tooltip). While the array scan itself might be fast, repeated calls involving string manipulation or parsing quickly add up to block the main thread.
+**Action:** When a boundary or range calculation doesn't change unless the underlying data array changes, implement a scoped cache that remembers the start, end, and total for a given item index. Invalidate the cache when the array reference changes.
+## 2024-05-19 - Avoid using localeCompare inside array sort callbacks for massive arrays
+**Learning:** `String.prototype.localeCompare` is extremely slow in Node.js/V8 when used inside `.sort()` on large arrays (e.g. 50,000+ strings), because it instantiates a new collator object and performs complex linguistic comparisons on every single iteration.
+**Action:** Always pre-instantiate an `Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })` outside the sort loop and pass its `.compare` method directly to `Array.prototype.sort()`. This preserves natural/alphanumeric sorting capabilities while running 10x-20x faster.
