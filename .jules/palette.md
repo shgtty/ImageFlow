@@ -17,3 +17,7 @@
 ## 2024-05-24 - Provide focus-visible styles for input range sliders
 **Learning:** In highly customized web apps with dark backgrounds, default focus outlines for range sliders can be unnoticeable, breaking keyboard accessibility. When implementing custom thumbs for sliders, we also need to account for when the element itself receives keyboard focus and provide an explicit visual indicator.
 **Action:** Provide `:focus-visible` styles with sufficient outline offsets and thumb pseudo-class highlighting (`:focus-visible::-webkit-slider-thumb`) to ensure the slider is clearly identifiable during keyboard navigation.
+
+## 2024-05-25 - Apply aria-live to localized transient indicators
+**Learning:** The application uses multiple transient visual indicators (like the `#speed-indicator`) to display rapidly changing state to sighted users. While the main toast notification (`#mode-overlay`) correctly used `aria-live`, other localized indicators like the speed indicator were missing it, meaning screen reader users missed important contextual feedback about their actions (e.g. changing scroll speed).
+**Action:** Apply `role="status"` and `aria-live="polite"` to all elements that display visually transient information, not just the primary notification area, to ensure complete feature parity for assistive tech.
