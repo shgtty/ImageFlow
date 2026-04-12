@@ -929,6 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }).then(r => r.json()).then(postRes => {
                                 if (postRes.success) {
                                     fileSelectModal.style.display = 'none';
+                                    document.body.style.overflow = ''; // Restore overflow
                                     if (previousFocus) {
                                         previousFocus.focus();
                                     }
@@ -968,6 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             }
                                             
                                             updateSeekbar();
+                                            // ⚡ Optimization: Update filter bar after reloading images to reflect new server state
                                             updateFilterBar(data);
                                             
                                             let displayCount = allImagesUrls.length;
@@ -987,6 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     previousFocus = document.activeElement;
                     fileSelectModal.style.display = 'block';
+                    document.body.style.overflow = 'hidden'; // Block background scroll
                     const firstBtn = fileSelectModal.querySelector('button.file-item');
                     if (firstBtn) {
                         firstBtn.focus();
@@ -1001,6 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(closeFileModal) {
         closeFileModal.addEventListener('click', () => {
             fileSelectModal.style.display = 'none';
+            document.body.style.overflow = ''; // Restore overflow
             if (previousFocus) {
                 previousFocus.focus();
             }
@@ -1188,6 +1192,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('keydown', (e) => {
+        // --- Modal Interaction Handling ---
+        const isFileModalOpen = fileSelectModal && fileSelectModal.style.display === 'block';
+        if (isFileModalOpen) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                fileSelectModal.style.display = 'none';
+                document.body.style.overflow = ''; // Restore overflow
+                if (previousFocus) {
+                    previousFocus.focus();
+                }
+                return;
+            }
+            // Block all other keys when modal is open to prevent background interaction
+            // Allow tab for accessibility, but we could also Trap focus if needed.
+            if (e.key !== 'Tab') {
+                return;
+            }
+        }
+
         if (e.key === 'm' || e.key === 'M') {
             toggleMode();
         } else if (e.key === 'r' || e.key === 'R') {
@@ -1237,13 +1260,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 GalleryView.changeColumnCount(1);
             }
         } else if (e.key === 'Escape') {
-            if (fileSelectModal.style.display === 'block') {
-                fileSelectModal.style.display = 'none';
-                if (previousFocus) {
-                    previousFocus.focus();
-                }
-                return;
-            }
             if (document.fullscreenElement) {
                 document.exitFullscreen();
             } else {
