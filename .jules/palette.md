@@ -18,6 +18,10 @@
 **Learning:** In highly customized web apps with dark backgrounds, default focus outlines for range sliders can be unnoticeable, breaking keyboard accessibility. When implementing custom thumbs for sliders, we also need to account for when the element itself receives keyboard focus and provide an explicit visual indicator.
 **Action:** Provide `:focus-visible` styles with sufficient outline offsets and thumb pseudo-class highlighting (`:focus-visible::-webkit-slider-thumb`) to ensure the slider is clearly identifiable during keyboard navigation.
 
+## 2024-05-25 - Apply aria-live to localized transient indicators
+**Learning:** The application uses multiple transient visual indicators (like the `#speed-indicator`) to display rapidly changing state to sighted users. While the main toast notification (`#mode-overlay`) correctly used `aria-live`, other localized indicators like the speed indicator were missing it, meaning screen reader users missed important contextual feedback about their actions (e.g. changing scroll speed).
+**Action:** Apply `role="status"` and `aria-live="polite"` to all elements that display visually transient information, not just the primary notification area, to ensure complete feature parity for assistive tech.
+
 ## 2024-05-25 - Implement accessible custom modals
 **Learning:** Custom UI modals (like the file selector) are completely invisible to screen readers unless marked with `role="dialog"` and `aria-modal="true"`. Furthermore, without managing focus (shifting focus into the modal when opened, and restoring it to the previous active element when closed), keyboard users lose their place in the UI and struggle to interact with the new content.
 **Action:** Always ensure custom modals have `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, and explicit JavaScript logic to manage focus state changes and support the `Escape` key for closing.
