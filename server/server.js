@@ -454,10 +454,8 @@ const server = http.createServer((req, res) => {
             const resolvedPath = path.resolve(basePath);
             const allowedPaths = getAllowedPaths();
             const isAllowed = allowedPaths.some(allowed => {
-                const relative = path.relative(allowed, resolvedPath);
-                // path.relative returns '' if they are the same,
-                // or a string not starting with '..' if resolvedPath is inside allowed.
-                return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+                const base = allowed.endsWith(path.sep) ? allowed : allowed + path.sep;
+                return resolvedPath === allowed || resolvedPath.startsWith(base);
             });
 
             if (!isAllowed) {
@@ -532,8 +530,8 @@ const server = http.createServer((req, res) => {
     const resolvedPath = path.resolve(filePath);
 
     // Security check: ensure the resolved path is within the public directory
-    const relative = path.relative(publicDir, resolvedPath);
-    const isSafe = relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+    const base = publicDir.endsWith(path.sep) ? publicDir : publicDir + path.sep;
+    const isSafe = resolvedPath === publicDir || resolvedPath.startsWith(base);
 
     if (!isSafe) {
         res.writeHead(403);
