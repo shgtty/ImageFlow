@@ -133,6 +133,7 @@ function watchFile(filePath, reloadFunc, label) {
             }, 100);
         }
     });
+    if (watcher.unref) watcher.unref();
     return watcher;
 }
 
@@ -167,6 +168,28 @@ function getAllowedPaths() {
     return cachedConfig.folders;
 }
 
+/**
+ * Parses ZIP contents and adds valid image entries to the results array.
+ * @param {string} zipPath - The path to the ZIP file.
+ * @param {string[]} results - The array to collect image paths.
+ */
+function getImagesFromZip(zipPath, results) {
+    try {
+        const zip = getZipInstance(zipPath);
+        const zipEntries = zip.getEntries();
+        for (const entry of zipEntries) {
+            if (!entry.isDirectory) {
+                const entryExt = path.extname(entry.entryName).toLowerCase();
+                if (VALID_EXTS.has(entryExt)) {
+                    results.push(`${zipPath}|${entry.entryName}`);
+                }
+            }
+        }
+    } catch (zipErr) {
+        console.error(`Error reading ZIP file ${zipPath}:`, zipErr.message);
+    }
+}
+
 // ⚡ Bolt Optimization: Recursive helper that takes Dirent array from withFileTypes to prevent redundant fs.statSync calls
 function processDirents(basePath, dirents, results) {
     for (const dirent of dirents) {
@@ -199,20 +222,7 @@ function processDirents(basePath, dirents, results) {
             if (VALID_EXTS.has(ext)) {
                 results.push(fullPath);
             } else if (ext === '.zip') {
-                try {
-                    const zip = getZipInstance(fullPath);
-                    const zipEntries = zip.getEntries();
-                    for (const entry of zipEntries) {
-                        if (!entry.isDirectory) {
-                            const entryExt = path.extname(entry.entryName).toLowerCase();
-                            if (VALID_EXTS.has(entryExt)) {
-                                results.push(`${fullPath}|${entry.entryName}`);
-                            }
-                        }
-                    }
-                } catch (zipErr) {
-                    console.error(`Error reading ZIP file ${fullPath}:`, zipErr.message);
-                }
+                getImagesFromZip(fullPath, results);
             }
         }
     }
@@ -228,20 +238,7 @@ function getImagesFromPath(targetPath, results = []) {
             if (VALID_EXTS.has(ext)) {
                 results.push(targetPath);
             } else if (ext === '.zip') {
-                try {
-                    const zip = getZipInstance(targetPath);
-                    const zipEntries = zip.getEntries();
-                    for (const entry of zipEntries) {
-                        if (!entry.isDirectory) {
-                            const entryExt = path.extname(entry.entryName).toLowerCase();
-                            if (VALID_EXTS.has(entryExt)) {
-                                results.push(`${targetPath}|${entry.entryName}`);
-                            }
-                        }
-                    }
-                } catch (zipErr) {
-                    console.error(`Error reading ZIP file ${targetPath}:`, zipErr.message);
-                }
+                getImagesFromZip(targetPath, results);
             }
             return results;
         }
@@ -555,10 +552,17 @@ const server = http.createServer((req, res) => {
     }
 });
 
-server.listen(PORT, () => {
-    console.log(`=========================================`);
-    console.log(`Image Server is running at http://localhost:${PORT}/`);
-    console.log(`Please edit the 'folders.txt' file in the 'config' directory`);
-    console.log(`to add or change the target image folders.`);
-    console.log(`=========================================`);
-});
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`=========================================`);
+        console.log(`Image Server is running at http://localhost:${PORT}/`);
+        console.log(`Please edit the 'folders.txt' file in the 'config' directory`);
+        console.log(`to add or change the target image folders.`);
+        console.log(`=========================================`);
+    });
+}
+
+module.exports = {
+    getImagesFromPath,
+    VALID_EXTS
+};
