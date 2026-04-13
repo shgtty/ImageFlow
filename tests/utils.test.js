@@ -38,6 +38,17 @@ test('getFolderPath utility', async (t) => {
     await t.test('handles invalid URLs gracefully', () => {
         assert.strictEqual(getFolderPath('not-a-url'), '');
     });
+
+    await t.test('handles malformed percent-encoding in path parameter', () => {
+        // %E0%A0 is an incomplete UTF-8 sequence and should cause URIError in decodeURIComponent
+        const url = `${BASE_URL}/image?path=%E0%A0`;
+        assert.strictEqual(getFolderPath(url, BASE_URL), '');
+    });
+
+    await t.test('handles completely invalid URLs (e.g., ://)', () => {
+        // This should trigger the catch block via the URL constructor
+        assert.strictEqual(getFolderPath('://'), '');
+    });
 });
 
 test('getFolderDisplayName utility', async (t) => {
