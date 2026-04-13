@@ -541,13 +541,21 @@ const server = http.createServer((req, res) => {
     if (ext === '.js') contentType = 'text/javascript';
     if (ext === '.css') contentType = 'text/css';
 
-    if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
-        res.writeHead(200, { 'Content-Type': contentType });
-        fs.createReadStream(resolvedPath).pipe(res);
-    } else {
-        res.writeHead(404);
-        res.end('Not found');
-    }
+    // ⚡ Bolt Optimization: Use async fs.promises.stat to preserve isFile check without blocking event loop
+    fs.promises.stat(resolvedPath)
+        .then(stats => {
+            if (stats.isFile()) {
+                res.writeHead(200, { 'Content-Type': contentType });
+                fs.createReadStream(resolvedPath).pipe(res);
+            } else {
+                res.writeHead(404);
+                res.end('Not found');
+            }
+        })
+        .catch(() => {
+            res.writeHead(404);
+            res.end('Not found');
+        });
 });
 
 if (require.main === module) {
