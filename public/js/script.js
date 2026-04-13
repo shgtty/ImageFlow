@@ -25,6 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeFileModal = document.getElementById('close-file-modal');
     const fileListContainer = document.getElementById('file-list');
 
+    // Filter modal UI elements
+    const filterModal = document.getElementById('filter-modal');
+    const filterGlobalEnable = document.getElementById('filter-global-enable');
+    const filterModeRadios = document.getElementsByName('filter-mode');
+    const filterNewWord = document.getElementById('filter-new-word');
+    const filterAddBtn = document.getElementById('filter-add-btn');
+    const filterList = document.getElementById('filter-list');
+    const closeFilterModalBtn = document.getElementById('close-filter-modal');
+    const saveFilterModalBtn = document.getElementById('save-filter-modal');
+
     // Gallery specific control buttons
     const scrollUpBtn = document.getElementById('scrollUpBtn');
     const scrollDownBtn = document.getElementById('scrollDownBtn');
@@ -420,74 +430,230 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleInclude() {
-        enableInclude = !enableInclude;
-        localStorage.setItem(STORAGE_KEY_ENABLE_INCLUDE, enableInclude);
-        updateIncludeIcon();
-        
-        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
-        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
-        
-        let currentImgUrl = null;
-        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
-            currentImgUrl = allImagesUrls[DualView.currentIndex];
-        } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive && allImagesUrls.length > 0) {
-            currentImgUrl = allImagesUrls[GalleryView.currentIndex];
-        }
+        openFilterModal();
+    }
 
-        fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
+    const SYSTEM_COMMENTS = [
+        "# ここに記述された文字列がファイルパスに含まれる画像のみを表示します（1行に1つ）",
+        "# デフォルトはすべての単語を含む画像を表示する「AND検索」です。",
+        "# どれか一つでも含むものを表示する「OR検索」に切り替えたい場合は、ファイル内に MODE:OR と記述してください。",
+        "# 例:"
+    ];
+
+    function openFilterModal() {
+        if (!filterModal) return;
+        
+        filterGlobalEnable.checked = enableInclude;
+        
+        fetch('/api/include-file')
             .then(r => r.json())
-            .then(data => {
-                allImagesUrls = data.images;
-                const total = data.totalFound !== undefined ? data.totalFound : allImagesUrls.length;
+            .then(res => {
+                if (res.error) {
+                    alert('設定ファイルの読み込みに失敗しました');
+                    return;
+                }
+                const text = res.text || '';
+                const lines = text.split(/\r?\n/);
                 
-                if (total === 0) {
-                    seekbar.max = 0;
-                    seekbar.value = 0;
-                    seekbarInfo.textContent = '0 / 0';
-                    seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
-                    if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
-                        GalleryView.updateImagesAndReset([], 0);
-                    }
-                    if (typeof DualView !== 'undefined' && DualView.isActive) {
-                        DualView.updateImagesAndReset([], 0, true);
-                    }
-                    const filterStatus = enableInclude ? '有効' : '無効';
-                    showModeOverlay('画像が見つかりませんでした', `フィルター${filterStatus}`, 0);
-                } else {
-                    seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                let mode = 'AND';
+                let filters = [];
+                
+                for (let line of lines) {
+                    let trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (SYSTEM_COMMENTS.includes(trimmed)) continue;
+                    if (trimmed === 'MODE:OR' || trimmed === '# MODE:OR') { mode = 'OR'; continue; }
+                    if (trimmed === 'MODE:AND' || trimmed === '# MODE:AND') { mode = 'AND'; continue; }
                     
-                    const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
-                    let displayCount = allImagesUrls.length;
-                    
-                    let targetIndex = 0;
-                    if (currentImgUrl) {
-                        const newIdx = allImagesUrls.indexOf(currentImgUrl);
-                        if (newIdx >= 0) {
-                            targetIndex = newIdx;
-                        }
+                    let checked = true;
+                    if (trimmed.startsWith('#')) {
+                        checked = false;
+                        trimmed = trimmed.replace(/^#\s*/, '');
                     }
-
-                    if (currentSort === 'folder-random') {
-                        displayCount = getFolderBounds(targetIndex).total;
-                    }
-
-                    showModeOverlay('フィルター', enableInclude ? '有効' : '無効', displayCount, iconHtml);
-                    
-                    if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
-                        DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
-                    } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
-                        GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
-                    } else {
-                        loadImages();
+                    if (trimmed) {
+                        filters.push({ word: trimmed, checked });
                     }
                 }
-                updateSeekbar();
-                updateFilterBar(data);
+                
+                Array.from(filterModeRadios).forEach(r => {
+                    r.checked = (r.value === mode);
+                });
+                
+                filterList.innerHTML = '';
+                
+                filters.sort((a, b) => {
+                    if (a.checked && !b.checked) return -1;
+                    if (!a.checked && b.checked) return 1;
+                    return 0; // Maintain original order for equally checked/unchecked items
+                });
+                
+                filters.forEach(f => {
+                    addFilterCheckboxUI(f.word, f.checked);
+                });
+                
+                filterNewWord.value = '';
+                
+                previousFocus = document.activeElement;
+                filterModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
             })
-            .catch(err => {
-                console.error('Error fetching filtered images:', err);
-                loadImages(); // フォールバック
-            });
+            .catch(console.error);
+    }
+
+    function addFilterCheckboxUI(word, checked) {
+        const lbl = document.createElement('label');
+        lbl.style.display = 'flex';
+        lbl.style.alignItems = 'center';
+        lbl.style.gap = '8px';
+        lbl.style.padding = '8px 12px';
+        lbl.style.background = 'rgba(255,255,255,0.05)';
+        lbl.style.borderRadius = '6px';
+        lbl.style.cursor = 'pointer';
+        
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = word;
+        cb.checked = checked;
+        cb.className = 'filter-word-cb';
+        cb.style.transform = 'scale(1.2)';
+        
+        const span = document.createElement('span');
+        span.textContent = word;
+
+        const delBtn = document.createElement('span');
+        delBtn.textContent = '×';
+        delBtn.style.marginLeft = 'auto';
+        delBtn.style.color = '#e74c3c';
+        delBtn.style.fontWeight = 'bold';
+        delBtn.style.padding = '0 5px';
+        delBtn.style.cursor = 'pointer';
+        delBtn.onclick = (e) => {
+            e.preventDefault();
+            lbl.remove();
+        };
+        
+        lbl.appendChild(cb);
+        lbl.appendChild(span);
+        lbl.appendChild(delBtn);
+        filterList.appendChild(lbl);
+    }
+
+    function closeFilterModal() {
+        if (!filterModal) return;
+        filterModal.style.display = 'none';
+        document.body.style.overflow = '';
+        if (previousFocus) previousFocus.focus();
+    }
+
+    function saveFilterModal() {
+        if (!filterModal) return;
+        
+        const newEnableInclude = filterGlobalEnable.checked;
+        const enableIncludeChanged = (enableInclude !== newEnableInclude);
+        enableInclude = newEnableInclude;
+        localStorage.setItem(STORAGE_KEY_ENABLE_INCLUDE, enableInclude);
+        
+        let selectedMode = 'AND';
+        Array.from(filterModeRadios).forEach(r => {
+            if (r.checked) selectedMode = r.value;
+        });
+        
+        let newText = SYSTEM_COMMENTS.join('\n') + '\n\n';
+        newText += `MODE:${selectedMode}\n`;
+        
+        const cbs = filterList.querySelectorAll('.filter-word-cb');
+        cbs.forEach(cb => {
+            const word = cb.value;
+            if (cb.checked) {
+                newText += `${word}\n`;
+            } else {
+                newText += `# ${word}\n`;
+            }
+        });
+        
+        fetch('/api/include-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: newText })
+        }).then(r => r.json()).then(res => {
+            if (res.success) {
+                closeFilterModal();
+                updateIncludeIcon();
+                // サーバー側のファイル更新と再読込を少し待機してから画像を再取得
+                setTimeout(() => {
+                    // 現在の画像URLなどを保存しておく
+                    const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+                    const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+                    
+                    let currentImgUrl = null;
+                    if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
+                        currentImgUrl = allImagesUrls[DualView.currentIndex];
+                    } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive && allImagesUrls.length > 0) {
+                        currentImgUrl = allImagesUrls[GalleryView.currentIndex];
+                    }
+                    
+                    fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            allImagesUrls = data.images || [];
+                            const total = data.totalFound !== undefined ? data.totalFound : allImagesUrls.length;
+                            
+                            if (total === 0) {
+                                seekbar.max = 0;
+                                seekbar.value = 0;
+                                seekbarInfo.textContent = '0 / 0';
+                                seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+                                if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                    GalleryView.updateImagesAndReset([], 0);
+                                }
+                                if (typeof DualView !== 'undefined' && DualView.isActive) {
+                                    DualView.updateImagesAndReset([], 0, true);
+                                }
+                                const filterStatus = enableInclude ? '有効' : '無効';
+                                showModeOverlay('画像が見つかりませんでした', `フィルター${filterStatus}`, 0);
+                            } else {
+                                seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                                
+                                const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
+                                let displayCount = allImagesUrls.length;
+                                
+                                let targetIndex = 0;
+                                if (currentImgUrl) {
+                                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                                    if (newIdx >= 0) {
+                                        targetIndex = newIdx;
+                                    }
+                                }
+            
+                                if (currentSort === 'folder-random') {
+                                    displayCount = getFolderBounds(targetIndex).total;
+                                }
+            
+                                showModeOverlay('フィルター適用', enableInclude ? '有効' : '無効', displayCount, iconHtml);
+                                
+                                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                    DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
+                                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                    GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
+                                } else {
+                                    loadImages();
+                                }
+                            }
+                            updateSeekbar();
+                            updateFilterBar(data);
+                        })
+                        .catch(err => {
+                            console.error('Error fetching filtered images:', err);
+                            loadImages();
+                        });
+                }, 300);
+            }
+        }).catch(err => {
+            console.error('Failed to save filter:', err);
+            closeFilterModal();
+            updateIncludeIcon();
+            loadImages();
+        });
     }
 
     let cachedFolderBoundsIndex = -1;
@@ -780,7 +946,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleFullscreen() {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(console.error);
+            document.documentElement.requestFullscreen().then(() => {
+                if (navigator.keyboard && navigator.keyboard.lock) {
+                    navigator.keyboard.lock(['Escape']).catch(console.error);
+                }
+            }).catch(console.error);
         } else {
             if (document.exitFullscreen) document.exitFullscreen();
         }
@@ -1011,6 +1181,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if(filterAddBtn) {
+        filterAddBtn.addEventListener('click', () => {
+            let word = filterNewWord.value.trim();
+            if(!word) return;
+            addFilterCheckboxUI(word, true);
+            filterNewWord.value = '';
+        });
+    }
+    
+    if(filterNewWord) {
+        filterNewWord.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                filterAddBtn.click();
+            }
+        });
+    }
+
+    if(closeFilterModalBtn) {
+        closeFilterModalBtn.addEventListener('click', closeFilterModal);
+    }
+
+    if(saveFilterModalBtn) {
+        saveFilterModalBtn.addEventListener('click', saveFilterModal);
+    }
+
     // ⚡ Bolt Optimization: Throttle expensive elementFromPoint queries on mousemove
     // High-frequency events (125-1000Hz) cause jank if they do synchronous hit testing.
     // requestAnimationFrame bounds the work to display refresh rate (e.g. 60Hz).
@@ -1194,21 +1390,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         // --- Modal Interaction Handling ---
         const isFileModalOpen = fileSelectModal && fileSelectModal.style.display === 'block';
-        if (isFileModalOpen) {
+        const isFilterModalOpen = filterModal && filterModal.style.display === 'block';
+        
+        if (isFileModalOpen || isFilterModalOpen) {
             if (e.key === 'Escape') {
                 e.preventDefault();
-                fileSelectModal.style.display = 'none';
+                if (isFileModalOpen) {
+                    fileSelectModal.style.display = 'none';
+                } else if (isFilterModalOpen) {
+                    filterModal.style.display = 'none';
+                }
                 document.body.style.overflow = ''; // Restore overflow
                 if (previousFocus) {
                     previousFocus.focus();
                 }
                 return;
             }
-            // Block all other keys when modal is open to prevent background interaction
-            // Allow tab for accessibility, but we could also Trap focus if needed.
-            if (e.key !== 'Tab') {
-                return;
-            }
+            // Block custom background interactions by exiting the listener,
+            // which allows the browser to natively handle Tab, Space, Enter, etc. for modal controls.
+            return;
         }
 
         if (e.key === 'm' || e.key === 'M') {

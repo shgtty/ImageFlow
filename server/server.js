@@ -327,6 +327,43 @@ const server = http.createServer((req, res) => {
         }
     }
 
+    if (reqUrl.pathname === '/api/include-file') {
+        if (req.method === 'GET') {
+            try {
+                let text = '';
+                if (fs.existsSync(INCLUDE_FILE)) {
+                    text = fs.readFileSync(INCLUDE_FILE, 'utf-8');
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ text }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ error: 'Failed to read include.txt' }));
+            }
+            return;
+        } else if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    if (data.text !== undefined) {
+                        fs.writeFileSync(INCLUDE_FILE, data.text, 'utf-8');
+                        // loadIncludes will be triggered by file watcher
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true }));
+                        return;
+                    }
+                } catch(e) {
+                    console.error('Error writing include file:', e);
+                }
+                res.writeHead(400);
+                res.end(JSON.stringify({ error: 'Bad Request' }));
+            });
+            return;
+        }
+    }
+
     if (reqUrl.pathname === '/api/images') {
         const sortMode = reqUrl.searchParams.get('sort') || 'random';
         const enableInclude = reqUrl.searchParams.get('enableInclude') !== 'false';

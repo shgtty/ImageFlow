@@ -77,9 +77,11 @@ const DualView = (() => {
             if (!isActive) return;
             if (e.target.closest('.fab')) return;
 
-            // Block clicks if file selection modal is open
-            const modal = document.getElementById('file-select-modal');
-            if (modal && modal.style.display === 'block') return;
+            // Block clicks if a modal is open
+            const fileSelectModal = document.getElementById('file-select-modal');
+            if (fileSelectModal && fileSelectModal.style.display === 'block') return;
+            const filterModal = document.getElementById('filter-modal');
+            if (filterModal && filterModal.style.display === 'block') return;
 
             const width = window.innerWidth;
             if (e.clientX > width / 2) {
@@ -95,9 +97,11 @@ const DualView = (() => {
         currentWheelHandler = (e) => {
             if (!isActive) return;
 
-            // Block wheel if file selection modal is open
-            const modal = document.getElementById('file-select-modal');
-            if (modal && modal.style.display === 'block') return;
+            // Block wheel if a modal is open
+            const fileSelectModal = document.getElementById('file-select-modal');
+            if (fileSelectModal && fileSelectModal.style.display === 'block') return;
+            const filterModal = document.getElementById('filter-modal');
+            if (filterModal && filterModal.style.display === 'block') return;
 
             // ⚡ Bolt Optimization: Throttle high-frequency wheel events to prevent redundant image fetch requests and layout thrashing
             const now = Date.now();
