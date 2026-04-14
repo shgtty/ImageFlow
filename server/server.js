@@ -514,16 +514,22 @@ const server = http.createServer((req, res) => {
 
             if (isZipEntry) {
                 // ZIPファイルの特定データをメモリに展開・バッファ提供フロー
+                // ⚡ Bolt Optimization: Use async readFileAsync to avoid blocking the event loop while extracting large ZIP entries
                 try {
                     const zip = getZipInstance(resolvedPath);
-                    const buffer = zip.readFile(entryName); // メモリ上で伸長・展開
-                    if (buffer) {
+                    zip.readFileAsync(entryName, (data, err) => {
+                        if (err || !data) {
+                            if (err) console.error('Error extracting from zip:', err);
+                            res.writeHead(404);
+                            res.end('Image not found');
+                            return;
+                        }
                         res.writeHead(200, headers);
-                        res.end(buffer); // メモリ上のバッファを直接レスポンスするためHDD消費なし
-                        return;
-                    }
+                        res.end(data); // メモリ上のバッファを直接レスポンスするためHDD消費なし
+                    });
+                    return; // Prevent fallthrough to 404 below while async operation runs
                 } catch (e) {
-                    console.error('Error extracting from zip:', e.message);
+                    console.error('Error initializing zip extraction:', e.message);
                     // fallthrough to 404
                 }
             } else {

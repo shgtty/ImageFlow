@@ -36,3 +36,6 @@
 ## 2024-05-19 - Avoid using localeCompare inside array sort callbacks for massive arrays
 **Learning:** `String.prototype.localeCompare` is extremely slow in Node.js/V8 when used inside `.sort()` on large arrays (e.g. 50,000+ strings), because it instantiates a new collator object and performs complex linguistic comparisons on every single iteration.
 **Action:** Always pre-instantiate an `Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })` outside the sort loop and pass its `.compare` method directly to `Array.prototype.sort()`. This preserves natural/alphanumeric sorting capabilities while running 10x-20x faster.
+## 2024-05-19 - Avoid synchronous ZIP extraction inside request handlers
+**Learning:** Performing a synchronous file extraction using `zip.readFile` inside high-frequency endpoints (like `/image` when serving images from a ZIP file) blocks the Node.js event loop while extracting large image files into memory, impacting concurrency and causing other requests to stall.
+**Action:** Always use the asynchronous variant (e.g., `zip.readFileAsync` with AdmZip) in request handlers to offload extraction work from the main event loop and improve throughput.
