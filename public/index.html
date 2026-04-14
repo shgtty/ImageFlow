@@ -503,6 +503,13 @@
         #close-file-modal:hover {
             background: #555;
         }
+
+        /* モーダル内のボタン・入力欄のフォーカス表示 (アクセシビリティ対応) */
+        [role="dialog"] button:focus-visible,
+        [role="dialog"] input:focus-visible {
+            outline: 2px solid #3498db;
+            outline-offset: 2px;
+        }
     </style>
 </head>
 
@@ -711,7 +718,7 @@
         </div>
 
         <div style="margin-bottom:15px; display:flex; gap:10px;">
-            <input type="text" id="filter-new-word" placeholder="新しいキーワード..." style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #555; background:#222; color:white; outline:none;">
+            <input type="text" id="filter-new-word" placeholder="新しいキーワード..." style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #555; background:#222; color:white;">
             <button id="filter-add-btn" style="padding:8px 16px; background:#3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; transition:background 0.2s;">追加</button>
         </div>
 
