@@ -25,3 +25,7 @@
 ## 2024-05-25 - Implement accessible custom modals
 **Learning:** Custom UI modals (like the file selector) are completely invisible to screen readers unless marked with `role="dialog"` and `aria-modal="true"`. Furthermore, without managing focus (shifting focus into the modal when opened, and restoring it to the previous active element when closed), keyboard users lose their place in the UI and struggle to interact with the new content.
 **Action:** Always ensure custom modals have `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, and explicit JavaScript logic to manage focus state changes and support the `Escape` key for closing.
+
+## 2024-05-26 - Add focus-visible to custom modal elements
+**Learning:** Custom UI modals without explicit `:focus-visible` styling for interactive child elements (like inputs and buttons) can suffer from poor keyboard focus visibility, especially in dark mode where default browser outlines are often barely visible. Also, inline styles like `outline:none` completely break keyboard accessibility and must be removed.
+**Action:** Always test keyboard navigation inside custom modals. Provide explicit high-contrast `:focus-visible` styles for `[role="dialog"] button` and `[role="dialog"] input` to ensure focus is clearly visible for keyboard users.
