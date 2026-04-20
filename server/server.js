@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
+const { isPathInside } = require('./utils');
 
 const zipCache = new Map();
 const MAX_CACHE_SIZE = 100;
@@ -297,7 +298,8 @@ const server = http.createServer((req, res) => {
                     const data = JSON.parse(body);
                     if (data.file && configDir) {
                         const newConfigPath = path.join(configDir, data.file);
-                        if (fs.existsSync(newConfigPath)) {
+
+                        if (isPathInside(configDir, newConfigPath) && fs.existsSync(newConfigPath) && fs.statSync(newConfigPath).isFile()) {
                             // Update CONFIG_FILE and save to state
                             CONFIG_FILE = newConfigPath;
                             const lastConfStatePath = path.join(configDir, '.last_config.state');
@@ -487,10 +489,7 @@ const server = http.createServer((req, res) => {
             // Path Traversal check
             const resolvedPath = path.resolve(basePath);
             const allowedPaths = getAllowedPaths();
-            const isAllowed = allowedPaths.some(allowed => {
-                const base = allowed.endsWith(path.sep) ? allowed : allowed + path.sep;
-                return resolvedPath === allowed || resolvedPath.startsWith(base);
-            });
+            const isAllowed = allowedPaths.some(allowed => isPathInside(allowed, resolvedPath));
 
             if (!isAllowed) {
                 res.writeHead(403);
@@ -570,10 +569,7 @@ const server = http.createServer((req, res) => {
     const resolvedPath = path.resolve(filePath);
 
     // Security check: ensure the resolved path is within the public directory
-    const base = publicDir.endsWith(path.sep) ? publicDir : publicDir + path.sep;
-    const isSafe = resolvedPath === publicDir || resolvedPath.startsWith(base);
-
-    if (!isSafe) {
+    if (!isPathInside(publicDir, resolvedPath)) {
         res.writeHead(403);
         res.end('Access denied');
         return;
