@@ -130,30 +130,25 @@ const GalleryView = (() => {
         const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
         const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
         const folderRandom = currentSort === 'folder-random';
-        const currentFolder = folderRandom && typeof getFolderPath === 'function' ? getFolderPath(allImagesUrls[currentIndex]) : null;
 
         const batchImages = [];
         let tempIndex = currentIndex;
 
         for (let i = 0; i < count; i++) {
             if (tempIndex >= allImagesUrls.length) {
-                if (folderRandom && currentFolder) {
+                if (folderRandom && typeof getFolderBounds === 'function') {
                     // Reached the end of the array, but since it's folder-random, it might mean the end of the folder is the end of the array. Wrap around!
-                    let startOfFolder = tempIndex - 1;
-                    while (startOfFolder > 0 && getFolderPath(allImagesUrls[startOfFolder - 1]) === currentFolder) {
-                        startOfFolder--;
-                    }
-                    tempIndex = startOfFolder;
+                    const bounds = getFolderBounds(tempIndex - 1, allImagesUrls);
+                    tempIndex = bounds.start;
                 } else {
                     break; // Normal mode -> end
                 }
-            } else if (folderRandom && currentFolder && getFolderPath(allImagesUrls[tempIndex]) !== currentFolder) {
-               // Hit folder boundary
-               let startOfFolder = tempIndex - 1;
-               while (startOfFolder > 0 && getFolderPath(allImagesUrls[startOfFolder - 1]) === currentFolder) {
-                   startOfFolder--;
+            } else if (folderRandom && typeof getFolderBounds === 'function') {
+               const bounds = getFolderBounds(currentIndex, allImagesUrls);
+               if (tempIndex < bounds.start || tempIndex > bounds.end) {
+                   // Hit folder boundary
+                   tempIndex = bounds.start;
                }
-               tempIndex = startOfFolder;
             }
 
             const activeIndex = tempIndex;

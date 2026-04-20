@@ -2,6 +2,9 @@
  * Utility functions for ImageFlow
  */
 
+// ⚡ Bolt Optimization: Cache for getFolderPath to prevent redundant regex/URL parsing
+const folderPathCache = new Map();
+
 /**
  * Extracts the folder path from an image URL's 'path' parameter.
  * @param {string} url - The image URL.
@@ -9,6 +12,10 @@
  * @returns {string} The folder path or an empty string.
  */
 function getFolderPath(url, base) {
+    if (!url) return '';
+    const cacheKey = base ? `${url}|${base}` : url;
+    if (folderPathCache.has(cacheKey)) return folderPathCache.get(cacheKey);
+
     try {
         // ⚡ Bolt Optimization: Use fast regex parsing to avoid expensive new URL() constructor overhead in tight loops
         let pathStr = null;
@@ -21,17 +28,27 @@ function getFolderPath(url, base) {
             pathStr = urlObj.searchParams.get('path');
         }
 
-        if (!pathStr) return '';
+        if (!pathStr) {
+            folderPathCache.set(cacheKey, '');
+            return '';
+        }
 
+        let result = '';
         if (pathStr.includes('|')) {
-            return pathStr.split('|')[0];
+            result = pathStr.split('|')[0];
+        } else {
+            const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
+            if (lastSlash >= 0) {
+                result = pathStr.substring(0, lastSlash);
+            } else {
+                result = pathStr;
+            }
         }
 
-        const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
-        if (lastSlash >= 0) {
-            return pathStr.substring(0, lastSlash);
-        }
-        return pathStr;
+        // Limit cache size to prevent memory leaks (10k entries is plenty for typical usage)
+        if (folderPathCache.size > 10000) folderPathCache.clear();
+        folderPathCache.set(cacheKey, result);
+        return result;
     } catch (e) {
         return '';
     }
@@ -104,6 +121,47 @@ function escapeHTML(str) {
         .replace(/'/g, '&#39;');
 }
 
+let cachedFolderBoundsIndex = -1;
+let cachedFolderBoundsResult = null;
+let cachedFolderBoundsUrls = null;
+
+/**
+ * Calculates the start and end indices of the folder containing the image at globalIndex.
+ * @param {number} globalIndex - The index of the image in the urls array.
+ * @param {string[]} urls - The array of image URLs.
+ * @returns {object} {start, end, total, relativeIndex}
+ */
+function getFolderBounds(globalIndex, urls) {
+    if (!urls || urls.length === 0 || globalIndex < 0 || globalIndex >= urls.length) {
+        return { start: 0, end: 0, total: 0, relativeIndex: 0 };
+    }
+
+    // ⚡ Bolt Optimization: Cache O(N) folder bounds calculation to prevent massive UI jank during seekbar updates or rapid navigation
+    if (cachedFolderBoundsUrls === urls && cachedFolderBoundsResult &&
+        globalIndex >= cachedFolderBoundsResult.start && globalIndex <= cachedFolderBoundsResult.end) {
+        return {
+            start: cachedFolderBoundsResult.start,
+            end: cachedFolderBoundsResult.end,
+            total: cachedFolderBoundsResult.total,
+            relativeIndex: globalIndex - cachedFolderBoundsResult.start
+        };
+    }
+
+    const currentFolder = getFolderPath(urls[globalIndex]);
+    let start = globalIndex;
+    while (start > 0 && getFolderPath(urls[start - 1]) === currentFolder) { start--; }
+    let end = globalIndex;
+    while (end + 1 < urls.length && getFolderPath(urls[end + 1]) === currentFolder) { end++; }
+
+    const bounds = { start, end, total: end - start + 1, relativeIndex: globalIndex - start };
+
+    cachedFolderBoundsUrls = urls;
+    cachedFolderBoundsIndex = globalIndex;
+    cachedFolderBoundsResult = { start: bounds.start, end: bounds.end, total: bounds.total };
+
+    return bounds;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML };
+    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds };
 }

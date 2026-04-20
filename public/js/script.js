@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let displayCount = allImagesUrls.length;
             if (currentSort === 'folder-random') {
-                displayCount = getFolderBounds(targetIndex).total;
+                displayCount = getFolderBounds(targetIndex, allImagesUrls).total;
             }
 
             showModeOverlay(modeName, sortName, displayCount, iconHtml);
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
             
                                 if (currentSort === 'folder-random') {
-                                    displayCount = getFolderBounds(targetIndex).total;
+                                    displayCount = getFolderBounds(targetIndex, allImagesUrls).total;
                                 }
             
                                 showModeOverlay('フィルター適用', enableInclude ? '有効' : '無効', displayCount, iconHtml);
@@ -656,39 +656,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    let cachedFolderBoundsIndex = -1;
-    let cachedFolderBoundsResult = null;
-    let cachedFolderBoundsUrls = null;
-
-    function getFolderBounds(globalIndex) {
-        if (!allImagesUrls || allImagesUrls.length === 0 || globalIndex < 0 || globalIndex >= allImagesUrls.length) return { start: 0, end: 0, total: 0, relativeIndex: 0 };
-
-        // ⚡ Bolt Optimization: Cache O(N) folder bounds calculation to prevent massive UI jank during seekbar updates or rapid navigation in folder-random mode
-        if (cachedFolderBoundsUrls === allImagesUrls && cachedFolderBoundsResult &&
-            globalIndex >= cachedFolderBoundsResult.start && globalIndex <= cachedFolderBoundsResult.end) {
-            return {
-                start: cachedFolderBoundsResult.start,
-                end: cachedFolderBoundsResult.end,
-                total: cachedFolderBoundsResult.total,
-                relativeIndex: globalIndex - cachedFolderBoundsResult.start
-            };
-        }
-
-        const currentFolder = getFolderPath(allImagesUrls[globalIndex]);
-        let start = globalIndex;
-        while (start > 0 && getFolderPath(allImagesUrls[start - 1]) === currentFolder) { start--; }
-        let end = globalIndex;
-        while (end + 1 < allImagesUrls.length && getFolderPath(allImagesUrls[end + 1]) === currentFolder) { end++; }
-
-        const bounds = { start, end, total: end - start + 1, relativeIndex: globalIndex - start };
-
-        cachedFolderBoundsUrls = allImagesUrls;
-        cachedFolderBoundsIndex = globalIndex;
-        cachedFolderBoundsResult = { start: bounds.start, end: bounds.end, total: bounds.total };
-
-        return bounds;
-    }
-
     function updateSeekbar() {
         if (!seekbar || allImagesUrls.length === 0 || isDraggingSeekbar) return;
         let currentIndex = 0;
@@ -701,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
         if (currentSort === 'folder-random') {
-            const bounds = getFolderBounds(currentIndex);
+            const bounds = getFolderBounds(currentIndex, allImagesUrls);
             seekbar.max = Math.max(0, bounds.total - 1);
             seekbar.value = bounds.relativeIndex;
             seekbarInfo.textContent = `${bounds.relativeIndex + 1} / ${bounds.total}`;
@@ -761,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
             let displayCount = allImagesUrls.length;
             if (dualSortMode === 'folder-random') {
-                displayCount = getFolderBounds(index).total;
+                displayCount = getFolderBounds(index, allImagesUrls).total;
             }
             showModeOverlay('デュアルビューモード', sortNames[dualSortMode] || 'ランダム', displayCount, iconHtml);
 
@@ -820,7 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
         let displayCount = allImagesUrls.length;
         if (gallerySortMode === 'folder-random') {
-            displayCount = getFolderBounds(exitIndex).total;
+            displayCount = getFolderBounds(exitIndex, allImagesUrls).total;
         }
         showModeOverlay('ギャラリーモード', sortNames[gallerySortMode] || 'ランダム', displayCount, iconHtml);
 
@@ -922,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let displayCount = allImagesUrls.length;
                 if (currentSort === 'folder-random') {
-                    displayCount = getFolderBounds(targetIndex).total;
+                    displayCount = getFolderBounds(targetIndex, allImagesUrls).total;
                 }
 
                 if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
@@ -1144,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             
                                             let displayCount = allImagesUrls.length;
                                             if (currentSort === 'folder-random') {
-                                                displayCount = getFolderBounds(0).total;
+                                                displayCount = getFolderBounds(0, allImagesUrls).total;
                                             }
                                             showModeOverlay('設定変更', `ファイル: ${file}`, displayCount);
                                         })
@@ -1240,7 +1207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
         if (currentSort === 'folder-random') {
             const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
-            const bounds = getFolderBounds(currentIndex);
+            const bounds = getFolderBounds(currentIndex, allImagesUrls);
             absoluteIndex = bounds.start + val;
             displayTotal = bounds.total;
         }
@@ -1264,7 +1231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
         if (currentSort === 'folder-random') {
             const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
-            const bounds = getFolderBounds(currentIndex);
+            const bounds = getFolderBounds(currentIndex, allImagesUrls);
             absoluteIndex = bounds.start + val;
         }
         
@@ -1293,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
                 if (currentSort === 'folder-random') {
                     const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
-                    const bounds = getFolderBounds(currentIndex);
+                    const bounds = getFolderBounds(currentIndex, allImagesUrls);
                     const index = Math.round(pct * (bounds.total - 1));
                     seekbarTooltip.textContent = `${index + 1} / ${bounds.total}`;
                 } else {
