@@ -282,8 +282,6 @@ const DualView = (() => {
         const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
         const folderRandom = currentSort === 'folder-random';
         
-        const currentFolder = folderRandom && typeof getFolderPath === 'function' ? getFolderPath(images[currentIndex]) : null;
-
         let nextIndex = currentIndex;
         if (currentIndex + moveAmount < images.length) {
             nextIndex += moveAmount;
@@ -293,14 +291,11 @@ const DualView = (() => {
             nextIndex = 0;
         }
 
-        if (currentFolder) {
-            if (nextIndex === 0 || getFolderPath(images[nextIndex]) !== currentFolder) {
+        if (folderRandom && typeof getFolderBounds === 'function') {
+            const bounds = getFolderBounds(currentIndex, images);
+            if (nextIndex === 0 || nextIndex < bounds.start || nextIndex > bounds.end) {
                 // Loop back to the start of the current folder
-                let startOfFolder = currentIndex;
-                while (startOfFolder > 0 && getFolderPath(images[startOfFolder - 1]) === currentFolder) {
-                    startOfFolder--;
-                }
-                nextIndex = startOfFolder;
+                nextIndex = bounds.start;
             }
         }
 
@@ -313,7 +308,6 @@ const DualView = (() => {
         const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
         const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
         const folderRandom = currentSort === 'folder-random';
-        const currentFolder = folderRandom && typeof getFolderPath === 'function' ? getFolderPath(images[currentIndex]) : null;
 
         let targetIndex;
         if (currentIndex <= 0) {
@@ -334,15 +328,11 @@ const DualView = (() => {
             targetIndex = prevIndex;
         }
 
-        if (currentFolder) {
-            if (targetIndex === images.length - 1 || getFolderPath(images[targetIndex]) !== currentFolder) {
+        if (folderRandom && typeof getFolderBounds === 'function') {
+            const bounds = getFolderBounds(currentIndex, images);
+            if (targetIndex === images.length - 1 || targetIndex < bounds.start || targetIndex > bounds.end) {
                 // Loop forward to the end of the current folder
-                let endOfFolder = currentIndex;
-                while (endOfFolder + 1 < images.length && getFolderPath(images[endOfFolder + 1]) === currentFolder) {
-                    endOfFolder++;
-                }
-                targetIndex = endOfFolder;
-                // Basic portrait correction for end of folder if needed could go here, but simple endOfFolder is fine.
+                targetIndex = bounds.end;
             }
         }
 
@@ -464,26 +454,10 @@ const DualView = (() => {
             const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
             const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
             
-            if (currentSort === 'folder-random' && typeof getFolderPath === 'function') {
-                // ⚡ Bolt Optimization: Avoid redundant getFolderPath recalculations per UI update if possible, though since DualView doesn't have access to getFolderBounds cache directly from script.js, we do it inline here for now. Wait, script.js cache is scoped.
-                // We'll keep it as is, or we can add a local cache here too.
-                let start = currentIndex;
-                let end = currentIndex;
-
-                // Cache check
-                if (showIndicator.cache && showIndicator.cache.urls === images &&
-                    currentIndex >= showIndicator.cache.start && currentIndex <= showIndicator.cache.end) {
-                    start = showIndicator.cache.start;
-                    end = showIndicator.cache.end;
-                } else {
-                    const currentFolder = getFolderPath(images[currentIndex]);
-                    while (start > 0 && getFolderPath(images[start - 1]) === currentFolder) { start--; }
-                    while (end + 1 < images.length && getFolderPath(images[end + 1]) === currentFolder) { end++; }
-                    showIndicator.cache = { start, end, urls: images };
-                }
-                
-                displayIndex = currentIndex - start;
-                displayTotal = end - start + 1;
+            if (currentSort === 'folder-random' && typeof getFolderBounds === 'function') {
+                const bounds = getFolderBounds(currentIndex, images);
+                displayIndex = bounds.relativeIndex;
+                displayTotal = bounds.total;
                 // Since dual view can straddle folder bounds, cap endIdx at folder size
                 displayEndIdx = Math.min(displayIndex + lastShownCount, displayTotal);
             }
