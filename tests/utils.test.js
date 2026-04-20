@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { getFolderPath, getFolderDisplayName, getFilename } = require('../public/js/utils.js');
+const { getFolderPath, getFolderDisplayName, getFilename, escapeHTML } = require('../public/js/utils.js');
 
 const BASE_URL = 'http://localhost';
 
@@ -117,5 +117,38 @@ test('getFilename utility', async (t) => {
 
     await t.test('handles invalid URLs gracefully', () => {
         assert.strictEqual(getFilename('://'), '');
+    });
+});
+
+test('escapeHTML utility', async (t) => {
+    await t.test('escapes HTML special characters', () => {
+        assert.strictEqual(escapeHTML('&'), '&amp;');
+        assert.strictEqual(escapeHTML('<'), '&lt;');
+        assert.strictEqual(escapeHTML('>'), '&gt;');
+        assert.strictEqual(escapeHTML('"'), '&quot;');
+        assert.strictEqual(escapeHTML("'"), '&#39;');
+    });
+
+    await t.test('returns same string if no special characters', () => {
+        assert.strictEqual(escapeHTML('hello world'), 'hello world');
+    });
+
+    await t.test('handles empty or falsy inputs', () => {
+        assert.strictEqual(escapeHTML(''), '');
+        assert.strictEqual(escapeHTML(null), '');
+        assert.strictEqual(escapeHTML(undefined), '');
+        assert.strictEqual(escapeHTML(0), '');
+        assert.strictEqual(escapeHTML(false), '');
+    });
+
+    await t.test('escapes multiple characters in a string', () => {
+        const input = '<div class="test">Fish & Chips</div>';
+        const expected = '&lt;div class=&quot;test&quot;&gt;Fish &amp; Chips&lt;/div&gt;';
+        assert.strictEqual(escapeHTML(input), expected);
+    });
+
+    await t.test('handles non-string inputs', () => {
+        assert.strictEqual(escapeHTML(123), '123');
+        assert.strictEqual(escapeHTML(true), 'true');
     });
 });
