@@ -520,13 +520,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const span = document.createElement('span');
         span.textContent = word;
 
-        const delBtn = document.createElement('span');
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.setAttribute('aria-label', `フィルター「${word}」を削除`);
         delBtn.textContent = '×';
         delBtn.style.marginLeft = 'auto';
         delBtn.style.color = '#e74c3c';
         delBtn.style.fontWeight = 'bold';
         delBtn.style.padding = '0 5px';
         delBtn.style.cursor = 'pointer';
+        delBtn.style.background = 'transparent';
+        delBtn.style.border = 'none';
         delBtn.onclick = (e) => {
             e.preventDefault();
             lbl.remove();
