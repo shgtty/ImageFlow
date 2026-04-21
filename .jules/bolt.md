@@ -39,3 +39,7 @@
 ## 2024-05-19 - Avoid synchronous ZIP extraction inside request handlers
 **Learning:** Performing a synchronous file extraction using `zip.readFile` inside high-frequency endpoints (like `/image` when serving images from a ZIP file) blocks the Node.js event loop while extracting large image files into memory, impacting concurrency and causing other requests to stall.
 **Action:** Always use the asynchronous variant (e.g., `zip.readFileAsync` with AdmZip) in request handlers to offload extraction work from the main event loop and improve throughput.
+
+## 2024-05-19 - Throttle setTimeout/clearTimeout in high-frequency event listeners
+**Learning:** Executing `clearTimeout` and `setTimeout` continuously inside unthrottled, high-frequency event listeners like `mousemove` creates unnecessary overhead and garbage collection for the JavaScript engine.
+**Action:** Always throttle the resetting of inactivity timers (e.g., using a simple timestamp check) to reduce redundant API calls by >90% while maintaining the exact same UX.

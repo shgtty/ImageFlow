@@ -1654,13 +1654,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- UI Auto-Hide ---
     const fabContainer = document.getElementById('fab-container');
     let activityTimeout = null;
+    let lastActivityReset = 0;
     function resetActivityTimer() {
+        // ⚡ Bolt Optimization: Throttle the UI hide timer reset to prevent thousands of clearTimeout/setTimeout calls on continuous mousemove
+        const now = Date.now();
+        if (now - lastActivityReset < 250) return;
+        lastActivityReset = now;
+
         fabContainer.classList.remove('hidden');
         document.documentElement.classList.remove('hide-cursor');
         if (activityTimeout) clearTimeout(activityTimeout);
         activityTimeout = setTimeout(() => {
             fabContainer.classList.add('hidden');
             document.documentElement.classList.add('hide-cursor');
+            lastActivityReset = 0;
         }, 3000);
     }
     ['mousemove', 'mousedown', 'touchstart', 'wheel'].forEach(type => {
