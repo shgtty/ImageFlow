@@ -489,6 +489,15 @@
             font-family: inherit;
             color: inherit;
             width: 100%;
+            box-sizing: border-box;
+            gap: 10px;
+        }
+
+        .file-item span {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .file-item:hover {
@@ -502,6 +511,31 @@
 
         #close-file-modal:hover {
             background: #555;
+        }
+
+        .edit-file-btn {
+            margin-left: auto;
+            background: transparent;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .edit-file-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .edit-file-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
         }
 
         /* モーダル内のボタン・入力欄のフォーカス表示 (アクセシビリティ対応) */
@@ -694,41 +728,59 @@
     </svg>
 
     <!-- ファイル選択モーダル -->
-    <div id="file-select-modal" role="dialog" aria-modal="true" aria-labelledby="file-select-title" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); padding:30px; border-radius:16px; z-index:9999; color:white; min-width:500px; max-width:90vw; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px);">
-        <h3 id="file-select-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px;">設定ファイルを選択</h3>
-        <div id="file-list" style="max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
-        <div style="margin-top:24px; text-align:right;">
-            <button id="close-file-modal" style="padding:10px 24px; font-size:1.1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">閉じる</button>
+    <div id="file-select-modal" role="dialog" aria-modal="true" aria-labelledby="file-select-title" style="display:none; position:fixed; inset:0; margin:auto; width:500px; height:60vh; background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); border-radius:16px; z-index:9999; color:white; min-width:300px; max-width:90vw; max-height:90vh; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px); resize:both; overflow:hidden;">
+        <div style="display:flex; flex-direction:column; height:100%; padding:30px; box-sizing:border-box;">
+            <h3 id="file-select-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; flex-shrink:0;">設定ファイルを選択</h3>
+            <div id="file-list" style="flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+            <div style="margin-top:24px; text-align:right; flex-shrink:0;">
+                <button id="close-file-modal" style="padding:10px 24px; font-size:1.1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">閉じる</button>
+            </div>
         </div>
     </div>
 
     <!-- フィルター設定モーダル -->
-    <div id="filter-modal" role="dialog" aria-modal="true" aria-labelledby="filter-title" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); padding:30px; border-radius:16px; z-index:9999; color:white; min-width:400px; max-width:90vw; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px);">
-        <h3 id="filter-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center;">
-            <span>フィルター設定</span>
-            <label style="font-size:0.6em; font-weight:normal; display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <input type="checkbox" id="filter-global-enable" style="transform:scale(1.2);"> 有効にする
-            </label>
-        </h3>
-        
-        <div style="margin-bottom:20px; display:flex; gap:16px; align-items:center; background:rgba(255,255,255,0.05); padding:10px 15px; border-radius:8px;">
-            <span style="font-weight:bold;">検索モード:</span>
-            <label style="cursor:pointer; display:flex; align-items:center; gap:5px;"><input type="radio" name="filter-mode" value="AND"> すべて含む (AND)</label>
-            <label style="cursor:pointer; display:flex; align-items:center; gap:5px;"><input type="radio" name="filter-mode" value="OR"> どれかを含む (OR)</label>
-        </div>
+    <div id="filter-modal" role="dialog" aria-modal="true" aria-labelledby="filter-title" style="display:none; position:fixed; inset:0; margin:auto; width:450px; height:60vh; background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); border-radius:16px; z-index:9999; color:white; min-width:300px; max-width:90vw; max-height:90vh; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px); resize:both; overflow:hidden;">
+        <div style="display:flex; flex-direction:column; height:100%; padding:30px; box-sizing:border-box;">
+            <h3 id="filter-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <span>フィルター設定</span>
+                <label style="font-size:0.6em; font-weight:normal; display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="filter-global-enable" style="transform:scale(1.2);"> 有効にする
+                </label>
+            </h3>
+            
+            <div style="margin-bottom:20px; display:flex; gap:16px; align-items:center; background:rgba(255,255,255,0.05); padding:10px 15px; border-radius:8px; flex-shrink:0;">
+                <span style="font-weight:bold;">検索モード:</span>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:5px;"><input type="radio" name="filter-mode" value="AND"> すべて含む (AND)</label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:5px;"><input type="radio" name="filter-mode" value="OR"> どれかを含む (OR)</label>
+            </div>
 
-        <div style="margin-bottom:15px; display:flex; gap:10px;">
-            <input type="text" id="filter-new-word" placeholder="新しいキーワード..." style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #555; background:#222; color:white;">
-            <button id="filter-add-btn" style="padding:8px 16px; background:#3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; transition:background 0.2s;">追加</button>
-        </div>
+            <div style="margin-bottom:15px; display:flex; gap:10px; flex-shrink:0;">
+                <input type="text" id="filter-new-word" placeholder="新しいキーワード..." style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #555; background:#222; color:white;">
+                <button id="filter-add-btn" style="padding:8px 16px; background:#3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; transition:background 0.2s;">追加</button>
+            </div>
 
-        <div id="filter-list" style="max-height:40vh; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:10px;">
-            <!-- チェックボックスはJavaScriptで動的に生成 -->
-        </div>
+            <div id="filter-list" style="flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:10px;">
+                <!-- チェックボックスはJavaScriptで動的に生成 -->
+            </div>
 
-        <div style="margin-top:24px; display:flex; justify-content:flex-end; gap:12px;">
-            <button id="close-filter-modal" style="padding:10px 20px; font-size:1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; transition:background 0.2s;">キャンセル</button>
-            <button id="save-filter-modal" style="padding:10px 24px; font-size:1.1em; background:#3498db; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">保存して適用</button>
+            <div style="margin-top:24px; display:flex; justify-content:flex-end; gap:12px; flex-shrink:0;">
+                <button id="close-filter-modal" style="padding:10px 20px; font-size:1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; transition:background 0.2s;">キャンセル</button>
+                <button id="save-filter-modal" style="padding:10px 24px; font-size:1.1em; background:#3498db; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">保存して適用</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ファイル編集モーダル -->
+    <div id="config-edit-modal" role="dialog" aria-modal="true" aria-labelledby="config-edit-title" style="display:none; position:fixed; inset:0; margin:auto; width:600px; height:60vh; background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); border-radius:16px; z-index:10000; color:white; min-width:300px; max-width:90vw; max-height:90vh; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px); resize:both; overflow:hidden;">
+        <div style="display:flex; flex-direction:column; height:100%; padding:30px; box-sizing:border-box;">
+            <h3 id="config-edit-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; flex-shrink:0;">ファイルを編集: <span id="config-edit-filename"></span></h3>
+            
+            <textarea id="config-edit-textarea" style="flex:1; min-height:0; width:100%; background:#222; color:#fff; border:1px solid #555; border-radius:8px; padding:12px; font-family:monospace; font-size:1.05em; resize:none; box-sizing:border-box;"></textarea>
+
+            <div style="margin-top:24px; display:flex; justify-content:flex-end; gap:12px; flex-shrink:0;">
+                <button id="close-config-edit-modal" style="padding:10px 20px; font-size:1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; transition:background 0.2s;">キャンセル</button>
+                <button id="save-config-edit-modal" style="padding:10px 24px; font-size:1.1em; background:#3498db; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">保存</button>
+            </div>
         </div>
     </div>
 

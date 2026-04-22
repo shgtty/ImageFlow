@@ -329,6 +329,53 @@ const server = http.createServer((req, res) => {
         }
     }
 
+    if (reqUrl.pathname === '/api/config-file-content') {
+        if (req.method === 'GET') {
+            const file = reqUrl.searchParams.get('file');
+            if (file && configDir) {
+                const targetPath = path.join(configDir, file);
+                if (isPathInside(configDir, targetPath) && fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
+                    try {
+                        const content = fs.readFileSync(targetPath, 'utf8');
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ content }));
+                        return;
+                    } catch (e) {
+                        console.error('Error reading config file content:', e);
+                        res.writeHead(500);
+                        res.end(JSON.stringify({ error: 'Failed to read file' }));
+                        return;
+                    }
+                }
+            }
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Bad Request' }));
+            return;
+        } else if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    if (data.file && data.content !== undefined && configDir) {
+                        const targetPath = path.join(configDir, data.file);
+                        if (isPathInside(configDir, targetPath) && fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
+                            fs.writeFileSync(targetPath, data.content, 'utf8');
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ success: true }));
+                            return;
+                        }
+                    }
+                } catch(e) {
+                    console.error('Error saving config file content:', e);
+                }
+                res.writeHead(400);
+                res.end(JSON.stringify({ error: 'Bad Request' }));
+            });
+            return;
+        }
+    }
+
     if (reqUrl.pathname === '/api/include-file') {
         if (req.method === 'GET') {
             try {

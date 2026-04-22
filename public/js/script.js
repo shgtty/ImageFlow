@@ -1053,16 +1053,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     fileListContainer.innerHTML = '';
                     res.files.forEach(file => {
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'file-item';
+                        const itemContainer = document.createElement('div');
+                        itemContainer.className = 'file-item';
                         if (file === res.current) {
-                            btn.classList.add('active');
-                            btn.textContent = `${file} (選択中)`;
-                        } else {
-                            btn.textContent = file;
+                            itemContainer.classList.add('active');
                         }
-                        btn.addEventListener('click', () => {
+
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = file === res.current ? `${file} (選択中)` : file;
+
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'edit-file-btn';
+                        editBtn.title = 'ファイルを編集';
+                        editBtn.setAttribute('aria-label', 'ファイルを編集');
+                        editBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+                        editBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openConfigEditModal(file);
+                        });
+
+                        itemContainer.addEventListener('click', () => {
                             fetch('/api/set-config-file', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -1126,7 +1136,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             });
                         });
-                        fileListContainer.appendChild(btn);
+                        itemContainer.appendChild(textSpan);
+                        itemContainer.appendChild(editBtn);
+                        fileListContainer.appendChild(itemContainer);
                     });
                     previousFocus = document.activeElement;
                     fileSelectModal.style.display = 'block';
@@ -1149,6 +1161,83 @@ document.addEventListener('DOMContentLoaded', () => {
             if (previousFocus) {
                 previousFocus.focus();
             }
+        });
+    }
+
+    const configEditModal = document.getElementById('config-edit-modal');
+    const closeConfigEditModalBtn = document.getElementById('close-config-edit-modal');
+    const saveConfigEditModalBtn = document.getElementById('save-config-edit-modal');
+    const configEditFilename = document.getElementById('config-edit-filename');
+    const configEditTextarea = document.getElementById('config-edit-textarea');
+    let editingFileName = '';
+
+    function openConfigEditModal(filename) {
+        fetch(`/api/config-file-content?file=${encodeURIComponent(filename)}`)
+            .then(r => r.json())
+            .then(res => {
+                if (res.error) {
+                    alert('ファイルの読み込みに失敗しました: ' + res.error);
+                    return;
+                }
+                editingFileName = filename;
+                configEditFilename.textContent = filename;
+                configEditTextarea.value = res.content || '';
+                
+                // Switch modals
+                if (fileSelectModal.style.display === 'block') {
+                    fileSelectModal.style.display = 'none';
+                }
+                configEditModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+                configEditTextarea.focus();
+            })
+            .catch(err => {
+                console.error('Error fetching config content:', err);
+                alert('通信エラーが発生しました');
+            });
+    }
+
+    if (closeConfigEditModalBtn) {
+        closeConfigEditModalBtn.addEventListener('click', () => {
+            configEditModal.style.display = 'none';
+            // Return to file select modal
+            fileSelectModal.style.display = 'block';
+            const firstBtn = fileSelectModal.querySelector('.file-item');
+            if (firstBtn) {
+                firstBtn.focus();
+            }
+        });
+    }
+
+    if (saveConfigEditModalBtn) {
+        saveConfigEditModalBtn.addEventListener('click', () => {
+            const newContent = configEditTextarea.value;
+            fetch('/api/config-file-content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file: editingFileName, content: newContent })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    configEditModal.style.display = 'none';
+                    // Optional: we can return to file selection modal
+                    fileSelectModal.style.display = 'block';
+                    
+                    // Trigger reload images if this is the currently active file, but server loadFolders happens automatically,
+                    // however we might want to manually reload front-end to reflect changes.
+                    // For simplicity, we just reload anyway after a short delay so backend watcher catches it.
+                    setTimeout(() => {
+                        loadImages();
+                    }, 300);
+                } else {
+                    alert('ファイルの保存に失敗しました: ' + (res.error || '不明なエラー'));
+                }
+            })
+            .catch(err => {
+                console.error('Error saving config content:', err);
+                alert('通信エラーが発生しました');
+            });
         });
     }
 
@@ -1362,18 +1451,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Modal Interaction Handling ---
         const isFileModalOpen = fileSelectModal && fileSelectModal.style.display === 'block';
         const isFilterModalOpen = filterModal && filterModal.style.display === 'block';
+        const isConfigEditModalOpen = configEditModal && configEditModal.style.display === 'block';
         
-        if (isFileModalOpen || isFilterModalOpen) {
+        if (isFileModalOpen || isFilterModalOpen || isConfigEditModalOpen) {
             if (e.key === 'Escape') {
                 e.preventDefault();
-                if (isFileModalOpen) {
+                if (isConfigEditModalOpen) {
+                    configEditModal.style.display = 'none';
+                    fileSelectModal.style.display = 'block';
+                    const firstBtn = fileSelectModal.querySelector('.file-item');
+                    if (firstBtn) firstBtn.focus();
+                } else if (isFileModalOpen) {
                     fileSelectModal.style.display = 'none';
+                    document.body.style.overflow = ''; // Restore overflow
+                    if (previousFocus) {
+                        previousFocus.focus();
+                    }
                 } else if (isFilterModalOpen) {
                     filterModal.style.display = 'none';
-                }
-                document.body.style.overflow = ''; // Restore overflow
-                if (previousFocus) {
-                    previousFocus.focus();
+                    document.body.style.overflow = ''; // Restore overflow
+                    if (previousFocus) {
+                        previousFocus.focus();
+                    }
                 }
                 return;
             }
