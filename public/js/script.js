@@ -1447,6 +1447,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // マウスクリック後にボタンからフォーカスを外し、Enterキー押下時の意図しない再クリックを防ぐ
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (btn) {
+            btn.blur();
+        }
+    }, true); // キャプチャフェーズで実行し、stopPropagation() の影響を受けないようにする
+
     document.addEventListener('keydown', (e) => {
         // --- Modal Interaction Handling ---
         const isFileModalOpen = fileSelectModal && fileSelectModal.style.display === 'block';
