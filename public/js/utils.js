@@ -35,7 +35,19 @@ function getFolderPath(url, base) {
 
         let result = '';
         if (pathStr.includes('|')) {
-            result = pathStr.split('|')[0];
+            const parts = pathStr.split('|');
+            const archivePath = parts[0];
+            const innerPath = parts[1];
+            if (innerPath) {
+                const lastSlash = Math.max(innerPath.lastIndexOf('/'), innerPath.lastIndexOf('\\'));
+                if (lastSlash >= 0) {
+                    result = archivePath + '|' + innerPath.substring(0, lastSlash);
+                } else {
+                    result = archivePath;
+                }
+            } else {
+                result = archivePath;
+            }
         } else {
             const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
             if (lastSlash >= 0) {
@@ -63,6 +75,9 @@ function getFolderPath(url, base) {
 function getFolderDisplayName(url, base) {
     let pathStr = getFolderPath(url, base);
     if (!pathStr) return '不明なフォルダ';
+    if (pathStr.includes('|')) {
+        pathStr = pathStr.split('|')[1] || pathStr.split('|')[0];
+    }
     const parts = pathStr.split(/[/\\]/);
     return parts[parts.length - 1] || pathStr;
 }
