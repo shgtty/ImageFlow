@@ -275,17 +275,19 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ error: 'Config directory is not set' }));
             return;
         }
-        try {
-            const files = fs.readdirSync(configDir).filter(f => f.toLowerCase().endsWith('.txt'));
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-                files: files,
-                current: path.basename(CONFIG_FILE)
-            }));
-        } catch (e) {
-            res.writeHead(500);
-            res.end(JSON.stringify({ error: 'Failed to read config directory' }));
-        }
+        fs.promises.readdir(configDir)
+            .then(files => {
+                const txtFiles = files.filter(f => f.toLowerCase().endsWith('.txt'));
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    files: txtFiles,
+                    current: path.basename(CONFIG_FILE)
+                }));
+            })
+            .catch(e => {
+                res.writeHead(500);
+                res.end(JSON.stringify({ error: 'Failed to read config directory' }));
+            });
         return;
     }
 
