@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { getFolderPath, getFolderDisplayName, getFilename, escapeHTML } = require('../public/js/utils.js');
+const { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds } = require('../public/js/utils.js');
 
 const BASE_URL = 'http://localhost';
 
@@ -150,5 +150,68 @@ test('escapeHTML utility', async (t) => {
     await t.test('handles non-string inputs', () => {
         assert.strictEqual(escapeHTML(123), '123');
         assert.strictEqual(escapeHTML(true), 'true');
+    });
+});
+
+test('getFolderBounds utility', async (t) => {
+    const urls = [
+        'http://localhost/image?path=C:\\folder1\\img1.jpg',
+        'http://localhost/image?path=C:\\folder1\\img2.jpg',
+        'http://localhost/image?path=C:\\folder2\\img3.jpg',
+        'http://localhost/image?path=C:\\folder2\\img4.jpg',
+        'http://localhost/image?path=C:\\folder2\\img5.jpg',
+    ];
+
+    await t.test('handles invalid inputs', () => {
+        const expected = { start: 0, end: 0, total: 0, relativeIndex: 0 };
+        assert.deepStrictEqual(getFolderBounds(-1, urls), expected);
+        assert.deepStrictEqual(getFolderBounds(5, urls), expected);
+        assert.deepStrictEqual(getFolderBounds(0, null), expected);
+        assert.deepStrictEqual(getFolderBounds(0, []), expected);
+    });
+
+    await t.test('calculates bounds for single folder', () => {
+        const singleFolderUrls = [urls[0], urls[1]];
+        const expected = { start: 0, end: 1, total: 2, relativeIndex: 0 };
+        assert.deepStrictEqual(getFolderBounds(0, singleFolderUrls), expected);
+
+        const expectedLast = { start: 0, end: 1, total: 2, relativeIndex: 1 };
+        assert.deepStrictEqual(getFolderBounds(1, singleFolderUrls), expectedLast);
+    });
+
+    await t.test('calculates bounds for multiple folders', () => {
+        // folder1: [0, 1]
+        assert.deepStrictEqual(getFolderBounds(0, urls), { start: 0, end: 1, total: 2, relativeIndex: 0 });
+        assert.deepStrictEqual(getFolderBounds(1, urls), { start: 0, end: 1, total: 2, relativeIndex: 1 });
+
+        // folder2: [2, 4]
+        assert.deepStrictEqual(getFolderBounds(2, urls), { start: 2, end: 4, total: 3, relativeIndex: 0 });
+        assert.deepStrictEqual(getFolderBounds(3, urls), { start: 2, end: 4, total: 3, relativeIndex: 1 });
+        assert.deepStrictEqual(getFolderBounds(4, urls), { start: 2, end: 4, total: 3, relativeIndex: 2 });
+    });
+
+    await t.test('cache hit: consecutive calls within same folder range', () => {
+        // First call to populate cache
+        const result1 = getFolderBounds(2, urls);
+
+        // Second call with different index in same folder
+        const result2 = getFolderBounds(3, urls);
+
+        assert.deepStrictEqual(result2, { start: 2, end: 4, total: 3, relativeIndex: 1 });
+        // Although we can't easily see if it used the cache, we verify the output is correct.
+        // The implementation uses: cachedFolderBoundsUrls === urls && globalIndex >= start && globalIndex <= end
+    });
+
+    await t.test('cache miss: folder change', () => {
+        getFolderBounds(0, urls); // Cache folder1
+        const result = getFolderBounds(2, urls); // Should miss and calculate folder2
+        assert.deepStrictEqual(result, { start: 2, end: 4, total: 3, relativeIndex: 0 });
+    });
+
+    await t.test('cache miss: different array reference', () => {
+        getFolderBounds(0, urls);
+        const urlsCopy = [...urls];
+        const result = getFolderBounds(0, urlsCopy);
+        assert.deepStrictEqual(result, { start: 0, end: 1, total: 2, relativeIndex: 0 });
     });
 });
