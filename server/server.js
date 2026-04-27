@@ -39,6 +39,38 @@ if (fs.existsSync(initialArg) && fs.statSync(initialArg).isDirectory()) {
 const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'include.txt');
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB
+
+/**
+ * Safely collects the request body, enforcing a maximum size limit.
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
+ * @param {function(string): void} callback
+ */
+function collectRequestBody(req, res, callback) {
+    let body = '';
+    let size = 0;
+    let limitExceeded = false;
+
+    req.on('data', chunk => {
+        if (limitExceeded) return;
+        size += chunk.length;
+        if (size > MAX_BODY_SIZE) {
+            limitExceeded = true;
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Payload Too Large' }));
+            req.destroy();
+            return;
+        }
+        body += chunk.toString();
+    });
+
+    req.on('end', () => {
+        if (!limitExceeded) {
+            callback(body);
+        }
+    });
+}
 
 // ⚡ Bolt Optimization: Memory cache for configuration to avoid synchronous file reads blocking event loop
 const cachedConfig = {
@@ -291,9 +323,7 @@ const server = http.createServer((req, res) => {
 
     if (reqUrl.pathname === '/api/set-config-file') {
         if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => body += chunk.toString());
-            req.on('end', () => {
+            collectRequestBody(req, res, (body) => {
                 try {
                     const data = JSON.parse(body);
                     if (data.file && configDir) {
@@ -352,9 +382,7 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ error: 'Bad Request' }));
             return;
         } else if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => body += chunk.toString());
-            req.on('end', () => {
+            collectRequestBody(req, res, (body) => {
                 try {
                     const data = JSON.parse(body);
                     if (data.file && data.content !== undefined && configDir) {
@@ -391,9 +419,7 @@ const server = http.createServer((req, res) => {
             }
             return;
         } else if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => body += chunk.toString());
-            req.on('end', () => {
+            collectRequestBody(req, res, (body) => {
                 try {
                     const data = JSON.parse(body);
                     if (data.text !== undefined) {
