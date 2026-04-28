@@ -575,6 +575,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
+        const originalText = saveFilterModalBtn.textContent;
+        saveFilterModalBtn.disabled = true;
+        saveFilterModalBtn.textContent = '保存中...';
+
         fetch('/api/include-file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -657,6 +661,9 @@ document.addEventListener('DOMContentLoaded', () => {
             closeFilterModal();
             updateIncludeIcon();
             loadImages();
+        }).finally(() => {
+            saveFilterModalBtn.disabled = false;
+            saveFilterModalBtn.textContent = originalText;
         });
     }
 
@@ -1212,6 +1219,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveConfigEditModalBtn) {
         saveConfigEditModalBtn.addEventListener('click', () => {
             const newContent = configEditTextarea.value;
+            const originalText = saveConfigEditModalBtn.textContent;
+            saveConfigEditModalBtn.disabled = true;
+            saveConfigEditModalBtn.textContent = '保存中...';
+
             fetch('/api/config-file-content', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1237,6 +1248,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => {
                 console.error('Error saving config content:', err);
                 alert('通信エラーが発生しました');
+            })
+            .finally(() => {
+                saveConfigEditModalBtn.disabled = false;
+                saveConfigEditModalBtn.textContent = originalText;
             });
         });
     }
