@@ -265,19 +265,21 @@ const GalleryView = (() => {
             return;
         }
 
+        // ⚡ Bolt Optimization: Batch DOM reads before DOM writes to prevent layout thrashing on every frame
+        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        const currentScrollY = window.scrollY;
+
         window.scrollBy({ top: scrollSpeed, left: 0, behavior: 'instant' });
 
-        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-
-        if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && window.scrollY >= maxScroll - 2000) {
+        if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && currentScrollY >= maxScroll - 2000) {
             renderNextBatch(BATCH_SIZE);
         }
 
-        if (window.scrollY <= 0 && scrollSpeed < 0) {
+        if (currentScrollY <= 0 && scrollSpeed < 0) {
             scrollSpeed = 0;
             saveSpeed();
             updateSpeedIndicator();
-        } else if (allImagesUrls.length > 0 && pendingImages === 0 && window.scrollY >= maxScroll - 1 && scrollSpeed > 0) {
+        } else if (allImagesUrls.length > 0 && pendingImages === 0 && currentScrollY >= maxScroll - 1 && scrollSpeed > 0) {
             // Check if we hit the end of all galleries (in folder-random mode, currentIndex never reaches the end smoothly due to wrap around, but if maxScroll reached it will trigger reload)
             const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
             const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
