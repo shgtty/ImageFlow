@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('stopBtn');
     const colMinusBtn = document.getElementById('colMinusBtn');
     const colPlusBtn = document.getElementById('colPlusBtn');
-    const colBtnRow = document.getElementById('colBtnRow');
 
     // Dual-View specific control buttons
     const dirBtn = document.getElementById('dirBtn');
@@ -176,8 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
             dirBtnWrapper.style.display = 'block';
         }
 
-        if (colBtnRow) {
-            colBtnRow.style.display = (mode === 'dual') ? 'none' : 'flex';
+        if (colMinusBtn && colMinusBtn.parentElement) {
+            colMinusBtn.parentElement.style.display = (mode === 'dual') ? 'none' : 'block';
+        }
+        if (colPlusBtn && colPlusBtn.parentElement) {
+            colPlusBtn.parentElement.style.display = (mode === 'dual') ? 'none' : 'block';
         }
 
         if (modeIcon) {

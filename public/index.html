@@ -154,11 +154,7 @@
             /* フェードイン用: クラス追加で表示 */
         }
 
-        .fab-row {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-        }
+
 
         #mode-overlay {
             position: fixed;
@@ -607,21 +603,19 @@
         </div>
 
         <!-- 列数変更ボタン -->
-        <div class="fab-row" id="colBtnRow">
-            <div class="fab-wrapper">
-                <button class="fab" id="colMinusBtn" title="列を減らす (←)" aria-label="列を減らす">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-                    </svg>
-                </button>
-            </div>
-            <div class="fab-wrapper">
-                <button class="fab" id="colPlusBtn" title="列を増やす (→)" aria-label="列を増やす">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                    </svg>
-                </button>
-            </div>
+        <div class="fab-wrapper">
+            <button class="fab" id="colPlusBtn" title="列を増やす (+)" aria-label="列を増やす">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
+            </button>
+        </div>
+        <div class="fab-wrapper">
+            <button class="fab" id="colMinusBtn" title="列を減らす (-)" aria-label="列を減らす">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 13H5v-2h14v2z" />
+                </svg>
+            </button>
         </div>
 
         <!-- 表示順切替ボタン (Dual View専用) -->
