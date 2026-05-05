@@ -1007,34 +1007,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const target = document.elementFromPoint(lastMouseX, lastMouseY);
         if (target && target.tagName === 'IMG') {
-            const filename = typeof getFilename === 'function' ? getFilename(target.src) : '';
-            const foldername = typeof getFolderDisplayName === 'function' ? getFolderDisplayName(target.src) : '';
+            const currentSrc = target.src;
+            let filename = '';
+
+            // ⚡ Bolt Optimization: Only update DOM text content when hovered image changes to prevent text layout recalculation
+            if (cursorTooltip.dataset.currentSrc !== currentSrc) {
+                filename = typeof getFilename === 'function' ? getFilename(currentSrc) : '';
+                const foldername = typeof getFolderDisplayName === 'function' ? getFolderDisplayName(currentSrc) : '';
+                if (filename) {
+                    cursorTooltip.textContent = foldername ? `${foldername} > ${filename}` : filename;
+                    cursorTooltip.dataset.currentSrc = currentSrc;
+                } else {
+                    cursorTooltip.style.opacity = '0';
+                    cursorTooltip.dataset.currentSrc = '';
+                    return;
+                }
+            } else if (currentSrc) {
+                // If the src hasn't changed, we can assume there's a valid filename because of the previous execution
+                filename = 'valid';
+            }
+
             if (filename) {
-                cursorTooltip.textContent = foldername ? `${foldername} > ${filename}` : filename;
-                
+                // ⚡ Bolt Optimization: Batch DOM reads (offsetWidth/Height) before writes (style.left/top) to eliminate Layout Thrashing
+                const tipWidth = cursorTooltip.offsetWidth;
+                const tipHeight = cursorTooltip.offsetHeight;
+
                 // Position the tooltip at the current mouse position
                 cursorTooltip.style.left = `${lastMouseX}px`;
                 cursorTooltip.style.top = `${lastMouseY}px`;
                 
                 // Perform boundary checks for fixed tooltip layout
-                const tipRect = cursorTooltip.getBoundingClientRect();
                 let offsetX = 15;
                 let offsetY = 15;
                 
-                if (lastMouseX + tipRect.width + 15 > window.innerWidth) {
-                    offsetX = -(tipRect.width + 15);
+                if (lastMouseX + tipWidth + 15 > window.innerWidth) {
+                    offsetX = -(tipWidth + 15);
                 }
-                if (lastMouseY + tipRect.height + 15 > window.innerHeight) {
-                    offsetY = -(tipRect.height + 15);
+                if (lastMouseY + tipHeight + 15 > window.innerHeight) {
+                    offsetY = -(tipHeight + 15);
                 }
                 
                 cursorTooltip.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
                 cursorTooltip.style.opacity = '1';
             } else {
                 cursorTooltip.style.opacity = '0';
+                cursorTooltip.dataset.currentSrc = '';
             }
         } else {
             cursorTooltip.style.opacity = '0';
+            cursorTooltip.dataset.currentSrc = '';
         }
     }
 

@@ -43,3 +43,6 @@
 ## 2024-05-19 - Throttle setTimeout/clearTimeout in high-frequency event listeners
 **Learning:** Executing `clearTimeout` and `setTimeout` continuously inside unthrottled, high-frequency event listeners like `mousemove` creates unnecessary overhead and garbage collection for the JavaScript engine.
 **Action:** Always throttle the resetting of inactivity timers (e.g., using a simple timestamp check) to reduce redundant API calls by >90% while maintaining the exact same UX.
+## 2024-05-19 - Avoid layout thrashing inside mousemove tracking operations
+**Learning:** Even when throttled to requestAnimationFrame, continuously updating `.textContent` and setting `style.left`/`top` followed by `getBoundingClientRect()` on an element that follows the mouse cursor creates a forced synchronous layout recalculation on every frame (Layout Thrashing), significantly reducing animation smoothness.
+**Action:** When creating follow-cursor tooltips or floating elements, cache the text content string (e.g. using `dataset`) to only update DOM text when it actually changes, and strictly batch DOM reads (`offsetWidth`/`offsetHeight`) *before* writing new positioning styles.
