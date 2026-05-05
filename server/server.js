@@ -608,16 +608,32 @@ const server = http.createServer((req, res) => {
                 }
             } else {
                 // 通常のファイル提供ストリーミングフロー
-                // ⚡ Bolt Optimization: Use async stream error handling instead of blocking fs.existsSync (TOCTOU anti-pattern)
-                const stream = fs.createReadStream(resolvedPath);
-                stream.on('open', () => {
-                    res.writeHead(200, headers);
-                    stream.pipe(res);
-                });
-                stream.on('error', (err) => {
-                    res.writeHead(404);
-                    res.end('Image not found');
-                });
+                // ⚡ Bolt Optimization: Use async fs.promises.stat to preserve isFile check without blocking event loop
+                fs.promises.stat(resolvedPath)
+                    .then(stats => {
+                        if (stats.isFile()) {
+                            const stream = fs.createReadStream(resolvedPath);
+                            stream.on('open', () => {
+                                res.writeHead(200, headers);
+                                stream.pipe(res);
+                            });
+                            stream.on('error', () => {
+                                if (!res.headersSent) {
+                                    res.writeHead(404);
+                                    res.end('Image not found');
+                                } else {
+                                    res.end();
+                                }
+                            });
+                        } else {
+                            res.writeHead(404);
+                            res.end('Image not found');
+                        }
+                    })
+                    .catch(() => {
+                        res.writeHead(404);
+                        res.end('Image not found');
+                    });
                 return;
             }
         }
