@@ -7,7 +7,6 @@ const DualView = (() => {
     let images = [];
     let currentIndex = 0; // Current pair start index
     let galleryElement = null;
-    let oldGalleryStyle = {};
     let onExitCallback = null;
     let currentClickHandler = null;
     let currentWheelHandler = null;
