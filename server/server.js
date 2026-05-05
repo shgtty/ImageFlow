@@ -289,6 +289,13 @@ function getImagesFromPath(targetPath, results = []) {
 }
 
 const server = http.createServer((req, res) => {
+    // Security headers
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none';");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
     // CORS headers just in case
     res.setHeader('Access-Control-Allow-Origin', '*');
 
