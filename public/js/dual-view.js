@@ -56,6 +56,7 @@ const DualView = (() => {
         galleryElement.style.display = 'flex';
         galleryElement.style.width = '100%';
         galleryElement.style.height = '100%';
+        galleryElement.style.padding = '0';
         galleryElement.style.alignItems = 'center';
         galleryElement.style.justifyContent = 'center';
         galleryElement.style.backgroundColor = '#000';
@@ -148,6 +149,7 @@ const DualView = (() => {
         galleryElement.style.top = '';
         galleryElement.style.left = '';
         galleryElement.style.zIndex = '';
+        galleryElement.style.padding = '';
         galleryElement.innerHTML = '';
 
         if (onExitCallback) onExitCallback(currentIndex);
