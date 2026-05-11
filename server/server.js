@@ -571,6 +571,12 @@ const server = http.createServer((req, res) => {
 
             const actualExt = isZipEntry ? path.extname(entryName).toLowerCase() : path.extname(resolvedPath).toLowerCase();
             
+            if (!VALID_EXTS.has(actualExt)) {
+                res.writeHead(403);
+                res.end('Access denied');
+                return;
+            }
+
             let mimeType = 'image/jpeg';
             if (actualExt === '.png') mimeType = 'image/png';
             if (actualExt === '.gif') mimeType = 'image/gif';
