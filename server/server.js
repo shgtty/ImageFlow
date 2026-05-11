@@ -142,11 +142,6 @@ function loadExcludes() {
     }
 }
 
-// Initial load
-loadFolders();
-loadIncludes();
-loadExcludes();
-
 let configWatcher = null;
 function watchFile(filePath, reloadFunc, label) {
     if (!fs.existsSync(path.dirname(filePath))) {
@@ -169,11 +164,6 @@ function watchFile(filePath, reloadFunc, label) {
     if (watcher.unref) watcher.unref();
     return watcher;
 }
-
-// Watch for changes
-configWatcher = watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
-watchFile(INCLUDE_FILE, loadIncludes, 'include.txt');
-watchFile(EXCLUDE_FILE, loadExcludes, 'exclude.txt');
 
 function getZipInstance(zipPath) {
     const stats = fs.statSync(zipPath);
@@ -695,7 +685,21 @@ const server = http.createServer((req, res) => {
         });
 });
 
+function setConfigFile(newPath) {
+    CONFIG_FILE = newPath;
+}
+
 if (require.main === module) {
+    // Initial load
+    loadFolders();
+    loadIncludes();
+    loadExcludes();
+
+    // Watch for changes
+    configWatcher = watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
+    watchFile(INCLUDE_FILE, loadIncludes, 'include.txt');
+    watchFile(EXCLUDE_FILE, loadExcludes, 'exclude.txt');
+
     server.listen(PORT, () => {
         console.log(`=========================================`);
         console.log(`Image Server is running at http://localhost:${PORT}/`);
@@ -707,5 +711,8 @@ if (require.main === module) {
 
 module.exports = {
     getImagesFromPath,
-    VALID_EXTS
+    VALID_EXTS,
+    loadFolders,
+    cachedConfig,
+    setConfigFile
 };
