@@ -188,9 +188,9 @@ function getZipInstance(zipPath) {
 
     const zip = new AdmZip(zipPath);
 
-    // Simple LRU-like eviction: clear cache if it grows too large
+    // Simple FIFO eviction: delete the oldest entry if cache grows too large
     if (zipCache.size >= MAX_CACHE_SIZE) {
-        zipCache.clear();
+        zipCache.delete(zipCache.keys().next().value);
     }
 
     zipCache.set(zipPath, { zip, mtime });
