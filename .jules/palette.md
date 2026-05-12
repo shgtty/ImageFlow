@@ -5,3 +5,7 @@
 ## 2024-05-25 - [Async Button Loading State Accessibility]
 **Learning:** During asynchronous API calls for the "save filter" and "save config" operations, the UI lacked visual feedback and state management. This allowed users to accidentally double-click the button, triggering multiple requests and causing confusion.
 **Action:** Always disable buttons triggering async operations immediately, and provide visual feedback (e.g., changing text to '保存中...' or adding a spinner). Use a `.finally()` block in the Promise chain to guarantee the button state and original text are reliably restored, regardless of success or error.
+
+## 2024-05-25 - [Accessible Interactive List Items]
+**Learning:** In the file select modal, `.file-item` elements were implemented as `<div>` elements with click handlers but no keyboard support, role, or focus styles. Since they also contained a nested edit `<button>`, changing the parent element to a `<button>` would create invalid HTML (nested interactive elements).
+**Action:** Always build accessible interactive list items with nested actions using a parent `<div>` with `role="button"` and `tabindex="0"`, attach manual `keydown` handlers for Enter/Space, apply custom `:focus-visible` styles, and give nested action buttons contextual `aria-label`s.
