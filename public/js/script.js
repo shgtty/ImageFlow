@@ -1085,6 +1085,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     res.files.forEach(file => {
                         const itemContainer = document.createElement('div');
                         itemContainer.className = 'file-item';
+                        itemContainer.setAttribute('role', 'button');
+                        itemContainer.setAttribute('tabindex', '0');
                         if (file === res.current) {
                             itemContainer.classList.add('active');
                         }
@@ -1095,14 +1097,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         const editBtn = document.createElement('button');
                         editBtn.className = 'edit-file-btn';
                         editBtn.title = 'ファイルを編集';
-                        editBtn.setAttribute('aria-label', 'ファイルを編集');
+                        editBtn.setAttribute('aria-label', `${file} を編集`);
                         editBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
                         editBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
                             openConfigEditModal(file);
                         });
 
-                        itemContainer.addEventListener('click', () => {
+                        const handleSelectFile = () => {
                             fetch('/api/set-config-file', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -1163,9 +1165,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                             console.error('Error post-set fetch:', err);
                                             loadImages();
                                         });
+                                } else {
+                                    alert(postRes.error);
                                 }
                             });
+                        };
+
+                        itemContainer.addEventListener('click', handleSelectFile);
+                        itemContainer.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleSelectFile();
+                            }
                         });
+
                         itemContainer.appendChild(textSpan);
                         itemContainer.appendChild(editBtn);
                         fileListContainer.appendChild(itemContainer);
@@ -1173,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     previousFocus = document.activeElement;
                     fileSelectModal.style.display = 'block';
                     document.body.style.overflow = 'hidden'; // Block background scroll
-                    const firstBtn = fileSelectModal.querySelector('button.file-item');
+                    const firstBtn = fileSelectModal.querySelector('.file-item');
                     if (firstBtn) {
                         firstBtn.focus();
                     } else if (closeFileModal) {
