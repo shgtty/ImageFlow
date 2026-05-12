@@ -46,3 +46,10 @@
 ## 2024-05-19 - Avoid layout thrashing inside mousemove tracking operations
 **Learning:** Even when throttled to requestAnimationFrame, continuously updating `.textContent` and setting `style.left`/`top` followed by `getBoundingClientRect()` on an element that follows the mouse cursor creates a forced synchronous layout recalculation on every frame (Layout Thrashing), significantly reducing animation smoothness.
 **Action:** When creating follow-cursor tooltips or floating elements, cache the text content string (e.g. using `dataset`) to only update DOM text when it actually changes, and strictly batch DOM reads (`offsetWidth`/`offsetHeight`) *before* writing new positioning styles.
+## 2024-05-19 - Avoid synchronous ZIP metadata checking
+**Learning:** Checking `fs.statSync` to validate cache freshness inside the ZIP image streaming route blocks the main thread for all concurrent users when navigating galleries.
+**Action:** Always fetch the `stats.mtimeMs` asynchronously using `fs.promises.stat` before retrieving instances from a cache.
+
+## 2024-05-19 - Cache string parsing utilities
+**Learning:** String parsing utilities like `getFilename` executed inside throttled mouse handlers or rendering loops can trigger thousands of redundant regex evaluations and garbage collections per second, causing layout lag.
+**Action:** Apply a `Map` cache bound to the input string limits to guarantee O(1) performance for frequently queried view state calculations.

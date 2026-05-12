@@ -165,9 +165,12 @@ function watchFile(filePath, reloadFunc, label) {
     return watcher;
 }
 
-function getZipInstance(zipPath) {
-    const stats = fs.statSync(zipPath);
-    const mtime = stats.mtimeMs;
+function getZipInstance(zipPath, providedMtime = null) {
+    let mtime = providedMtime;
+    if (mtime === null) {
+        const stats = fs.statSync(zipPath);
+        mtime = stats.mtimeMs;
+    }
 
     if (zipCache.has(zipPath)) {
         const cached = zipCache.get(zipPath);
@@ -591,24 +594,40 @@ const server = http.createServer((req, res) => {
 
             if (isZipEntry) {
                 // ZIPファイルの特定データをメモリに展開・バッファ提供フロー
-                // ⚡ Bolt Optimization: Use async readFileAsync to avoid blocking the event loop while extracting large ZIP entries
-                try {
-                    const zip = getZipInstance(resolvedPath);
-                    zip.readFileAsync(entryName, (data, err) => {
-                        if (err || !data) {
-                            if (err) console.error('Error extracting from zip:', err);
+                // ⚡ Bolt Optimization: Use async fs.promises.stat and readFileAsync to avoid blocking the event loop
+                fs.promises.stat(resolvedPath)
+                    .then(stats => {
+                        try {
+                            const zip = getZipInstance(resolvedPath, stats.mtimeMs);
+                            zip.readFileAsync(entryName, (data, err) => {
+                                if (err || !data) {
+                                    if (err) console.error('Error extracting from zip:', err);
+                                    if (!res.headersSent) {
+                                        res.writeHead(404);
+                                        res.end('Image not found');
+                                    }
+                                    return;
+                                }
+                                if (!res.headersSent) {
+                                    res.writeHead(200, headers);
+                                    res.end(data); // メモリ上のバッファを直接レスポンスするためHDD消費なし
+                                }
+                            });
+                        } catch (e) {
+                            console.error('Error initializing zip extraction:', e.message);
+                            if (!res.headersSent) {
+                                res.writeHead(404);
+                                res.end('Image not found');
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        if (!res.headersSent) {
                             res.writeHead(404);
                             res.end('Image not found');
-                            return;
                         }
-                        res.writeHead(200, headers);
-                        res.end(data); // メモリ上のバッファを直接レスポンスするためHDD消費なし
                     });
-                    return; // Prevent fallthrough to 404 below while async operation runs
-                } catch (e) {
-                    console.error('Error initializing zip extraction:', e.message);
-                    // fallthrough to 404
-                }
+                return;
             } else {
                 // 通常のファイル提供ストリーミングフロー
                 // ⚡ Bolt Optimization: Use async fs.promises.stat to preserve isFile check without blocking event loop

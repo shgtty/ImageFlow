@@ -82,6 +82,9 @@ function getFolderDisplayName(url, base) {
     return parts[parts.length - 1] || pathStr;
 }
 
+// ⚡ Bolt Optimization: Cache for getFilename to prevent redundant regex/URL parsing
+const filenameCache = new Map();
+
 /**
  * Gets the filename from an image URL.
  * @param {string} url - The image URL.
@@ -89,6 +92,10 @@ function getFolderDisplayName(url, base) {
  * @returns {string} The filename.
  */
 function getFilename(url, base) {
+    if (!url) return '';
+    const cacheKey = base ? `${url}|${base}` : url;
+    if (filenameCache.has(cacheKey)) return filenameCache.get(cacheKey);
+
     try {
         // ⚡ Bolt Optimization: Use fast regex parsing to avoid expensive new URL() constructor overhead in tight loops
         let pathStr = null;
@@ -106,16 +113,27 @@ function getFilename(url, base) {
             }
         }
         
+        if (!pathStr) {
+            filenameCache.set(cacheKey, '');
+            return '';
+        }
+
         let actualPath = pathStr;
         if (pathStr.includes('|')) {
             actualPath = pathStr.split('|')[1] || pathStr.split('|')[0];
         }
 
+        let result = '';
         const lastSlash = Math.max(actualPath.lastIndexOf('/'), actualPath.lastIndexOf('\\'));
         if (lastSlash >= 0) {
-            return actualPath.substring(lastSlash + 1);
+            result = actualPath.substring(lastSlash + 1);
+        } else {
+            result = actualPath;
         }
-        return actualPath;
+
+        if (filenameCache.size > 10000) filenameCache.clear();
+        filenameCache.set(cacheKey, result);
+        return result;
     } catch (e) {
         return '';
     }
