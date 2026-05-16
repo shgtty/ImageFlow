@@ -153,10 +153,20 @@ const GalleryView = (() => {
 
             const activeIndex = tempIndex;
 
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-wrapper';
+            wrapper.dataset.index = activeIndex;
+
             const img = document.createElement('img');
             img.dataset.index = activeIndex;
+            wrapper.appendChild(img);
 
-            const obj = { img, loaded: false, error: false };
+            if (typeof window.createBookmarkButton === 'function') {
+                const btn = window.createBookmarkButton(allImagesUrls[activeIndex]);
+                wrapper.appendChild(btn);
+            }
+
+            const obj = { wrapper, img, loaded: false, error: false };
             batchImages.push(obj);
 
             img.onload = () => {
@@ -195,6 +205,7 @@ const GalleryView = (() => {
             while (nextToPlace < totalInBatch && batchImages[nextToPlace].loaded) {
                 const currentObj = batchImages[nextToPlace];
                 if (!currentObj.error) {
+                    const wrapper = currentObj.wrapper;
                     const img = currentObj.img;
 
                     let shortestIdx = 0;
@@ -208,7 +219,7 @@ const GalleryView = (() => {
                     }
 
                     const shortestCol = columns[shortestIdx];
-                    shortestCol.appendChild(img);
+                    shortestCol.appendChild(wrapper);
 
                     const ratio = img.naturalHeight / img.naturalWidth;
                     columnHeights[shortestIdx] += (colWidth * ratio);
@@ -378,36 +389,36 @@ const GalleryView = (() => {
 
         // 1. FIRST: 画像の現在位置とサイズを記録
         const imgPositions = new Map();
-        let existingImages = [];
+        let existingItems = [];
         columns.forEach(col => {
-            Array.from(col.children).forEach(img => {
-                existingImages.push(img);
-                imgPositions.set(img, img.getBoundingClientRect());
+            Array.from(col.children).forEach(item => {
+                existingItems.push(item);
+                imgPositions.set(item, item.getBoundingClientRect());
             });
         });
 
         // Current scroll center image to anchor around
         const viewCenterY = window.innerHeight / 2;
-        let anchorImg = null;
+        let anchorItem = null;
         let minDistance = Infinity;
 
-        existingImages.forEach(img => {
-            const rect = imgPositions.get(img);
+        existingItems.forEach(item => {
+            const rect = imgPositions.get(item);
             if (!rect) return;
             const distance = Math.abs((rect.top + rect.bottom) / 2 - viewCenterY);
             if (distance < minDistance) {
                 minDistance = distance;
-                anchorImg = img;
+                anchorItem = item;
             }
         });
         
-        // anchorImg の元々の画面内Y座標（中心ベースなど）
-        const anchorOldCenterY = anchorImg ? (imgPositions.get(anchorImg).top + imgPositions.get(anchorImg).height / 2) : 0;
+        // anchorItem の元々の画面内Y座標（中心ベースなど）
+        const anchorOldCenterY = anchorItem ? (imgPositions.get(anchorItem).top + imgPositions.get(anchorItem).height / 2) : 0;
 
         columnCount = newCount;
         localStorage.setItem(STORAGE_KEY_COLUMNS, columnCount);
 
-        existingImages.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
+        existingItems.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
 
         // 2. DOMの再構築
         galleryElement.innerHTML = '';
@@ -425,7 +436,8 @@ const GalleryView = (() => {
         const baseWidth = galleryElement ? galleryElement.offsetWidth : window.innerWidth;
         const colWidth = (columns[0] && columns[0].offsetWidth) || (baseWidth / columnCount);
 
-        existingImages.forEach(img => {
+        existingItems.forEach(item => {
+            const img = item.querySelector('img') || item;
             let shortestIdx = 0;
             let minH = columnHeights[0];
             for (let j = 1; j < columnCount; j++) {
@@ -436,23 +448,23 @@ const GalleryView = (() => {
             }
 
             const shortestCol = columns[shortestIdx];
-            shortestCol.appendChild(img);
+            shortestCol.appendChild(item);
 
             const ratio = (img.naturalHeight && img.naturalWidth) ? (img.naturalHeight / img.naturalWidth) : 1;
             columnHeights[shortestIdx] += (colWidth * ratio);
         });
 
         // 3. 一旦ブラウザにレイアウトを計算させる為に、アンカー画像の新しい位置に基づいてスクロール位置を復元する
-        if (anchorImg) {
-            const newAnchorRect = anchorImg.getBoundingClientRect();
+        if (anchorItem) {
+            const newAnchorRect = anchorItem.getBoundingClientRect();
             const newAnchorCenterY = newAnchorRect.top + newAnchorRect.height / 2;
             const diffY = newAnchorCenterY - anchorOldCenterY;
             window.scrollBy({ top: diffY, left: 0, behavior: 'instant' });
         }
 
         // 4. LAST, INVERT, PLAY: アニメーションの実行
-        existingImages.forEach(img => {
-            const oldPos = imgPositions.get(img);
+        existingItems.forEach(item => {
+            const oldPos = imgPositions.get(item);
             if (!oldPos) return;
 
             const newPos = img.getBoundingClientRect();
@@ -468,7 +480,7 @@ const GalleryView = (() => {
                 return;
             }
 
-            img.animate([
+            item.animate([
                 {
                     transformOrigin: 'top left',
                     transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`
@@ -543,7 +555,7 @@ const GalleryView = (() => {
         get isRightToLeft() { return isRightToLeft; },
         // Used for mode transitions
         get currentIndex() {
-            const imagesInGallery = Array.from(galleryElement.querySelectorAll('img'));
+            const imagesInGallery = Array.from(galleryElement.querySelectorAll('.image-wrapper, img')).filter(el => el.parentElement.classList.contains('gallery-col'));
             if (imagesInGallery.length === 0) return currentStartIndex;
 
             const viewportMiddle = window.innerHeight / 2;

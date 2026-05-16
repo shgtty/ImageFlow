@@ -35,6 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeFilterModalBtn = document.getElementById('close-filter-modal');
     const saveFilterModalBtn = document.getElementById('save-filter-modal');
 
+    // Bookmark modal UI elements
+    const bookmarkModal = document.getElementById('bookmark-modal');
+    const closeBookmarkModalBtn = document.getElementById('close-bookmark-modal');
+    const bookmarkListContainer = document.getElementById('bookmark-list');
+    const openBookmarkBtn = document.getElementById('open-bookmark-btn');
+
     // Gallery specific control buttons
     const scrollUpBtn = document.getElementById('scrollUpBtn');
     const scrollDownBtn = document.getElementById('scrollDownBtn');
@@ -91,6 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentColorModeIndex = parseInt(localStorage.getItem(STORAGE_KEY_COLOR_MODE)) || 0;
 
+    // --- Bookmark State ---
+    window.bookmarks = [];
+
     // --- Initialization ---
     if (typeof DualView !== 'undefined') DualView.init();
     if (typeof GalleryView !== 'undefined') GalleryView.init();
@@ -123,7 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     updateIncludeIcon();
-    loadImages();
+    loadBookmarks().then(() => {
+        loadImages();
+    });
 
     // --- State Persistence ---
     setInterval(() => {
@@ -1511,8 +1522,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const isFileModalOpen = fileSelectModal && fileSelectModal.style.display === 'block';
         const isFilterModalOpen = filterModal && filterModal.style.display === 'block';
         const isConfigEditModalOpen = configEditModal && configEditModal.style.display === 'block';
+        const isBookmarkModalOpen = bookmarkModal && bookmarkModal.style.display === 'block';
         
-        if (isFileModalOpen || isFilterModalOpen || isConfigEditModalOpen) {
+        if (isFileModalOpen || isFilterModalOpen || isConfigEditModalOpen || isBookmarkModalOpen) {
             if (e.key === 'Escape') {
                 e.preventDefault();
                 if (isConfigEditModalOpen) {
@@ -1532,6 +1544,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (previousFocus) {
                         previousFocus.focus();
                     }
+                } else if (isBookmarkModalOpen) {
+                    closeBookmarkModal();
                 }
                 return;
             }
@@ -1548,6 +1562,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleDirection();
         } else if (e.key === 's' || e.key === 'S') {
             toggleSeekbar();
+        } else if (e.key === 'b' || e.key === 'B') {
+            openBookmarkModal();
         } else if (e.key === 'c' || e.key === 'C') {
             toggleColorMode();
         } else if (e.key === 'i' || e.key === 'I') {
@@ -1848,4 +1864,200 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleFullscreen();
         }
     });
+
+    // --- Bookmark Functions ---
+
+    function getLocalPathFromUrl(url) {
+        try {
+            const urlObj = new URL(url, window.location.origin);
+            return urlObj.searchParams.get('path') || url;
+        } catch(e) {
+            const match = url.match(/[\?&]path=([^&]+)/);
+            if (match) return decodeURIComponent(match[1]);
+            return url;
+        }
+    }
+
+    function getUrlFromLocalPath(localPath) {
+        return `/image?path=${encodeURIComponent(localPath)}`;
+    }
+
+    function formatBookmarkName(localPath) {
+        if (localPath.includes('|')) {
+            const parts = localPath.split('|');
+            const zipName = parts[0].split('\\').pop().split('/').pop();
+            const entryName = parts[1].split('/').pop().split('\\').pop();
+            return `${zipName} / ${entryName}`;
+        } else {
+            const parts = localPath.split('\\').join('/').split('/');
+            if (parts.length >= 2) {
+                return `${parts[parts.length - 2]} / ${parts[parts.length - 1]}`;
+            }
+            return parts[parts.length - 1] || localPath;
+        }
+    }
+
+    async function loadBookmarks() {
+        try {
+            const res = await fetch('/api/bookmarks');
+            if (res.ok) {
+                const data = await res.json();
+                window.bookmarks = data.bookmarks || [];
+            }
+        } catch (e) {
+            console.error('Failed to load bookmarks', e);
+        }
+    }
+
+    window.isBookmarked = function(url) {
+        const localPath = getLocalPathFromUrl(url);
+        return window.bookmarks.includes(localPath);
+    };
+
+    window.toggleBookmark = async function(url, btnElement) {
+        const localPath = getLocalPathFromUrl(url);
+        const isCurrentlyBookmarked = window.bookmarks.includes(localPath);
+        const action = isCurrentlyBookmarked ? 'remove' : 'add';
+
+        // Optimistic UI update
+        if (action === 'add') {
+            window.bookmarks.push(localPath);
+            if (btnElement) btnElement.classList.add('bookmarked');
+        } else {
+            window.bookmarks = window.bookmarks.filter(p => p !== localPath);
+            if (btnElement) btnElement.classList.remove('bookmarked');
+        }
+
+        try {
+            const res = await fetch('/api/bookmarks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, path: localPath })
+            });
+            if (!res.ok) throw new Error('Failed to save bookmark');
+            const data = await res.json();
+            if (data.success) {
+                window.bookmarks = data.bookmarks;
+            }
+        } catch (e) {
+            console.error('Bookmark toggle failed', e);
+            // Revert optimistic update
+            await loadBookmarks();
+            if (btnElement) {
+                if (window.isBookmarked(url)) {
+                    btnElement.classList.add('bookmarked');
+                } else {
+                    btnElement.classList.remove('bookmarked');
+                }
+            }
+        }
+    };
+
+    window.createBookmarkButton = function(url) {
+        const btn = document.createElement('button');
+        btn.className = 'bookmark-star-btn';
+        if (window.isBookmarked(url)) {
+            btn.classList.add('bookmarked');
+        }
+        btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
+        btn.title = 'ブックマークを切り替え';
+        btn.setAttribute('aria-label', 'ブックマークを切り替え');
+        
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.toggleBookmark(url, btn);
+        });
+        
+        return btn;
+    };
+
+    window.openBookmarkModal = function() {
+        if (!bookmarkModal) return;
+        renderBookmarkList();
+        previousFocus = document.activeElement;
+        bookmarkModal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeBookmarkModal = function() {
+        if (!bookmarkModal) return;
+        bookmarkModal.style.display = 'none';
+        document.body.style.overflow = '';
+        if (previousFocus) previousFocus.focus();
+    };
+
+    if (closeBookmarkModalBtn) {
+        closeBookmarkModalBtn.addEventListener('click', window.closeBookmarkModal);
+    }
+    
+    if (openBookmarkBtn) {
+        openBookmarkBtn.addEventListener('click', window.openBookmarkModal);
+    }
+
+    function renderBookmarkList() {
+        if (!bookmarkListContainer) return;
+        bookmarkListContainer.innerHTML = '';
+        
+        if (!window.bookmarks || window.bookmarks.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.padding = '20px';
+            emptyMsg.style.textAlign = 'center';
+            emptyMsg.style.color = '#aaa';
+            emptyMsg.textContent = 'ブックマークはありません。';
+            bookmarkListContainer.appendChild(emptyMsg);
+            return;
+        }
+
+        window.bookmarks.forEach(localPath => {
+            const item = document.createElement('button');
+            item.className = 'file-item';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = formatBookmarkName(localPath);
+            nameSpan.title = localPath;
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'edit-file-btn';
+            delBtn.style.color = '#e74c3c';
+            delBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+            delBtn.title = '削除';
+            
+            delBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.toggleBookmark(getUrlFromLocalPath(localPath)).then(() => renderBookmarkList());
+            });
+
+            item.appendChild(nameSpan);
+            item.appendChild(delBtn);
+
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                jumpToImage(getUrlFromLocalPath(localPath));
+                closeBookmarkModal();
+            });
+
+            bookmarkListContainer.appendChild(item);
+        });
+    }
+
+    function jumpToImage(url) {
+        const index = allImagesUrls.indexOf(url);
+        if (index === -1) {
+            alert('選択した画像は現在の検索範囲に見つかりませんでした。');
+            return;
+        }
+        
+        // ギャラリービューなどでスクロール位置が残っていると、再描画後に先頭が見えずにズレてしまうためリセットする
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+            DualView.updateImagesAndReset(allImagesUrls, index, true);
+        } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+            GalleryView.updateImagesAndReset(allImagesUrls, index, { restoreSpeed: true });
+        }
+        updateSeekbar();
+    }
 });

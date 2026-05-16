@@ -82,6 +82,10 @@ const DualView = (() => {
             if (fileSelectModal && fileSelectModal.style.display === 'block') return;
             const filterModal = document.getElementById('filter-modal');
             if (filterModal && filterModal.style.display === 'block') return;
+            const configEditModal = document.getElementById('config-edit-modal');
+            if (configEditModal && configEditModal.style.display === 'block') return;
+            const bookmarkModal = document.getElementById('bookmark-modal');
+            if (bookmarkModal && bookmarkModal.style.display === 'block') return;
 
             const width = window.innerWidth;
             if (e.clientX > width / 2) {
@@ -102,6 +106,10 @@ const DualView = (() => {
             if (fileSelectModal && fileSelectModal.style.display === 'block') return;
             const filterModal = document.getElementById('filter-modal');
             if (filterModal && filterModal.style.display === 'block') return;
+            const configEditModal = document.getElementById('config-edit-modal');
+            if (configEditModal && configEditModal.style.display === 'block') return;
+            const bookmarkModal = document.getElementById('bookmark-modal');
+            if (bookmarkModal && bookmarkModal.style.display === 'block') return;
 
             // ⚡ Bolt Optimization: Throttle high-frequency wheel events to prevent redundant image fetch requests and layout thrashing
             const now = Date.now();
@@ -231,19 +239,59 @@ const DualView = (() => {
         for (let i = 0; i < lastShownCount; i++) {
             const idx = currentIndex + i;
             if (idx < images.length) {
+                const cell = document.createElement('div');
+                cell.style.width = maxWidth;
+                cell.style.height = '100%';
+                cell.style.display = 'flex';
+                cell.style.alignItems = 'center';
+
+                if (lastShownCount === 2) {
+                    if (isRightToLeft) {
+                        cell.style.justifyContent = (i === 0) ? 'flex-start' : 'flex-end';
+                    } else {
+                        cell.style.justifyContent = (i === 0) ? 'flex-end' : 'flex-start';
+                    }
+                } else {
+                    cell.style.justifyContent = 'center';
+                }
+
+                // Get dimensions to set aspect ratio
+                const dimsPromise = getImageDims(images[idx]);
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'image-wrapper';
+                wrapper.style.maxWidth = '100%';
+                wrapper.style.maxHeight = '100vh';
+                // width will be set after dims are loaded
+
                 const img = document.createElement('img');
 
-                const loadPromise = new Promise((resolve) => {
+                const loadPromise = new Promise(async (resolve) => {
                     img.onload = resolve;
                     img.onerror = resolve;
                     img.src = images[idx];
+                    
+                    try {
+                        const dims = await dimsPromise;
+                        if (dims && dims.width && dims.height) {
+                            wrapper.style.aspectRatio = `${dims.width} / ${dims.height}`;
+                            wrapper.style.width = `min(100%, calc(100vh * (${dims.width} / ${dims.height})))`;
+                        } else {
+                            wrapper.style.width = '100%';
+                            wrapper.style.height = '100%';
+                        }
+                    } catch(e) {
+                        wrapper.style.width = '100%';
+                        wrapper.style.height = '100%';
+                    }
+                    
                     if (img.complete) {
                         resolve();
                     }
                 });
                 loadPromises.push(loadPromise);
 
-                img.style.width = maxWidth;
+                img.style.width = '100%';
                 img.style.height = '100%';
                 img.style.objectFit = 'contain';
                 img.style.display = 'block';
@@ -251,17 +299,14 @@ const DualView = (() => {
                 img.style.transition = 'none';
                 img.alt = typeof getFilename === 'function' ? getFilename(images[idx]) : 'Image ' + (idx + 1);
 
-                if (lastShownCount === 2) {
-                    if (isRightToLeft) {
-                        img.style.objectPosition = (i === 0) ? 'left' : 'right';
-                    } else {
-                        img.style.objectPosition = (i === 0) ? 'right' : 'left';
-                    }
-                } else {
-                    img.style.objectPosition = 'center';
+                wrapper.appendChild(img);
+                if (typeof window.createBookmarkButton === 'function') {
+                    const btn = window.createBookmarkButton(images[idx]);
+                    wrapper.appendChild(btn);
                 }
 
-                container.appendChild(img);
+                cell.appendChild(wrapper);
+                container.appendChild(cell);
             }
         }
 

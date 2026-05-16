@@ -38,6 +38,12 @@ if (fs.existsSync(initialArg) && fs.statSync(initialArg).isDirectory()) {
 }
 const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'include.txt');
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
+let isInitialArgDir = false;
+try {
+    isInitialArgDir = fs.existsSync(initialArg) && fs.statSync(initialArg).isDirectory();
+} catch(e) {}
+const BOOKMARKS_FILE = isInitialArgDir ? path.join(initialArg, 'bookmarks.json') : path.join(path.dirname(initialArg), 'bookmarks.json');
+
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB
 
@@ -435,6 +441,74 @@ const server = http.createServer((req, res) => {
                     console.error('Error writing include file:', e);
                 }
                 res.writeHead(400);
+                res.end(JSON.stringify({ error: 'Bad Request' }));
+            });
+            return;
+        }
+    }
+
+    if (reqUrl.pathname === '/api/bookmarks') {
+        if (req.method === 'GET') {
+            try {
+                let bookmarks = [];
+                if (fs.existsSync(BOOKMARKS_FILE)) {
+                    try {
+                        bookmarks = JSON.parse(fs.readFileSync(BOOKMARKS_FILE, 'utf-8'));
+                        // Migration from object to string path
+                        if (bookmarks.length > 0 && typeof bookmarks[0] === 'object') {
+                            bookmarks = bookmarks.map(b => {
+                                let p = b.path || '';
+                                const match = p.match(/[\?&]path=([^&]+)/);
+                                return match ? decodeURIComponent(match[1]) : p;
+                            }).filter(Boolean);
+                            fs.writeFileSync(BOOKMARKS_FILE, JSON.stringify(bookmarks, null, 2), 'utf-8');
+                        }
+                    } catch(e) {}
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ bookmarks }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Failed to read bookmarks' }));
+            }
+            return;
+        } else if (req.method === 'POST') {
+            collectRequestBody(req, res, (body) => {
+                try {
+                    const data = JSON.parse(body);
+                    if (data.action === 'add' || data.action === 'remove') {
+                        let bookmarks = [];
+                        if (fs.existsSync(BOOKMARKS_FILE)) {
+                            try {
+                                bookmarks = JSON.parse(fs.readFileSync(BOOKMARKS_FILE, 'utf-8'));
+                                // Migration
+                                if (bookmarks.length > 0 && typeof bookmarks[0] === 'object') {
+                                    bookmarks = bookmarks.map(b => {
+                                        let p = b.path || '';
+                                        const match = p.match(/[\?&]path=([^&]+)/);
+                                        return match ? decodeURIComponent(match[1]) : p;
+                                    }).filter(Boolean);
+                                }
+                            } catch(e) {}
+                        }
+                        
+                        if (data.action === 'add' && data.path) {
+                            if (!bookmarks.includes(data.path)) {
+                                bookmarks.push(data.path);
+                            }
+                        } else if (data.action === 'remove' && data.path) {
+                            bookmarks = bookmarks.filter(p => p !== data.path);
+                        }
+                        
+                        fs.writeFileSync(BOOKMARKS_FILE, JSON.stringify(bookmarks, null, 2), 'utf-8');
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true, bookmarks }));
+                        return;
+                    }
+                } catch(e) {
+                    console.error('Error handling bookmark POST:', e);
+                }
+                res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Bad Request' }));
             });
             return;
