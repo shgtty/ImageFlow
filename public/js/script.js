@@ -2045,7 +2045,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function jumpToImage(url) {
         const index = allImagesUrls.indexOf(url);
         if (index === -1) {
-            alert('選択した画像は現在の検索範囲に見つかりませんでした。');
+            showModeOverlay('選択した画像は現在の検索範囲に見つかりませんでした。', '', 0);
             return;
         }
         
