@@ -77,6 +77,9 @@ const DualView = (() => {
             if (!isActive) return;
             if (e.target.closest('.fab')) return;
 
+            // Block clicks if they originated inside a modal (e.g., closing the modal)
+            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal')) return;
+
             // Block clicks if a modal is open
             const fileSelectModal = document.getElementById('file-select-modal');
             if (fileSelectModal && fileSelectModal.style.display === 'block') return;
