@@ -34,8 +34,9 @@
         }
 
         /* 非アクティブ時にマウスカーソルを消すクラス */
-        .hide-cursor {
-            cursor: none;
+        .hide-cursor,
+        .hide-cursor * {
+            cursor: none !important;
         }
 
         /* スクロールバーを最初から常に非表示にする (表示切り替え時のレイアウトのズレを防止) */

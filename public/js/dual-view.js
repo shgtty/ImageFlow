@@ -10,6 +10,7 @@ const DualView = (() => {
     let onExitCallback = null;
     let currentClickHandler = null;
     let currentWheelHandler = null;
+    let currentMouseMoveHandler = null;
 
     // Auto Advance logic
     let advanceInterval = 0; // Seconds
@@ -128,6 +129,37 @@ const DualView = (() => {
         };
         window.addEventListener('wheel', currentWheelHandler, { passive: true });
 
+        // Handle mouse move for custom left/right arrow cursors
+        currentMouseMoveHandler = (e) => {
+            if (!isActive) return;
+
+            // Block custom cursor if a modal is open
+            const fileSelectModal = document.getElementById('file-select-modal');
+            if (fileSelectModal && fileSelectModal.style.display === 'block') { galleryElement.style.cursor = ''; return; }
+            const filterModal = document.getElementById('filter-modal');
+            if (filterModal && filterModal.style.display === 'block') { galleryElement.style.cursor = ''; return; }
+            const configEditModal = document.getElementById('config-edit-modal');
+            if (configEditModal && configEditModal.style.display === 'block') { galleryElement.style.cursor = ''; return; }
+            const bookmarkModal = document.getElementById('bookmark-modal');
+            if (bookmarkModal && bookmarkModal.style.display === 'block') { galleryElement.style.cursor = ''; return; }
+
+            // Block custom cursor if hovering over UI elements
+            if (e.target.closest('.fab, #seekbar-container, .bookmark-star-btn')) {
+                galleryElement.style.cursor = '';
+                return;
+            }
+
+            const width = window.innerWidth;
+            if (e.clientX > width / 2) {
+                // Right side (Right arrow, solid block shape)
+                galleryElement.style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Cpath d='M 12 3 L 22 12 L 12 21 L 12 16 L 2 16 L 2 8 L 12 8 Z'/%3E%3C/svg%3E\") 16 16, pointer";
+            } else {
+                // Left side (Left arrow, solid block shape)
+                galleryElement.style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Cpath d='M 12 3 L 2 12 L 12 21 L 12 16 L 22 16 L 22 8 L 12 8 Z'/%3E%3C/svg%3E\") 16 16, pointer";
+            }
+        };
+        window.addEventListener('mousemove', currentMouseMoveHandler);
+
         showIndicator();
     }
 
@@ -144,6 +176,10 @@ const DualView = (() => {
         if (currentWheelHandler) {
             window.removeEventListener('wheel', currentWheelHandler);
             currentWheelHandler = null;
+        }
+        if (currentMouseMoveHandler) {
+            window.removeEventListener('mousemove', currentMouseMoveHandler);
+            currentMouseMoveHandler = null;
         }
 
         // Restore styles
