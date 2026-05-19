@@ -53,3 +53,6 @@
 ## 2024-05-19 - Cache string parsing utilities
 **Learning:** String parsing utilities like `getFilename` executed inside throttled mouse handlers or rendering loops can trigger thousands of redundant regex evaluations and garbage collections per second, causing layout lag.
 **Action:** Apply a `Map` cache bound to the input string limits to guarantee O(1) performance for frequently queried view state calculations.
+## 2024-05-19 - Replace O(N) layout scans with column-based binary search
+**Learning:** Performing an $O(N)$ linear scan of `getBoundingClientRect()` over thousands of rendered DOM elements (e.g., in a masonry layout to find the element closest to the center) forces synchronous layout recalculations and causes severe frame drops during scrolling and UI updates.
+**Action:** Exploit the structural properties of the layout. In a masonry layout where elements are strictly ordered vertically within each column, replace the global $O(N)$ linear scan with an $O(C \log(N/C))$ binary search per column. This massively reduces the number of layout reads and completely eliminates layout thrashing.
