@@ -544,7 +544,8 @@
 
         /* モーダル内のボタン・入力欄のフォーカス表示 (アクセシビリティ対応) */
         [role="dialog"] button:focus-visible,
-        [role="dialog"] input:focus-visible {
+        [role="dialog"] input:focus-visible,
+        [role="dialog"] textarea:focus-visible {
             outline: 2px solid #3498db;
             outline-offset: 2px;
         }
@@ -819,7 +820,7 @@
             </div>
 
             <div style="margin-bottom:15px; display:flex; gap:10px; flex-shrink:0;">
-                <input type="text" id="filter-new-word" placeholder="新しいキーワード..." style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #555; background:#222; color:white;">
+                <input type="text" id="filter-new-word" placeholder="新しいキーワード..." aria-label="新しいフィルターキーワード" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #555; background:#222; color:white;">
                 <button id="filter-add-btn" style="padding:8px 16px; background:#3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; transition:background 0.2s;">追加</button>
             </div>
 
@@ -839,7 +840,7 @@
         <div style="display:flex; flex-direction:column; height:100%; padding:30px; box-sizing:border-box;">
             <h3 id="config-edit-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; flex-shrink:0;">ファイルを編集: <span id="config-edit-filename"></span></h3>
             
-            <textarea id="config-edit-textarea" style="flex:1; min-height:0; width:100%; background:#222; color:#fff; border:1px solid #555; border-radius:8px; padding:12px; font-family:monospace; font-size:1.05em; resize:none; box-sizing:border-box;"></textarea>
+            <textarea id="config-edit-textarea" aria-label="設定ファイルの内容" style="flex:1; min-height:0; width:100%; background:#222; color:#fff; border:1px solid #555; border-radius:8px; padding:12px; font-family:monospace; font-size:1.05em; resize:none; box-sizing:border-box;"></textarea>
 
             <div style="margin-top:24px; display:flex; justify-content:flex-end; gap:12px; flex-shrink:0;">
                 <button id="close-config-edit-modal" style="padding:10px 20px; font-size:1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; transition:background 0.2s;">キャンセル</button>

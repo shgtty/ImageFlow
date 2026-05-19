@@ -2010,8 +2010,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.bookmarks.forEach(localPath => {
-            const item = document.createElement('button');
+            const item = document.createElement('div');
             item.className = 'file-item';
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
             
             const nameSpan = document.createElement('span');
             nameSpan.textContent = formatBookmarkName(localPath);
@@ -2022,6 +2024,7 @@ document.addEventListener('DOMContentLoaded', () => {
             delBtn.style.color = '#e74c3c';
             delBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
             delBtn.title = '削除';
+            delBtn.setAttribute('aria-label', `${formatBookmarkName(localPath)} のブックマークを削除`);
             
             delBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -2032,10 +2035,18 @@ document.addEventListener('DOMContentLoaded', () => {
             item.appendChild(nameSpan);
             item.appendChild(delBtn);
 
-            item.addEventListener('click', (e) => {
+            const handleItemClick = (e) => {
                 e.stopPropagation();
                 jumpToImage(getUrlFromLocalPath(localPath));
                 closeBookmarkModal();
+            };
+
+            item.addEventListener('click', handleItemClick);
+            item.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleItemClick(e);
+                }
             });
 
             bookmarkListContainer.appendChild(item);
