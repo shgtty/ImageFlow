@@ -98,7 +98,6 @@ const GalleryView = (() => {
     function renderInitial() {
         currentRenderId++;
         galleryElement.innerHTML = '';
-        galleryElement.classList.add('loading'); // 初期構築中の「上寄せ」や「ガタつき」を見せない
         columns = [];
 
         // Initialize columns
@@ -112,11 +111,6 @@ const GalleryView = (() => {
 
         // Render first batch
         renderNextBatch(30);
-
-        // 構造ができあがってからフェードインさせる
-        setTimeout(() => {
-            galleryElement.classList.remove('loading');
-        }, 200);
     }
 
     function renderNextBatch(count = BATCH_SIZE) {
