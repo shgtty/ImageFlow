@@ -467,6 +467,7 @@ const GalleryView = (() => {
             const oldPos = imgPositions.get(item);
             if (!oldPos) return;
 
+            const img = item.querySelector('img') || item;
             const newPos = img.getBoundingClientRect();
             if (newPos.width === 0 || newPos.height === 0 || oldPos.width === 0 || oldPos.height === 0) return;
 
@@ -555,30 +556,59 @@ const GalleryView = (() => {
         get isRightToLeft() { return isRightToLeft; },
         // Used for mode transitions
         get currentIndex() {
-            const imagesInGallery = Array.from(galleryElement.querySelectorAll('.image-wrapper, img')).filter(el => el.parentElement.classList.contains('gallery-col'));
-            if (imagesInGallery.length === 0) return currentStartIndex;
+            // ⚡ Bolt Optimization: Replace O(N) array allocation with a direct DOM query for wrappers
+            const columns = galleryElement.querySelectorAll('.gallery-col');
+            if (columns.length === 0) return currentStartIndex;
 
             const viewportMiddle = window.innerHeight / 2;
-            let closestImg = imagesInGallery[0];
+            let closestImg = null;
             let minDistance = Infinity;
 
-            let minIdxImg = imagesInGallery[0];
-            let minIdx = parseInt(minIdxImg.dataset.index);
+            let minIdx = Infinity;
+            let minIdxImg = null;
 
-            imagesInGallery.forEach(img => {
-                const idx = parseInt(img.dataset.index);
-                if (idx < minIdx) {
-                    minIdx = idx;
-                    minIdxImg = img;
+            for (let c = 0; c < columns.length; c++) {
+                const wrappers = columns[c].children;
+                if (wrappers.length === 0) continue;
+
+                // The element with the lowest index in the gallery is always the first child of one of the columns
+                const firstChild = wrappers[0];
+                const firstIdx = parseInt(firstChild.dataset.index);
+                if (firstIdx < minIdx) {
+                    minIdx = firstIdx;
+                    minIdxImg = firstChild;
                 }
 
-                const rect = img.getBoundingClientRect();
-                const distance = Math.abs((rect.top + rect.bottom) / 2 - viewportMiddle);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestImg = img;
+                // ⚡ Bolt Optimization: Replace O(N) linear scan of all images with O(log N) binary search per column
+                // This prevents massive Layout Thrashing when calling getBoundingClientRect() on thousands of elements during scrolling/seek
+                let low = 0;
+                let high = wrappers.length - 1;
+
+                while (low <= high) {
+                    const mid = (low + high) >> 1;
+                    const img = wrappers[mid];
+                    const rect = img.getBoundingClientRect();
+                    const distance = Math.abs((rect.top + rect.bottom) / 2 - viewportMiddle);
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestImg = img;
+                    }
+
+                    if (rect.top > viewportMiddle) {
+                        // Image is below the middle, we need to go higher up the page (lower index in children)
+                        high = mid - 1;
+                    } else if (rect.bottom < viewportMiddle) {
+                        // Image is above the middle, we need to go lower down the page (higher index in children)
+                        low = mid + 1;
+                    } else {
+                        // Image spans across the middle, this is as close as it gets
+                        break;
+                    }
                 }
-            });
+            }
+
+            if (!closestImg && !minIdxImg) return currentStartIndex;
 
             if (minIdxImg) {
                 const minIdxRect = minIdxImg.getBoundingClientRect();
