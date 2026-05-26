@@ -1922,10 +1922,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Optimistic UI update
         if (action === 'add') {
             window.bookmarks.push(localPath);
-            if (btnElement) btnElement.classList.add('bookmarked');
+            if (btnElement) {
+                btnElement.classList.add('bookmarked');
+                btnElement.setAttribute('aria-pressed', 'true');
+            }
         } else {
             window.bookmarks = window.bookmarks.filter(p => p !== localPath);
-            if (btnElement) btnElement.classList.remove('bookmarked');
+            if (btnElement) {
+                btnElement.classList.remove('bookmarked');
+                btnElement.setAttribute('aria-pressed', 'false');
+            }
         }
 
         try {
@@ -1944,11 +1950,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Revert optimistic update
             await loadBookmarks();
             if (btnElement) {
-                if (window.isBookmarked(url)) {
+                const bookmarked = window.isBookmarked(url);
+                if (bookmarked) {
                     btnElement.classList.add('bookmarked');
                 } else {
                     btnElement.classList.remove('bookmarked');
                 }
+                btnElement.setAttribute('aria-pressed', bookmarked ? 'true' : 'false');
             }
         }
     };
@@ -1956,9 +1964,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.createBookmarkButton = function(url) {
         const btn = document.createElement('button');
         btn.className = 'bookmark-star-btn';
-        if (window.isBookmarked(url)) {
+        const bookmarked = window.isBookmarked(url);
+        if (bookmarked) {
             btn.classList.add('bookmarked');
         }
+        btn.setAttribute('aria-pressed', bookmarked ? 'true' : 'false');
         btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
         btn.title = 'ブックマークを切り替え';
         btn.setAttribute('aria-label', 'ブックマークを切り替え');
