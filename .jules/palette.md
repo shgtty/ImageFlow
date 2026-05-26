@@ -13,3 +13,7 @@
 ## 2024-05-25 - [Accessible Modal Forms and Textareas]
 **Learning:** In custom modals (`[role="dialog"]`), text inputs and textareas used for filtering or editing raw configuration data lacked `aria-label`s, making their purpose ambiguous to screen readers. Additionally, while `button` and `input` elements had explicit `:focus-visible` styles, `textarea` was overlooked, causing it to disappear during keyboard navigation.
 **Action:** Always provide contextual `aria-label`s for inputs that lack explicit `<label>` elements. Ensure that global `:focus-visible` CSS resets or custom implementations within modals explicitly cover all interactive text inputs, including `textarea` elements.
+
+## 2026-05-26 - [Hidden Interactive Elements Keyboard Accessibility]
+**Learning:** In the image gallery, dynamically injected bookmark buttons (`.bookmark-star-btn`) were hidden by default using `opacity: 0` and only shown on `:hover`. This made the buttons completely invisible and inaccessible to keyboard-only navigation, breaking accessibility.
+**Action:** When using `opacity: 0` to hide interactive UI elements until hovered, always pair it with an explicit `:focus-visible` state that restores `opacity: 1` and adds a visible `outline`. Additionally, ensure dynamically created toggle buttons use `aria-pressed` to communicate their state.
