@@ -1405,7 +1405,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!seekbarTooltipAnimationFrame) {
             seekbarTooltipAnimationFrame = requestAnimationFrame(() => {
+                // ⚡ Bolt Optimization: Batch DOM reads before writes to eliminate Layout Thrashing during seekbar hover
                 const rect = seekbar.getBoundingClientRect();
+                const containerRect = seekbarContainer.getBoundingClientRect();
                 const offsetX = latestSeekbarMouseX - rect.left;
                 const width = rect.width;
 
@@ -1424,7 +1426,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // コンテナ内での相対座標で配置
-                const containerRect = seekbarContainer.getBoundingClientRect();
                 seekbarTooltip.style.left = `${latestSeekbarMouseX - containerRect.left}px`;
                 seekbarTooltip.style.opacity = '1';
                 seekbarTooltipAnimationFrame = null;
