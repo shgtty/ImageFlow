@@ -139,7 +139,8 @@
             display: block;
         }
 
-        .gallery-col img {
+        .gallery-col img,
+        .gallery-col video {
             width: 100%;
             height: auto;
             display: block;
@@ -150,7 +151,8 @@
             opacity: 0;
         }
 
-        #gallery img.loaded {
+        #gallery img.loaded,
+        #gallery video.loaded {
             opacity: 1;
             /* フェードイン用: クラス追加で表示 */
         }
@@ -325,32 +327,32 @@
         }
 
         /* 色モードフィルタ */
-        .color-mode-gray img {
+        .color-mode-gray img, .color-mode-gray video {
             filter: grayscale(100%);
         }
-        .color-mode-sepia img {
+        .color-mode-sepia img, .color-mode-sepia video {
             filter: sepia(100%);
         }
-        .color-mode-invert img {
+        .color-mode-invert img, .color-mode-invert video {
             filter: invert(100%);
         }
-        .color-mode-contrast img {
+        .color-mode-contrast img, .color-mode-contrast video {
             filter: contrast(200%);
         }
-        .color-mode-saturate img {
+        .color-mode-saturate img, .color-mode-saturate video {
             filter: saturate(300%);
         }
-        .color-mode-blur img {
+        .color-mode-blur img, .color-mode-blur video {
             filter: blur(8px);
         }
-        .color-mode-pixel img {
+        .color-mode-pixel img, .color-mode-pixel video {
             filter: url(#pixelate);
             transform: scale(1.01);
             vertical-align: top;
         }
 
         /* ブラウン管モード */
-        .color-mode-crt img {
+        .color-mode-crt img, .color-mode-crt video {
             filter: contrast(1.2) saturate(1.5) brightness(1.1);
         }
 

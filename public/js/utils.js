@@ -195,6 +195,25 @@ function getFolderBounds(globalIndex, urls) {
     return bounds;
 }
 
+/**
+ * Checks if a given media URL is a video.
+ * @param {string} url - The media URL.
+ * @returns {boolean}
+ */
+function isVideoUrl(url) {
+    if (!url) return false;
+    try {
+        const match = /[?&]path=([^&#]*)/.exec(url);
+        let pathStr = match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : url;
+        if (pathStr.includes('|')) {
+            pathStr = pathStr.split('|')[1] || pathStr.split('|')[0];
+        }
+        return pathStr.toLowerCase().endsWith('.mp4');
+    } catch (e) {
+        return false;
+    }
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds };
+    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds, isVideoUrl };
 }

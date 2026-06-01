@@ -81,6 +81,9 @@ const DualView = (() => {
             // Block clicks if they originated inside a modal (e.g., closing the modal)
             if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal')) return;
 
+            // Block clicks if clicking on a video element to allow interacting with controls
+            if (e.target.closest('video')) return;
+
             // Block clicks if a modal is open
             const fileSelectModal = document.getElementById('file-select-modal');
             if (fileSelectModal && fileSelectModal.style.display === 'block') return;
@@ -211,18 +214,35 @@ const DualView = (() => {
         }
 
         const promise = new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                const dims = { width: img.naturalWidth, height: img.naturalHeight };
-                dimensionCache.set(url, dims);
-                resolve(dims);
-            };
-            img.onerror = () => {
-                const dims = { width: 1, height: 1 };
-                dimensionCache.set(url, dims);
-                resolve(dims);
-            };
-            img.src = url;
+            const isVideo = typeof isVideoUrl === 'function' ? isVideoUrl(url) : false;
+            if (isVideo) {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.onloadedmetadata = () => {
+                    const dims = { width: video.videoWidth, height: video.videoHeight };
+                    dimensionCache.set(url, dims);
+                    resolve(dims);
+                };
+                video.onerror = () => {
+                    const dims = { width: 16, height: 9 };
+                    dimensionCache.set(url, dims);
+                    resolve(dims);
+                };
+                video.src = url;
+            } else {
+                const img = new Image();
+                img.onload = () => {
+                    const dims = { width: img.naturalWidth, height: img.naturalHeight };
+                    dimensionCache.set(url, dims);
+                    resolve(dims);
+                };
+                img.onerror = () => {
+                    const dims = { width: 1, height: 1 };
+                    dimensionCache.set(url, dims);
+                    resolve(dims);
+                };
+                img.src = url;
+            }
         });
         dimensionCache.set(url, promise);
         return promise;
@@ -303,11 +323,39 @@ const DualView = (() => {
                 wrapper.style.maxHeight = '100vh';
                 // width will be set after dims are loaded
 
-                const img = document.createElement('img');
+                const isVideo = typeof isVideoUrl === 'function' ? isVideoUrl(images[idx]) : false;
+                const img = document.createElement(isVideo ? 'video' : 'img');
+                if (isVideo) {
+                    img.muted = true;
+                    img.autoplay = true;
+                    img.loop = true;
+                    img.playsInline = true;
+                    img.addEventListener('mouseenter', () => {
+                        img.controls = true;
+                    });
+                    img.addEventListener('mouseleave', () => {
+                        if (img.seeking) {
+                            const checkHide = () => {
+                                if (!img.matches(':hover') && !img.seeking) {
+                                    img.controls = false;
+                                    img.removeEventListener('seeked', checkHide);
+                                }
+                            };
+                            img.addEventListener('seeked', checkHide);
+                        } else {
+                            img.controls = false;
+                        }
+                    });
+                }
 
                 const loadPromise = new Promise(async (resolve) => {
-                    img.onload = resolve;
-                    img.onerror = resolve;
+                    if (isVideo) {
+                        img.onloadeddata = resolve;
+                        img.onerror = resolve;
+                    } else {
+                        img.onload = resolve;
+                        img.onerror = resolve;
+                    }
                     img.src = images[idx];
                     
                     try {
@@ -324,7 +372,7 @@ const DualView = (() => {
                         wrapper.style.height = '100%';
                     }
                     
-                    if (img.complete) {
+                    if (!isVideo && img.complete) {
                         resolve();
                     }
                 });
@@ -336,7 +384,9 @@ const DualView = (() => {
                 img.style.display = 'block';
                 img.style.opacity = '1';
                 img.style.transition = 'none';
-                img.alt = typeof getFilename === 'function' ? getFilename(images[idx]) : 'Image ' + (idx + 1);
+                if (!isVideo) {
+                    img.alt = typeof getFilename === 'function' ? getFilename(images[idx]) : 'Image ' + (idx + 1);
+                }
 
                 wrapper.appendChild(img);
                 if (typeof window.createBookmarkButton === 'function') {

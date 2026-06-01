@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds } = require('../public/js/utils.js');
+const { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds, isVideoUrl } = require('../public/js/utils.js');
 
 const BASE_URL = 'http://localhost';
 
@@ -213,5 +213,32 @@ test('getFolderBounds utility', async (t) => {
         const urlsCopy = [...urls];
         const result = getFolderBounds(0, urlsCopy);
         assert.deepStrictEqual(result, { start: 0, end: 1, total: 2, relativeIndex: 0 });
+    });
+});
+
+test('isVideoUrl utility', async (t) => {
+    await t.test('identifies mp4 video URL correctly', () => {
+        const url = `${BASE_URL}/image?path=C:\\Videos\\clip.mp4`;
+        assert.strictEqual(isVideoUrl(url), true);
+    });
+
+    await t.test('identifies uppercase mp4 video URL correctly', () => {
+        const url = `${BASE_URL}/image?path=C:\\Videos\\CLIP.MP4`;
+        assert.strictEqual(isVideoUrl(url), true);
+    });
+
+    await t.test('identifies ZIP entry mp4 video URL correctly', () => {
+        const url = `${BASE_URL}/image?path=C:\\Archive.zip|clip.mp4`;
+        assert.strictEqual(isVideoUrl(url), true);
+    });
+
+    await t.test('returns false for image URL', () => {
+        const url = `${BASE_URL}/image?path=C:\\Photos\\img.jpg`;
+        assert.strictEqual(isVideoUrl(url), false);
+    });
+
+    await t.test('returns false for empty URL', () => {
+        assert.strictEqual(isVideoUrl(''), false);
+        assert.strictEqual(isVideoUrl(null), false);
     });
 });

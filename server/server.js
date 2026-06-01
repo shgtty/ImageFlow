@@ -44,7 +44,7 @@ try {
 } catch(e) {}
 const BOOKMARKS_FILE = isInitialArgDir ? path.join(initialArg, 'bookmarks.json') : path.join(path.dirname(initialArg), 'bookmarks.json');
 
-const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4']);
 const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB
 
 /**
@@ -658,6 +658,7 @@ const server = http.createServer((req, res) => {
             if (actualExt === '.png') mimeType = 'image/png';
             if (actualExt === '.gif') mimeType = 'image/gif';
             if (actualExt === '.webp') mimeType = 'image/webp';
+            if (actualExt === '.mp4') mimeType = 'video/mp4';
 
             const headers = {
                 'Content-Type': mimeType,
@@ -708,19 +709,59 @@ const server = http.createServer((req, res) => {
                 fs.promises.stat(resolvedPath)
                     .then(stats => {
                         if (stats.isFile()) {
-                            const stream = fs.createReadStream(resolvedPath);
-                            stream.on('open', () => {
-                                res.writeHead(200, headers);
-                                stream.pipe(res);
-                            });
-                            stream.on('error', () => {
-                                if (!res.headersSent) {
-                                    res.writeHead(404);
-                                    res.end('Image not found');
-                                } else {
+                            const range = req.headers.range;
+                            if (range) {
+                                const parts = range.replace(/bytes=/, "").split("-");
+                                const start = parseInt(parts[0], 10);
+                                const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+
+                                if (start >= stats.size || end >= stats.size) {
+                                    res.writeHead(416, {
+                                        'Content-Range': `bytes */${stats.size}`
+                                    });
                                     res.end();
+                                    return;
                                 }
-                            });
+
+                                const chunksize = (end - start) + 1;
+                                const stream = fs.createReadStream(resolvedPath, { start, end });
+                                
+                                res.writeHead(206, {
+                                    ...headers,
+                                    'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+                                    'Accept-Ranges': 'bytes',
+                                    'Content-Length': chunksize,
+                                    'Content-Type': mimeType
+                                });
+                                stream.pipe(res);
+
+                                stream.on('error', () => {
+                                    if (!res.headersSent) {
+                                        res.writeHead(500);
+                                        res.end('Internal server error');
+                                    } else {
+                                        res.end();
+                                    }
+                                });
+                            } else {
+                                const stream = fs.createReadStream(resolvedPath);
+                                stream.on('open', () => {
+                                    res.writeHead(200, {
+                                        ...headers,
+                                        'Content-Length': stats.size,
+                                        'Accept-Ranges': 'bytes'
+                                    });
+                                    stream.pipe(res);
+                                });
+                                stream.on('error', () => {
+                                    if (!res.headersSent) {
+                                        res.writeHead(404);
+                                        res.end('Image not found');
+                                    } else {
+                                        res.end();
+                                    }
+                                });
+                            }
                         } else {
                             res.writeHead(404);
                             res.end('Image not found');

@@ -151,8 +151,31 @@ const GalleryView = (() => {
             wrapper.className = 'image-wrapper';
             wrapper.dataset.index = activeIndex;
 
-            const img = document.createElement('img');
+            const isVideo = typeof isVideoUrl === 'function' ? isVideoUrl(allImagesUrls[activeIndex]) : false;
+            const img = document.createElement(isVideo ? 'video' : 'img');
             img.dataset.index = activeIndex;
+            if (isVideo) {
+                img.muted = true;
+                img.autoplay = true;
+                img.loop = true;
+                img.playsInline = true;
+                img.addEventListener('mouseenter', () => {
+                    img.controls = true;
+                });
+                img.addEventListener('mouseleave', () => {
+                    if (img.seeking) {
+                        const checkHide = () => {
+                            if (!img.matches(':hover') && !img.seeking) {
+                                img.controls = false;
+                                img.removeEventListener('seeked', checkHide);
+                            }
+                        };
+                        img.addEventListener('seeked', checkHide);
+                    } else {
+                        img.controls = false;
+                    }
+                });
+            }
             wrapper.appendChild(img);
 
             if (typeof window.createBookmarkButton === 'function') {
@@ -163,19 +186,32 @@ const GalleryView = (() => {
             const obj = { wrapper, img, loaded: false, error: false };
             batchImages.push(obj);
 
-            img.onload = () => {
-                obj.loaded = true;
-                processBatchQueue();
-            };
-
-            img.onerror = () => {
-                obj.loaded = true;
-                obj.error = true;
-                processBatchQueue();
-            };
+            if (isVideo) {
+                img.onloadedmetadata = () => {
+                    obj.loaded = true;
+                    processBatchQueue();
+                };
+                img.onerror = () => {
+                    obj.loaded = true;
+                    obj.error = true;
+                    processBatchQueue();
+                };
+            } else {
+                img.onload = () => {
+                    obj.loaded = true;
+                    processBatchQueue();
+                };
+                img.onerror = () => {
+                    obj.loaded = true;
+                    obj.error = true;
+                    processBatchQueue();
+                };
+            }
 
             img.src = allImagesUrls[activeIndex];
-            img.alt = typeof getFilename === 'function' ? getFilename(allImagesUrls[activeIndex]) : 'Image ' + (activeIndex + 1);
+            if (!isVideo) {
+                img.alt = typeof getFilename === 'function' ? getFilename(allImagesUrls[activeIndex]) : 'Image ' + (activeIndex + 1);
+            }
             
             tempIndex++;
         }
@@ -215,7 +251,10 @@ const GalleryView = (() => {
                     const shortestCol = columns[shortestIdx];
                     shortestCol.appendChild(wrapper);
 
-                    const ratio = img.naturalHeight / img.naturalWidth;
+                    const isVid = img.tagName === 'VIDEO';
+                    const w = isVid ? img.videoWidth : img.naturalWidth;
+                    const h = isVid ? img.videoHeight : img.naturalHeight;
+                    const ratio = (w && h) ? (h / w) : 1;
                     columnHeights[shortestIdx] += (colWidth * ratio);
 
                     // DOMに追加されてからフェードインさせるため、少し遅延を入れる
@@ -431,7 +470,7 @@ const GalleryView = (() => {
         const colWidth = (columns[0] && columns[0].offsetWidth) || (baseWidth / columnCount);
 
         existingItems.forEach(item => {
-            const img = item.querySelector('img') || item;
+            const img = item.querySelector('img, video') || item;
             let shortestIdx = 0;
             let minH = columnHeights[0];
             for (let j = 1; j < columnCount; j++) {
@@ -444,7 +483,10 @@ const GalleryView = (() => {
             const shortestCol = columns[shortestIdx];
             shortestCol.appendChild(item);
 
-            const ratio = (img.naturalHeight && img.naturalWidth) ? (img.naturalHeight / img.naturalWidth) : 1;
+            const isVid = img.tagName === 'VIDEO';
+            const w = isVid ? img.videoWidth : img.naturalWidth;
+            const h = isVid ? img.videoHeight : img.naturalHeight;
+            const ratio = (w && h) ? (h / w) : 1;
             columnHeights[shortestIdx] += (colWidth * ratio);
         });
 
