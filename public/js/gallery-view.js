@@ -24,6 +24,8 @@ const GalleryView = (() => {
     let isRightToLeft = false;
     let currentRenderId = 0;
     let endDelayStartTime = 0;
+    let lastFrameTime = 0;
+    let accumulatedScroll = 0;
 
     // Storage keys
     const STORAGE_KEY_SPEED = 'imageflow_scroll_speed';
@@ -295,6 +297,8 @@ const GalleryView = (() => {
         if (!isScrolling && scrollSpeed !== 0) {
             isScrolling = true;
             endDelayStartTime = 0;
+            lastFrameTime = 0;
+            accumulatedScroll = 0;
             requestAnimationFrame(autoScroll);
         }
     }
@@ -303,17 +307,42 @@ const GalleryView = (() => {
         isScrolling = false;
     }
 
-    function autoScroll() {
+    function autoScroll(timestamp) {
         if (!isActive || !isScrolling || scrollSpeed === 0) {
             isScrolling = false;
+            lastFrameTime = 0;
+            accumulatedScroll = 0;
             return;
+        }
+
+        if (!timestamp) {
+            requestAnimationFrame(autoScroll);
+            return;
+        }
+
+        if (!lastFrameTime) {
+            lastFrameTime = timestamp;
+            requestAnimationFrame(autoScroll);
+            return;
+        }
+
+        const delta = timestamp - lastFrameTime;
+        lastFrameTime = timestamp;
+
+        // Bounded delta to handle frame drops / tab switching cleanly
+        const boundedDelta = Math.min(delta, 100);
+
+        accumulatedScroll += boundedDelta * (scrollSpeed / 16.67);
+        const scrollAmount = Math.trunc(accumulatedScroll);
+        accumulatedScroll -= scrollAmount;
+
+        if (scrollAmount !== 0) {
+            window.scrollBy({ top: scrollAmount, left: 0, behavior: 'instant' });
         }
 
         // ⚡ Bolt Optimization: Batch DOM reads before DOM writes to prevent layout thrashing on every frame
         const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
         const currentScrollY = window.scrollY;
-
-        window.scrollBy({ top: scrollSpeed, left: 0, behavior: 'instant' });
 
         if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && currentScrollY >= maxScroll - 2000) {
             renderNextBatch(BATCH_SIZE);
