@@ -312,7 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Startup based on mode
             if (mode === 'dual' && typeof DualView !== 'undefined') {
-                DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
+                if (DualView.isActive) {
+                    DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
+                } else {
+                    DualView.enter(allImagesUrls, targetIndex, dualInterval, handleDualExit);
+                }
             } else if (typeof GalleryView !== 'undefined') {
                 GalleryView.enter(allImagesUrls, targetIndex, { onEnd: handleGalleryEnd });
             }
@@ -1540,6 +1544,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }, true); // キャプチャフェーズで実行し、stopPropagation() の影響を受けないようにする
 
     document.addEventListener('keydown', (e) => {
+        // --- Soft Reload during Fullscreen ---
+        if (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R')) || (e.metaKey && (e.key === 'r' || e.key === 'R'))) {
+            if (document.fullscreenElement) {
+                e.preventDefault();
+                loadImages();
+                return;
+            }
+        }
+
         // --- Modal Interaction Handling ---
         const isFileModalOpen = fileSelectModal && fileSelectModal.style.display === 'block';
         const isFilterModalOpen = filterModal && filterModal.style.display === 'block';
