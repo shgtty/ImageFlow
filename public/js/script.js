@@ -690,19 +690,33 @@ document.addEventListener('DOMContentLoaded', () => {
             currentIndex = GalleryView.currentIndex;
         }
         
+        // ⚡ Bolt Optimization: Prevent layout thrashing by checking if DOM actually needs updating
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        let newMax = 0;
+        let newVal = 0;
+        let newText = '';
+
         if (currentSort === 'folder-random') {
             const bounds = getFolderBounds(currentIndex, allImagesUrls);
-            seekbar.max = Math.max(0, bounds.total - 1);
-            seekbar.value = bounds.relativeIndex;
-            seekbarInfo.textContent = `${bounds.relativeIndex + 1} / ${bounds.total}`;
-            seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+            newMax = Math.max(0, bounds.total - 1);
+            newVal = bounds.relativeIndex;
+            newText = `${bounds.relativeIndex + 1} / ${bounds.total}`;
         } else {
-            seekbar.max = Math.max(0, allImagesUrls.length - 1);
-            seekbar.value = currentIndex;
-            seekbarInfo.textContent = `${currentIndex + 1} / ${allImagesUrls.length}`;
-            seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+            newMax = Math.max(0, allImagesUrls.length - 1);
+            newVal = currentIndex;
+            newText = `${currentIndex + 1} / ${allImagesUrls.length}`;
         }
+
+        const newMaxStr = newMax.toString();
+        const newValStr = newVal.toString();
+
+        if (seekbar.max !== newMaxStr) seekbar.max = newMaxStr;
+        if (seekbar.value !== newValStr) seekbar.value = newValStr;
+        if (seekbarInfo.textContent !== newText) {
+            seekbarInfo.textContent = newText;
+            seekbar.setAttribute('aria-valuetext', newText);
+        }
+
         updateStopBtnIcon();
     }
 
@@ -714,16 +728,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const isStopped = (typeof DualView !== 'undefined' && DualView.isActive && (DualView.interval === 0 || DualView.isPaused)) ||
                          (typeof GalleryView !== 'undefined' && GalleryView.isActive && (GalleryView.scrollSpeed === 0 || GalleryView.isPaused));
 
+        // ⚡ Bolt Optimization: Prevent layout thrashing by checking if DOM actually needs updating
         if (isStopped) {
             // Play Icon
-            svg.innerHTML = '<path d="M8 5v14l11-7z" />';
-            stopBtn.title = '再生開始 (Space)';
-            stopBtn.setAttribute('aria-label', stopBtn.title);
+            const newTitle = '再生開始 (Space)';
+            if (stopBtn.title !== newTitle) {
+                svg.innerHTML = '<path d="M8 5v14l11-7z" />';
+                stopBtn.title = newTitle;
+                stopBtn.setAttribute('aria-label', newTitle);
+            }
         } else {
             // Stop Icon
-            svg.innerHTML = '<path d="M6 6h12v12H6z" />';
-            stopBtn.title = '停止 (Space)';
-            stopBtn.setAttribute('aria-label', stopBtn.title);
+            const newTitle = '停止 (Space)';
+            if (stopBtn.title !== newTitle) {
+                svg.innerHTML = '<path d="M6 6h12v12H6z" />';
+                stopBtn.title = newTitle;
+                stopBtn.setAttribute('aria-label', newTitle);
+            }
         }
     }
 
