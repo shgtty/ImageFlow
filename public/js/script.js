@@ -59,8 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const seekbarToggleBtn = document.getElementById('seekbarToggleBtn');
     const seekbarToggleIcon = document.getElementById('seekbarToggleIcon');
     const modeOverlay = document.getElementById('mode-overlay');
-    let currentFilterDisplay = ''; 
+    let currentFilterDisplay = '<span><span class="filter-label">フィルター:</span> フィルタ無し</span>'; 
     let currentModeMessage = '';
+    let currentConfigFile = '';
     let overlayHideTimer = null;
 
     let previousFocus = null;
@@ -96,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lastActiveGallerySpeed === 0) lastActiveGallerySpeed = 2.0;
 
     let currentColorModeIndex = parseInt(localStorage.getItem(STORAGE_KEY_COLOR_MODE)) || 0;
+    const colorModeNames = ['無加工', 'グレイ', 'セピア', 'ネガティブ', '高コントラスト', '高彩度', 'ぼかし', 'ドット絵', 'ブラウン管'];
 
     // --- Bookmark State ---
     window.bookmarks = [];
@@ -251,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`);
             if (!response.ok) throw new Error(`Server status: ${response.status}`);
             const data = await response.json();
+            currentConfigFile = data.configFile || '';
 
             if (fileSelectBtnWrapper) {
                 fileSelectBtnWrapper.style.display = data.isConfigDir ? 'block' : 'none';
@@ -345,11 +348,50 @@ document.addEventListener('DOMContentLoaded', () => {
         displayOverlayTemporarily();
     }
 
+    function getStatusOverlayHTML() {
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
+        const modeIcon = mode === 'dual'
+            ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
+            : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
+
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        const sortNames = {
+            'asc': '昇順',
+            'folder-random': 'フォルダ単位ランダム',
+            'random': 'ランダム'
+        };
+        const sortName = sortNames[currentSort] || 'ランダム';
+
+        let displayCount = allImagesUrls.length;
+        if (currentSort === 'folder-random') {
+            let currentIndex = 0;
+            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                currentIndex = DualView.currentIndex;
+            } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                currentIndex = GalleryView.currentIndex;
+            }
+            displayCount = getFolderBounds(currentIndex, allImagesUrls).total;
+        }
+
+        const countPart = (displayCount > 0) ? ` [${displayCount}枚]` : '';
+        let msg = `${modeIcon} <span>${escapeHTML(modeName)} [${escapeHTML(sortName)}]${countPart}</span>`;
+
+        const colorModeName = colorModeNames[currentColorModeIndex] || '無加工';
+        msg += `<span style="opacity: 0.3; margin: 0 15px;">|</span><span><span class="filter-label">色モード:</span> ${escapeHTML(colorModeName)}</span>`;
+
+        if (currentConfigFile) {
+            msg += `<span style="opacity: 0.3; margin: 0 15px;">|</span><span><span class="filter-label">設定:</span> ${escapeHTML(currentConfigFile)}</span>`;
+        }
+
+        return msg;
+    }
+
     function updateFilterBar(data) {
         if (!modeOverlay) return;
         
         if (!enableInclude || !data.filterInclude || data.filterInclude.length === 0) {
-            currentFilterDisplay = '';
+            currentFilterDisplay = '<span><span class="filter-label">フィルター:</span> フィルタ無し</span>';
         } else {
             const modeText = data.filterMode === 'OR' ? 'OR条件' : 'AND条件';
             const keywords = data.filterInclude.map(k => escapeHTML(k)).join(', ');
@@ -379,10 +421,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '';
         if (currentModeMessage) {
             html += currentModeMessage;
+        } else {
+            html += getStatusOverlayHTML();
         }
         
         if (currentFilterDisplay) {
-            const separator = currentModeMessage ? 
+            const separator = (currentModeMessage || html) ? 
                 '<span style="opacity: 0.3; margin: 0 15px;">|</span>' : '';
             html += separator + currentFilterDisplay;
         }
@@ -620,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
                         .then(r => r.json())
                         .then(data => {
+                            currentConfigFile = data.configFile || '';
                             allImagesUrls = data.images || [];
                             const total = data.totalFound !== undefined ? data.totalFound : allImagesUrls.length;
                             
@@ -783,6 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (gallerySortMode !== dualSortMode) {
                 fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
+                    currentConfigFile = data.configFile || '';
                     allImagesUrls = data.images;
                     
                     if (allImagesUrls.length === 0) {
@@ -884,6 +930,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
             .then(r => r.json())
             .then(data => {
+                currentConfigFile = data.configFile || '';
                 allImagesUrls = data.images;
 
                 const sortNames = {
@@ -990,7 +1037,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleColorMode() {
         const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel', 'color-mode-crt'];
-        const colorModeNames = ['無加工', 'グレイ', 'セピア', 'ネガティブ', '高コントラスト', '高彩度', 'ぼかし', 'ドット絵', 'ブラウン管'];
         
         if (colorModes[currentColorModeIndex]) {
             document.body.classList.remove(colorModes[currentColorModeIndex]);
@@ -1159,6 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
                                         .then(r => r.json())
                                         .then(data => {
+                                            currentConfigFile = data.configFile || file;
                                             allImagesUrls = data.images || [];
                                             
                                             if (allImagesUrls.length === 0) {
@@ -1872,10 +1919,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         fabContainer.classList.remove('hidden');
         document.documentElement.classList.remove('hide-cursor');
+        
+        // Show status overlay if no temporary overlay message is active
+        if (modeOverlay) {
+            if (!currentModeMessage) {
+                refreshOverlayContent();
+                modeOverlay.classList.add('show');
+            }
+        }
+
         if (activityTimeout) clearTimeout(activityTimeout);
         activityTimeout = setTimeout(() => {
             fabContainer.classList.add('hidden');
             document.documentElement.classList.add('hide-cursor');
+            
+            // Hide status overlay
+            if (modeOverlay) {
+                modeOverlay.classList.remove('show');
+                // Clear temporary message after hide transition completes
+                setTimeout(() => {
+                    currentModeMessage = '';
+                }, 400);
+            }
+            
             lastActivityReset = 0;
         }, 3000);
     }

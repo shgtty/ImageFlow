@@ -622,7 +622,8 @@ const server = http.createServer((req, res) => {
             foldersUsed: folders,
             filterMode: includeMode,
             filterInclude: includes,
-            isConfigDir: !!configDir
+            isConfigDir: !!configDir,
+            configFile: path.basename(CONFIG_FILE)
         }));
         return;
     }
