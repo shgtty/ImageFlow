@@ -17,3 +17,7 @@
 ## 2026-05-26 - [Hidden Interactive Elements Keyboard Accessibility]
 **Learning:** In the image gallery, dynamically injected bookmark buttons (`.bookmark-star-btn`) were hidden by default using `opacity: 0` and only shown on `:hover`. This made the buttons completely invisible and inaccessible to keyboard-only navigation, breaking accessibility.
 **Action:** When using `opacity: 0` to hide interactive UI elements until hovered, always pair it with an explicit `:focus-visible` state that restores `opacity: 1` and adds a visible `outline`. Additionally, ensure dynamically created toggle buttons use `aria-pressed` to communicate their state.
+
+## 2026-06-02 - [Dynamic ARIA Labels for Toggle Buttons]
+**Learning:** The bookmark star button used a static `aria-label` ('ブックマークを切り替え' / 'Toggle bookmark') regardless of whether the image was already bookmarked. This forced screen reader users to rely solely on the `aria-pressed` state to deduce what action would happen next, which is less intuitive.
+**Action:** When creating toggle buttons (like bookmarks), always dynamically update the `aria-label` and `title` to reflect the *future action* (e.g., 'ブックマークを解除' if already bookmarked, or 'ブックマークに追加' if not). Update this state optimistically in the click handler.
