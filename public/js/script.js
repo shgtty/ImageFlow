@@ -1947,12 +1947,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btnElement) {
                 btnElement.classList.add('bookmarked');
                 btnElement.setAttribute('aria-pressed', 'true');
+                btnElement.title = 'ブックマークを解除';
+                btnElement.setAttribute('aria-label', 'ブックマークを解除');
             }
         } else {
             window.bookmarks = window.bookmarks.filter(p => p !== localPath);
             if (btnElement) {
                 btnElement.classList.remove('bookmarked');
                 btnElement.setAttribute('aria-pressed', 'false');
+                btnElement.title = 'ブックマークに追加';
+                btnElement.setAttribute('aria-label', 'ブックマークに追加');
             }
         }
 
@@ -1992,8 +1996,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         btn.setAttribute('aria-pressed', bookmarked ? 'true' : 'false');
         btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
-        btn.title = 'ブックマークを切り替え';
-        btn.setAttribute('aria-label', 'ブックマークを切り替え');
+
+        const actionText = bookmarked ? 'ブックマークを解除' : 'ブックマークに追加';
+        btn.title = actionText;
+        btn.setAttribute('aria-label', actionText);
         
         btn.addEventListener('click', (e) => {
             e.preventDefault();
