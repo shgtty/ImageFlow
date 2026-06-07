@@ -130,4 +130,28 @@ test('Bookmarks API CSV functionality', async (t) => {
         const fileContent = fs.readFileSync(tempBookmarksPath, 'utf-8').replace(/\r\n/g, '\n');
         assert.strictEqual(fileContent, 'C:\\TestFolder2,pic.jpg,temp_folders.txt\n');
     });
+
+    await t.test('GET /api/bookmark-config returns the config file name for a bookmark', async () => {
+        // Setup initial CSV
+        const csvContent = 'C:\\TestFolder1,image.png,temp_folders.txt\nC:\\TestFolder2,pic.jpg,another_config.txt\n';
+        fs.writeFileSync(tempBookmarksPath, csvContent, 'utf-8');
+
+        // Check first bookmark
+        let res = await makeRequest(port, 'GET', `/api/bookmark-config?path=${encodeURIComponent('C:\\TestFolder1\\image.png')}`);
+        assert.strictEqual(res.statusCode, 200);
+        let data = JSON.parse(res.body);
+        assert.deepStrictEqual(data, { configFile: 'temp_folders.txt' });
+
+        // Check second bookmark
+        res = await makeRequest(port, 'GET', `/api/bookmark-config?path=${encodeURIComponent('C:\\TestFolder2\\pic.jpg')}`);
+        assert.strictEqual(res.statusCode, 200);
+        data = JSON.parse(res.body);
+        assert.deepStrictEqual(data, { configFile: 'another_config.txt' });
+
+        // Check non-existent bookmark
+        res = await makeRequest(port, 'GET', `/api/bookmark-config?path=${encodeURIComponent('C:\\TestFolder3\\no.jpg')}`);
+        assert.strictEqual(res.statusCode, 200);
+        data = JSON.parse(res.body);
+        assert.deepStrictEqual(data, { configFile: null });
+    });
 });

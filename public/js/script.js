@@ -2170,9 +2170,78 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function jumpToImage(url) {
-        const index = allImagesUrls.indexOf(url);
+    async function jumpToImage(url) {
+        let index = allImagesUrls.indexOf(url);
         if (index === -1) {
+            const localPath = getLocalPathFromUrl(url);
+            try {
+                const configRes = await fetch(`/api/bookmark-config?path=${encodeURIComponent(localPath)}`);
+                if (!configRes.ok) throw new Error('Failed to get bookmark config');
+                const configData = await configRes.json();
+                
+                if (configData.configFile) {
+                    const setConfigRes = await fetch('/api/set-config-file', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ file: configData.configFile })
+                    });
+                    if (!setConfigRes.ok) throw new Error('Failed to set config file');
+                    const setConfigData = await setConfigRes.json();
+                    
+                    if (setConfigData.success) {
+                        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+                        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+                        
+                        const imagesRes = await fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`);
+                        if (!imagesRes.ok) throw new Error('Failed to fetch images');
+                        const data = await imagesRes.json();
+                        
+                        currentConfigFile = data.configFile || configData.configFile;
+                        allImagesUrls = data.images || [];
+                        
+                        if (allImagesUrls.length === 0) {
+                            seekbar.max = 0;
+                            seekbar.value = 0;
+                            seekbarInfo.textContent = '0 / 0';
+                            seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+                            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                DualView.updateImagesAndReset([], 0, true);
+                            } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                GalleryView.updateImagesAndReset([], 0);
+                            }
+                            showModeOverlay('画像が見つかりませんでした (folders.txtを確認してください)', '', 0);
+                            return;
+                        }
+
+                        seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                        updateFilterBar(data);
+
+                        const newIndex = allImagesUrls.indexOf(url);
+                        if (newIndex === -1) {
+                            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                DualView.updateImagesAndReset(allImagesUrls, 0, true);
+                            } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                GalleryView.updateImagesAndReset(allImagesUrls, 0, { restoreSpeed: true });
+                            }
+                            updateSeekbar();
+                            showModeOverlay('画像が見つかりませんでした (folders.txtを確認してください)', '', 0);
+                        } else {
+                            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                DualView.updateImagesAndReset(allImagesUrls, newIndex, true);
+                            } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                GalleryView.updateImagesAndReset(allImagesUrls, newIndex, { restoreSpeed: true });
+                            }
+                            updateSeekbar();
+                            showModeOverlay('設定を切り替えて画像を表示しました', `ファイル: ${configData.configFile}`, allImagesUrls.length);
+                        }
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error('Error auto-switching config for bookmark:', err);
+            }
+            
             showModeOverlay('選択した画像は現在の検索範囲に見つかりませんでした。', '', 0);
             return;
         }

@@ -601,6 +601,33 @@ const server = http.createServer((req, res) => {
         }
     }
 
+    if (reqUrl.pathname === '/api/bookmark-config') {
+        if (req.method === 'GET') {
+            const targetPath = reqUrl.searchParams.get('path');
+            if (targetPath) {
+                let configFile = null;
+                if (fs.existsSync(BOOKMARKS_FILE)) {
+                    try {
+                        const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
+                        const rows = parseCSV(csvContent);
+                        const matchedRow = rows.find(row => rowToPath(row) === targetPath);
+                        if (matchedRow && matchedRow[2]) {
+                            configFile = matchedRow[2].trim();
+                        }
+                    } catch (e) {
+                        console.error('Error reading bookmarks CSV for config:', e);
+                    }
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ configFile }));
+                return;
+            }
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Missing path parameter' }));
+            return;
+        }
+    }
+
     if (reqUrl.pathname === '/api/images') {
         const sortMode = reqUrl.searchParams.get('sort') || 'random';
         const enableInclude = reqUrl.searchParams.get('enableInclude') !== 'false';
