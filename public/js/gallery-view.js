@@ -137,7 +137,7 @@ const GalleryView = (() => {
                     const bounds = getFolderBounds(tempIndex - 1, allImagesUrls);
                     tempIndex = bounds.start;
                 } else {
-                    break; // Normal mode -> end
+                    tempIndex = 0; // Wrap around for infinite loop scroll in normal/random modes
                 }
             } else if (folderRandom && typeof getFolderBounds === 'function') {
                const bounds = getFolderBounds(currentIndex, allImagesUrls);
