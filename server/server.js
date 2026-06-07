@@ -752,7 +752,22 @@ const server = http.createServer((req, res) => {
             // Path Traversal check
             const resolvedPath = path.resolve(basePath);
             const allowedPaths = getAllowedPaths();
-            const isAllowed = allowedPaths.some(allowed => isPathInside(allowed, resolvedPath));
+            let isAllowed = allowedPaths.some(allowed => isPathInside(allowed, resolvedPath));
+
+            // Also allow if the file is explicitly in bookmarks
+            if (!isAllowed && fs.existsSync(BOOKMARKS_FILE)) {
+                try {
+                    const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
+                    const rows = parseCSV(csvContent);
+                    const bookmarkedPaths = rows.map(rowToPath).filter(Boolean);
+                    isAllowed = bookmarkedPaths.some(bookmarkPath => {
+                        const bPath = bookmarkPath.includes('|') ? bookmarkPath.split('|')[0] : bookmarkPath;
+                        return path.resolve(bPath) === resolvedPath;
+                    });
+                } catch (e) {
+                    console.error('Error checking allowed path in bookmarks:', e);
+                }
+            }
 
             if (!isAllowed) {
                 res.writeHead(403);

@@ -2132,6 +2132,81 @@ document.addEventListener('DOMContentLoaded', () => {
             item.setAttribute('role', 'button');
             item.setAttribute('tabindex', '0');
             
+            // --- Premium Thumbnail Setup ---
+            const thumbContainer = document.createElement('div');
+            thumbContainer.style.width = '48px';
+            thumbContainer.style.height = '48px';
+            thumbContainer.style.borderRadius = '4px';
+            thumbContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            thumbContainer.style.display = 'flex';
+            thumbContainer.style.alignItems = 'center';
+            thumbContainer.style.justifyContent = 'center';
+            thumbContainer.style.flexShrink = '0';
+            thumbContainer.style.overflow = 'hidden';
+            thumbContainer.style.position = 'relative';
+
+            const isVideo = typeof isVideoUrl === 'function' ? isVideoUrl(getUrlFromLocalPath(localPath)) : false;
+            
+            // SVG Fallback Icon (image or video representation)
+            const fallbackIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            fallbackIcon.setAttribute('viewBox', '0 0 24 24');
+            fallbackIcon.style.width = '24px';
+            fallbackIcon.style.height = '24px';
+            fallbackIcon.style.fill = 'rgba(255, 255, 255, 0.3)';
+            fallbackIcon.style.transition = 'fill 0.2s';
+            fallbackIcon.innerHTML = isVideo 
+                ? '<path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>'
+                : '<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>';
+            thumbContainer.appendChild(fallbackIcon);
+
+            // Create media element (img or video)
+            const mediaEl = document.createElement(isVideo ? 'video' : 'img');
+            mediaEl.src = getUrlFromLocalPath(localPath);
+            mediaEl.style.width = '100%';
+            mediaEl.style.height = '100%';
+            mediaEl.style.objectFit = 'cover';
+            mediaEl.style.position = 'absolute';
+            mediaEl.style.top = '0';
+            mediaEl.style.left = '0';
+            mediaEl.style.opacity = '0';
+            mediaEl.style.transition = 'opacity 0.2s ease-in-out';
+            
+            if (isVideo) {
+                mediaEl.muted = true;
+                mediaEl.preload = 'metadata';
+                mediaEl.playsInline = true;
+                
+                // Play video on hover
+                item.addEventListener('mouseenter', () => {
+                    mediaEl.play().catch(() => {});
+                });
+                item.addEventListener('mouseleave', () => {
+                    mediaEl.pause();
+                    mediaEl.currentTime = 0;
+                });
+            }
+
+            // Show once loaded
+            const handleMediaLoaded = () => {
+                mediaEl.style.opacity = '1';
+                fallbackIcon.style.display = 'none';
+            };
+
+            if (isVideo) {
+                mediaEl.addEventListener('loadeddata', handleMediaLoaded);
+            } else {
+                mediaEl.onload = handleMediaLoaded;
+            }
+
+            // Error styling
+            mediaEl.onerror = () => {
+                mediaEl.style.display = 'none';
+                fallbackIcon.style.display = 'block';
+                fallbackIcon.style.fill = '#e74c3c'; // red color indicating missing/error
+            };
+
+            thumbContainer.appendChild(mediaEl);
+            
             const nameSpan = document.createElement('span');
             nameSpan.textContent = formatBookmarkName(localPath);
             nameSpan.title = localPath;
@@ -2149,6 +2224,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.toggleBookmark(getUrlFromLocalPath(localPath)).then(() => renderBookmarkList());
             });
 
+            item.appendChild(thumbContainer);
             item.appendChild(nameSpan);
             item.appendChild(delBtn);
 

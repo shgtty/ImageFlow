@@ -154,4 +154,28 @@ test('Bookmarks API CSV functionality', async (t) => {
         data = JSON.parse(res.body);
         assert.deepStrictEqual(data, { configFile: null });
     });
+
+    await t.test('GET /image allows bookmark paths that are not inside folders.txt', async () => {
+        // Create a temporary file in current directory to represent an image outside folders.txt
+        const dummyFile = path.resolve(__dirname, 'dummy_outside_image.png');
+        fs.writeFileSync(dummyFile, 'dummy image content', 'utf-8');
+
+        const dummyDir = path.dirname(dummyFile);
+        const dummyBase = path.basename(dummyFile);
+
+        // Put dummy file path in bookmarks.csv
+        const dummyCsv = `"${dummyDir}","${dummyBase}",temp_folders.txt\n`;
+        fs.writeFileSync(tempBookmarksPath, dummyCsv, 'utf-8');
+
+        // Request /image?path=...
+        const res = await makeRequest(port, 'GET', `/image?path=${encodeURIComponent(dummyFile)}`);
+        
+        // Cleanup dummy file
+        if (fs.existsSync(dummyFile)) {
+            try { fs.unlinkSync(dummyFile); } catch (e) {}
+        }
+
+        // It should succeed with 200 because it is bookmarked
+        assert.strictEqual(res.statusCode, 200);
+    });
 });
