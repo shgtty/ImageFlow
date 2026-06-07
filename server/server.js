@@ -42,7 +42,93 @@ let isInitialArgDir = false;
 try {
     isInitialArgDir = fs.existsSync(initialArg) && fs.statSync(initialArg).isDirectory();
 } catch(e) {}
-const BOOKMARKS_FILE = isInitialArgDir ? path.join(initialArg, 'bookmarks.json') : path.join(path.dirname(initialArg), 'bookmarks.json');
+let BOOKMARKS_FILE = isInitialArgDir ? path.join(initialArg, 'bookmarks.csv') : path.join(path.dirname(initialArg), 'bookmarks.csv');
+
+function setBookmarksFile(newPath) {
+    BOOKMARKS_FILE = newPath;
+}
+
+function parseCSV(text) {
+    const lines = [];
+    let row = [];
+    let inQuotes = false;
+    let current = '';
+    
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+        
+        if (inQuotes) {
+            if (char === '"') {
+                if (nextChar === '"') {
+                    current += '"';
+                    i++; // skip next double quote
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                current += char;
+            }
+        } else {
+            if (char === '"') {
+                inQuotes = true;
+            } else if (char === ',') {
+                row.push(current);
+                current = '';
+            } else if (char === '\r' || char === '\n') {
+                row.push(current);
+                current = '';
+                if (row.length > 0 && row.some(cell => cell !== '')) {
+                    lines.push(row);
+                }
+                row = [];
+                if (char === '\r' && nextChar === '\n') {
+                    i++;
+                }
+            } else {
+                current += char;
+            }
+        }
+    }
+    if (current || row.length > 0) {
+        row.push(current);
+        if (row.some(cell => cell !== '')) {
+            lines.push(row);
+        }
+    }
+    return lines;
+}
+
+function toCSV(rows) {
+    return rows.map(row => {
+        return row.map(cell => {
+            const str = String(cell);
+            if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }).join(',');
+    }).join('\n') + '\n';
+}
+
+function pathToRow(fullPath, configFileName) {
+    if (fullPath.includes('|')) {
+        const parts = fullPath.split('|');
+        return [parts[0], parts[1], configFileName];
+    } else {
+        return [path.dirname(fullPath), path.basename(fullPath), configFileName];
+    }
+}
+
+function rowToPath(row) {
+    if (!row || row.length < 3) return null;
+    const dirOrZip = row[0].trim();
+    const fileOrEntry = row[1].trim();
+    const configFile = row[2].trim();
+    if (!dirOrZip || !fileOrEntry) return null;
+    const isZip = dirOrZip.toLowerCase().endsWith('.zip');
+    return isZip ? `${dirOrZip}|${fileOrEntry}` : path.join(dirOrZip, fileOrEntry);
+}
 
 const VALID_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4']);
 const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB
@@ -448,22 +534,18 @@ const server = http.createServer((req, res) => {
     }
 
     if (reqUrl.pathname === '/api/bookmarks') {
+
         if (req.method === 'GET') {
             try {
                 let bookmarks = [];
                 if (fs.existsSync(BOOKMARKS_FILE)) {
                     try {
-                        bookmarks = JSON.parse(fs.readFileSync(BOOKMARKS_FILE, 'utf-8'));
-                        // Migration from object to string path
-                        if (bookmarks.length > 0 && typeof bookmarks[0] === 'object') {
-                            bookmarks = bookmarks.map(b => {
-                                let p = b.path || '';
-                                const match = p.match(/[\?&]path=([^&]+)/);
-                                return match ? decodeURIComponent(match[1]) : p;
-                            }).filter(Boolean);
-                            fs.writeFileSync(BOOKMARKS_FILE, JSON.stringify(bookmarks, null, 2), 'utf-8');
-                        }
-                    } catch(e) {}
+                        const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
+                        const rows = parseCSV(csvContent);
+                        bookmarks = rows.map(rowToPath).filter(Boolean);
+                    } catch (e) {
+                        console.error('Error reading bookmarks CSV:', e);
+                    }
                 }
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ bookmarks }));
@@ -477,30 +559,34 @@ const server = http.createServer((req, res) => {
                 try {
                     const data = JSON.parse(body);
                     if (data.action === 'add' || data.action === 'remove') {
-                        let bookmarks = [];
+                        let rows = [];
                         if (fs.existsSync(BOOKMARKS_FILE)) {
                             try {
-                                bookmarks = JSON.parse(fs.readFileSync(BOOKMARKS_FILE, 'utf-8'));
-                                // Migration
-                                if (bookmarks.length > 0 && typeof bookmarks[0] === 'object') {
-                                    bookmarks = bookmarks.map(b => {
-                                        let p = b.path || '';
-                                        const match = p.match(/[\?&]path=([^&]+)/);
-                                        return match ? decodeURIComponent(match[1]) : p;
-                                    }).filter(Boolean);
-                                }
-                            } catch(e) {}
+                                const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
+                                rows = parseCSV(csvContent);
+                            } catch (e) {}
                         }
+                        
+                        const configFileName = path.basename(CONFIG_FILE);
                         
                         if (data.action === 'add' && data.path) {
-                            if (!bookmarks.includes(data.path)) {
-                                bookmarks.push(data.path);
+                            const exists = rows.some(row => {
+                                const p = rowToPath(row);
+                                return p === data.path;
+                            });
+                            if (!exists) {
+                                rows.push(pathToRow(data.path, configFileName));
                             }
                         } else if (data.action === 'remove' && data.path) {
-                            bookmarks = bookmarks.filter(p => p !== data.path);
+                            rows = rows.filter(row => {
+                                const p = rowToPath(row);
+                                return p !== data.path;
+                            });
                         }
                         
-                        fs.writeFileSync(BOOKMARKS_FILE, JSON.stringify(bookmarks, null, 2), 'utf-8');
+                        fs.writeFileSync(BOOKMARKS_FILE, toCSV(rows), 'utf-8');
+                        const bookmarks = rows.map(rowToPath).filter(Boolean);
+                        
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ success: true, bookmarks }));
                         return;
@@ -855,5 +941,7 @@ module.exports = {
     VALID_EXTS,
     loadFolders,
     cachedConfig,
-    setConfigFile
+    setConfigFile,
+    setBookmarksFile,
+    server
 };
