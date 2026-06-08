@@ -131,6 +131,24 @@ test('Bookmarks API CSV functionality', async (t) => {
         assert.strictEqual(fileContent, 'C:\\TestFolder2,pic.jpg,temp_folders.txt\n');
     });
 
+    await t.test('POST /api/bookmarks (clear) removes all bookmarks', async () => {
+        // Setup initial CSV
+        const initialCSV = 'C:\\TestFolder1,image.png,temp_folders.txt\nC:\\TestFolder2,pic.jpg,temp_folders.txt\n';
+        fs.writeFileSync(tempBookmarksPath, initialCSV, 'utf-8');
+
+        const payload = JSON.stringify({ action: 'clear' });
+        const res = await makeRequest(port, 'POST', '/api/bookmarks', payload);
+        assert.strictEqual(res.statusCode, 200);
+
+        const data = JSON.parse(res.body);
+        assert.strictEqual(data.success, true);
+        assert.deepStrictEqual(data.bookmarks, []);
+
+        // Verify CSV file is empty
+        const fileContent = fs.readFileSync(tempBookmarksPath, 'utf-8').replace(/\r\n/g, '\n');
+        assert.strictEqual(fileContent, '\n');
+    });
+
     await t.test('GET /api/bookmark-config returns the config file name for a bookmark', async () => {
         // Setup initial CSV
         const csvContent = 'C:\\TestFolder1,image.png,temp_folders.txt\nC:\\TestFolder2,pic.jpg,another_config.txt\n';

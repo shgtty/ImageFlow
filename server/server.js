@@ -558,9 +558,9 @@ const server = http.createServer((req, res) => {
             collectRequestBody(req, res, (body) => {
                 try {
                     const data = JSON.parse(body);
-                    if (data.action === 'add' || data.action === 'remove') {
+                    if (data.action === 'add' || data.action === 'remove' || data.action === 'clear') {
                         let rows = [];
-                        if (fs.existsSync(BOOKMARKS_FILE)) {
+                        if (data.action !== 'clear' && fs.existsSync(BOOKMARKS_FILE)) {
                             try {
                                 const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
                                 rows = parseCSV(csvContent);
@@ -582,6 +582,8 @@ const server = http.createServer((req, res) => {
                                 const p = rowToPath(row);
                                 return p !== data.path;
                             });
+                        } else if (data.action === 'clear') {
+                            rows = [];
                         }
                         
                         fs.writeFileSync(BOOKMARKS_FILE, toCSV(rows), 'utf-8');

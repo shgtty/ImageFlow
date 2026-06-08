@@ -2089,12 +2089,188 @@ document.addEventListener('DOMContentLoaded', () => {
         return btn;
     };
 
+    // --- Bookmark Toolbar & State Initialization ---
+    let bookmarkSearchQuery = '';
+    let bookmarkViewMode = localStorage.getItem('imageflow_bookmark_view_mode') || 'grid';
+    let bookmarkGroupByFolder = localStorage.getItem('imageflow_bookmark_group_by') === 'true';
+    let bookmarkSortMode = 'default';
+    const expandedFolders = new Set();
+
+    const bookmarkSearchInput = document.getElementById('bookmark-search-input');
+    const bookmarkSearchClear = document.getElementById('bookmark-search-clear');
+    const bookmarkViewToggle = document.getElementById('bookmark-view-toggle');
+    const bookmarkGroupToggle = document.getElementById('bookmark-group-toggle');
+    const bookmarkExpandAllBtn = document.getElementById('bookmark-expand-all-btn');
+    const bookmarkCollapseAllBtn = document.getElementById('bookmark-collapse-all-btn');
+    const bookmarkSortSelect = document.getElementById('bookmark-sort-select');
+    const bookmarkClearAllBtn = document.getElementById('bookmark-clear-all-btn');
+    const bookmarkClearConfirmOverlay = document.getElementById('bookmark-clear-confirm-overlay');
+    const bookmarkClearConfirmBtn = document.getElementById('bookmark-clear-confirm-btn');
+    const bookmarkClearCancelBtn = document.getElementById('bookmark-clear-cancel-btn');
+    const bookmarkModalCount = document.getElementById('bookmark-modal-count');
+
+    function updateBookmarkToolbarUI() {
+        if (!bookmarkViewToggle || !bookmarkGroupToggle) return;
+        
+        // Update view toggle button
+        if (bookmarkViewMode === 'grid') {
+            bookmarkViewToggle.classList.add('active');
+            bookmarkViewToggle.querySelector('span').textContent = 'グリッド表示';
+            bookmarkViewToggle.querySelector('svg').innerHTML = '<path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/>';
+        } else {
+            bookmarkViewToggle.classList.remove('active');
+            bookmarkViewToggle.querySelector('span').textContent = 'リスト表示';
+            bookmarkViewToggle.querySelector('svg').innerHTML = '<path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/>';
+        }
+        
+        // Update group toggle button and expand/collapse all visibility
+        if (bookmarkGroupByFolder) {
+            bookmarkGroupToggle.classList.add('active');
+            if (bookmarkExpandAllBtn) bookmarkExpandAllBtn.disabled = false;
+            if (bookmarkCollapseAllBtn) bookmarkCollapseAllBtn.disabled = false;
+        } else {
+            bookmarkGroupToggle.classList.remove('active');
+            if (bookmarkExpandAllBtn) bookmarkExpandAllBtn.disabled = true;
+            if (bookmarkCollapseAllBtn) bookmarkCollapseAllBtn.disabled = true;
+        }
+    }
+
+    // --- Toolbar Event Listeners ---
+    if (bookmarkSearchInput) {
+        bookmarkSearchInput.addEventListener('input', (e) => {
+            bookmarkSearchQuery = e.target.value.trim().toLowerCase();
+            if (bookmarkSearchClear) {
+                bookmarkSearchClear.style.display = bookmarkSearchQuery ? 'flex' : 'none';
+            }
+            renderBookmarkList();
+        });
+    }
+
+    if (bookmarkSearchClear) {
+        bookmarkSearchClear.addEventListener('click', () => {
+            if (bookmarkSearchInput) {
+                bookmarkSearchInput.value = '';
+                bookmarkSearchInput.focus();
+            }
+            bookmarkSearchQuery = '';
+            bookmarkSearchClear.style.display = 'none';
+            renderBookmarkList();
+        });
+    }
+
+    if (bookmarkViewToggle) {
+        bookmarkViewToggle.addEventListener('click', () => {
+            bookmarkViewMode = bookmarkViewMode === 'grid' ? 'list' : 'grid';
+            localStorage.setItem('imageflow_bookmark_view_mode', bookmarkViewMode);
+            updateBookmarkToolbarUI();
+            renderBookmarkList();
+        });
+    }
+
+    if (bookmarkGroupToggle) {
+        bookmarkGroupToggle.addEventListener('click', () => {
+            bookmarkGroupByFolder = !bookmarkGroupByFolder;
+            localStorage.setItem('imageflow_bookmark_group_by', bookmarkGroupByFolder);
+            updateBookmarkToolbarUI();
+            renderBookmarkList();
+        });
+    }
+
+    if (bookmarkExpandAllBtn) {
+        bookmarkExpandAllBtn.addEventListener('click', () => {
+            window.bookmarks.forEach(localPath => {
+                expandedFolders.add(getBookmarkParentGroup(localPath));
+            });
+            renderBookmarkList();
+        });
+    }
+
+    if (bookmarkCollapseAllBtn) {
+        bookmarkCollapseAllBtn.addEventListener('click', () => {
+            expandedFolders.clear();
+            renderBookmarkList();
+        });
+    }
+
+    if (bookmarkSortSelect) {
+        bookmarkSortSelect.addEventListener('change', (e) => {
+            bookmarkSortMode = e.target.value;
+            renderBookmarkList();
+        });
+    }
+
+    if (bookmarkClearAllBtn) {
+        bookmarkClearAllBtn.addEventListener('click', () => {
+            if (bookmarkClearConfirmOverlay) {
+                bookmarkClearConfirmOverlay.classList.add('show');
+            }
+        });
+    }
+
+    if (bookmarkClearConfirmBtn) {
+        bookmarkClearConfirmBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/bookmarks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'clear' })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        window.bookmarks = data.bookmarks || [];
+                        renderBookmarkList();
+                        
+                        // Update visible main gallery buttons
+                        document.querySelectorAll('.bookmark-star-btn').forEach(btn => {
+                            btn.classList.remove('bookmarked');
+                            btn.setAttribute('aria-pressed', 'false');
+                            btn.title = 'ブックマークに追加';
+                            btn.setAttribute('aria-label', 'ブックマークに追加');
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to clear bookmarks', e);
+            } finally {
+                if (bookmarkClearConfirmOverlay) {
+                    bookmarkClearConfirmOverlay.classList.remove('show');
+                }
+            }
+        });
+    }
+
+    if (bookmarkClearCancelBtn) {
+        bookmarkClearCancelBtn.addEventListener('click', () => {
+            if (bookmarkClearConfirmOverlay) {
+                bookmarkClearConfirmOverlay.classList.remove('show');
+            }
+        });
+    }
+
     window.openBookmarkModal = function() {
         if (!bookmarkModal) return;
+        
+        // Sync search input and UI state
+        if (bookmarkSearchInput) {
+            bookmarkSearchInput.value = bookmarkSearchQuery || '';
+        }
+        if (bookmarkSearchClear) {
+            bookmarkSearchClear.style.display = bookmarkSearchQuery ? 'flex' : 'none';
+        }
+        if (bookmarkSortSelect) {
+            bookmarkSortSelect.value = bookmarkSortMode;
+        }
+        updateBookmarkToolbarUI();
+        
         renderBookmarkList();
         previousFocus = document.activeElement;
         bookmarkModal.style.display = 'block';
         document.body.style.overflow = 'hidden';
+        
+        if (bookmarkSearchInput) {
+            setTimeout(() => bookmarkSearchInput.focus(), 50);
+        }
     };
 
     window.closeBookmarkModal = function() {
@@ -2112,27 +2288,29 @@ document.addEventListener('DOMContentLoaded', () => {
         openBookmarkBtn.addEventListener('click', window.openBookmarkModal);
     }
 
-    function renderBookmarkList() {
-        if (!bookmarkListContainer) return;
-        bookmarkListContainer.innerHTML = '';
-        
-        if (!window.bookmarks || window.bookmarks.length === 0) {
-            const emptyMsg = document.createElement('div');
-            emptyMsg.style.padding = '20px';
-            emptyMsg.style.textAlign = 'center';
-            emptyMsg.style.color = '#aaa';
-            emptyMsg.textContent = 'ブックマークはありません。';
-            bookmarkListContainer.appendChild(emptyMsg);
-            return;
+    // Helper: get bookmark folder/ZIP display group name
+    function getBookmarkParentGroup(localPath) {
+        if (localPath.includes('|')) {
+            const parts = localPath.split('|');
+            const zipName = parts[0].split('\\').pop().split('/').pop();
+            return `📦 ${zipName}`;
+        } else {
+            const parts = localPath.split('\\').join('/').split('/');
+            if (parts.length >= 2) {
+                return `📁 ${parts[parts.length - 2]}`;
+            }
+            return '📁 ルート';
         }
+    }
 
-        window.bookmarks.forEach(localPath => {
+    // Helper: create a DOM element for a bookmark item
+    function createBookmarkItem(localPath, viewMode) {
+        if (viewMode === 'list') {
             const item = document.createElement('div');
             item.className = 'file-item';
             item.setAttribute('role', 'button');
             item.setAttribute('tabindex', '0');
             
-            // --- Premium Thumbnail Setup ---
             const thumbContainer = document.createElement('div');
             thumbContainer.style.width = '48px';
             thumbContainer.style.height = '48px';
@@ -2147,7 +2325,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const isVideo = typeof isVideoUrl === 'function' ? isVideoUrl(getUrlFromLocalPath(localPath)) : false;
             
-            // SVG Fallback Icon (image or video representation)
             const fallbackIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             fallbackIcon.setAttribute('viewBox', '0 0 24 24');
             fallbackIcon.style.width = '24px';
@@ -2159,9 +2336,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 : '<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>';
             thumbContainer.appendChild(fallbackIcon);
 
-            // Create media element (img or video)
             const mediaEl = document.createElement(isVideo ? 'video' : 'img');
             mediaEl.src = getUrlFromLocalPath(localPath);
+            mediaEl.loading = 'lazy';
             mediaEl.style.width = '100%';
             mediaEl.style.height = '100%';
             mediaEl.style.objectFit = 'cover';
@@ -2176,7 +2353,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 mediaEl.preload = 'metadata';
                 mediaEl.playsInline = true;
                 
-                // Play video on hover
                 item.addEventListener('mouseenter', () => {
                     mediaEl.play().catch(() => {});
                 });
@@ -2186,7 +2362,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Show once loaded
             const handleMediaLoaded = () => {
                 mediaEl.style.opacity = '1';
                 fallbackIcon.style.display = 'none';
@@ -2198,11 +2373,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 mediaEl.onload = handleMediaLoaded;
             }
 
-            // Error styling
             mediaEl.onerror = () => {
                 mediaEl.style.display = 'none';
                 fallbackIcon.style.display = 'block';
-                fallbackIcon.style.fill = '#e74c3c'; // red color indicating missing/error
+                fallbackIcon.style.fill = '#e74c3c';
             };
 
             thumbContainer.appendChild(mediaEl);
@@ -2221,7 +2395,7 @@ document.addEventListener('DOMContentLoaded', () => {
             delBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.toggleBookmark(getUrlFromLocalPath(localPath)).then(() => renderBookmarkList());
+                window.toggleBookmark(getUrlFromLocalPath(localPath), null).then(() => renderBookmarkList());
             });
 
             item.appendChild(thumbContainer);
@@ -2242,8 +2416,238 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            bookmarkListContainer.appendChild(item);
+            return item;
+        } else {
+            const card = document.createElement('div');
+            card.className = 'bookmark-card';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            
+            const thumbContainer = document.createElement('div');
+            thumbContainer.className = 'bookmark-card-thumb';
+
+            const isVideo = typeof isVideoUrl === 'function' ? isVideoUrl(getUrlFromLocalPath(localPath)) : false;
+            
+            const fallbackIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            fallbackIcon.setAttribute('viewBox', '0 0 24 24');
+            fallbackIcon.style.width = '32px';
+            fallbackIcon.style.height = '32px';
+            fallbackIcon.style.fill = 'rgba(255, 255, 255, 0.2)';
+            fallbackIcon.style.position = 'absolute';
+            fallbackIcon.style.inset = '0';
+            fallbackIcon.style.margin = 'auto';
+            fallbackIcon.style.transition = 'fill 0.2s';
+            fallbackIcon.innerHTML = isVideo 
+                ? '<path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>'
+                : '<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>';
+            thumbContainer.appendChild(fallbackIcon);
+
+            const mediaEl = document.createElement(isVideo ? 'video' : 'img');
+            mediaEl.src = getUrlFromLocalPath(localPath);
+            mediaEl.loading = 'lazy';
+            
+            if (isVideo) {
+                mediaEl.muted = true;
+                mediaEl.preload = 'metadata';
+                mediaEl.playsInline = true;
+                
+                card.addEventListener('mouseenter', () => {
+                    mediaEl.play().catch(() => {});
+                });
+                card.addEventListener('mouseleave', () => {
+                    mediaEl.pause();
+                    mediaEl.currentTime = 0;
+                });
+            }
+
+            const handleMediaLoaded = () => {
+                mediaEl.style.opacity = '1';
+                fallbackIcon.style.display = 'none';
+            };
+
+            if (isVideo) {
+                mediaEl.addEventListener('loadeddata', handleMediaLoaded);
+            } else {
+                mediaEl.onload = handleMediaLoaded;
+            }
+
+            mediaEl.onerror = () => {
+                mediaEl.style.display = 'none';
+                fallbackIcon.style.display = 'block';
+                fallbackIcon.style.fill = '#e74c3c';
+            };
+
+            thumbContainer.appendChild(mediaEl);
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'bookmark-card-info';
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'bookmark-card-title';
+            titleDiv.textContent = formatBookmarkName(localPath);
+            titleDiv.title = localPath;
+            infoDiv.appendChild(titleDiv);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'bookmark-card-del-btn';
+            delBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+            delBtn.title = '削除';
+            delBtn.setAttribute('aria-label', `${formatBookmarkName(localPath)} のブックマークを削除`);
+            
+            delBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.toggleBookmark(getUrlFromLocalPath(localPath), null).then(() => renderBookmarkList());
+            });
+
+            card.appendChild(thumbContainer);
+            card.appendChild(infoDiv);
+            card.appendChild(delBtn);
+
+            const handleItemClick = (e) => {
+                e.stopPropagation();
+                jumpToImage(getUrlFromLocalPath(localPath));
+                closeBookmarkModal();
+            };
+
+            card.addEventListener('click', handleItemClick);
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleItemClick(e);
+                }
+            });
+
+            return card;
+        }
+    }
+
+    function renderBookmarkList() {
+        if (!bookmarkListContainer) return;
+        bookmarkListContainer.innerHTML = '';
+        
+        // 1. Filtering
+        let filtered = (window.bookmarks || []).filter(localPath => {
+            if (!bookmarkSearchQuery) return true;
+            const displayName = formatBookmarkName(localPath).toLowerCase();
+            return displayName.includes(bookmarkSearchQuery) || localPath.toLowerCase().includes(bookmarkSearchQuery);
         });
+        
+        // Update Modal Counter
+        if (bookmarkModalCount) {
+            bookmarkModalCount.textContent = `(${filtered.length})`;
+        }
+        
+        if (filtered.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.padding = '40px 20px';
+            emptyMsg.style.textAlign = 'center';
+            emptyMsg.style.color = '#aaa';
+            emptyMsg.style.fontSize = '1.1em';
+            emptyMsg.textContent = bookmarkSearchQuery ? '一致するブックマークはありません。' : 'ブックマークはありません。';
+            bookmarkListContainer.appendChild(emptyMsg);
+            return;
+        }
+
+        // 2. Sorting
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+        if (bookmarkSortMode === 'name-asc') {
+            filtered.sort((a, b) => collator.compare(formatBookmarkName(a), formatBookmarkName(b)));
+        } else if (bookmarkSortMode === 'name-desc') {
+            filtered.sort((a, b) => collator.compare(formatBookmarkName(b), formatBookmarkName(a)));
+        }
+        
+        // 3. Grouping and Rendering
+        if (bookmarkGroupByFolder) {
+            bookmarkListContainer.className = ''; // No grid layout on parent directly
+            
+            // Group the items
+            const groups = new Map();
+            filtered.forEach(localPath => {
+                const groupKey = getBookmarkParentGroup(localPath);
+                if (!groups.has(groupKey)) {
+                    groups.set(groupKey, []);
+                }
+                groups.get(groupKey).push(localPath);
+            });
+            
+            // Sort group keys
+            const sortedGroupKeys = Array.from(groups.keys()).sort(collator.compare);
+            
+            sortedGroupKeys.forEach(groupKey => {
+                const groupItems = groups.get(groupKey);
+                const section = document.createElement('div');
+                section.className = 'bookmark-group-section';
+                
+                const isCollapsed = !expandedFolders.has(groupKey);
+                if (isCollapsed) {
+                    section.classList.add('collapsed');
+                }
+                
+                // Group Header
+                const header = document.createElement('div');
+                header.className = 'bookmark-group-header';
+                header.setAttribute('role', 'button');
+                header.setAttribute('tabindex', '0');
+                
+                const arrowSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                arrowSvg.setAttribute('class', 'bookmark-group-arrow');
+                arrowSvg.setAttribute('viewBox', '0 0 24 24');
+                arrowSvg.innerHTML = '<path d="M7 10l5 5 5-5H7z"/>';
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'bookmark-group-title';
+                titleSpan.textContent = groupKey;
+                
+                const countSpan = document.createElement('span');
+                countSpan.className = 'bookmark-group-count';
+                countSpan.textContent = groupItems.length;
+                
+                header.appendChild(arrowSvg);
+                header.appendChild(titleSpan);
+                header.appendChild(countSpan);
+                
+                // Content grid/list container
+                const contentDiv = document.createElement('div');
+                contentDiv.className = `bookmark-group-content ${bookmarkViewMode === 'grid' ? 'grid-view' : 'list-view'}`;
+                
+                groupItems.forEach(localPath => {
+                    contentDiv.appendChild(createBookmarkItem(localPath, bookmarkViewMode));
+                });
+                
+                // Collapse/Expand events
+                const toggleGroup = () => {
+                    if (expandedFolders.has(groupKey)) {
+                        expandedFolders.delete(groupKey);
+                        section.classList.add('collapsed');
+                    } else {
+                        expandedFolders.add(groupKey);
+                        section.classList.remove('collapsed');
+                    }
+                };
+                
+                header.addEventListener('click', toggleGroup);
+                header.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleGroup();
+                    }
+                });
+                
+                section.appendChild(header);
+                section.appendChild(contentDiv);
+                bookmarkListContainer.appendChild(section);
+            });
+        } else {
+            // Un-grouped display
+            bookmarkListContainer.className = '';
+            const wrapper = document.createElement('div');
+            wrapper.className = bookmarkViewMode === 'grid' ? 'grid-view' : 'list-view';
+            filtered.forEach(localPath => {
+                wrapper.appendChild(createBookmarkItem(localPath, bookmarkViewMode));
+            });
+            bookmarkListContainer.appendChild(wrapper);
+        }
     }
 
     async function jumpToImage(url) {

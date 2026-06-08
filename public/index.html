@@ -611,6 +611,390 @@
             height: 24px;
             fill: currentColor;
         }
+
+        /* --- 新しいブックマークUIスタイル --- */
+        .bookmark-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+        .bookmark-toolbar-left {
+            flex: 1 1 300px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .bookmark-toolbar-right {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .bookmark-search-container {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+        .bookmark-search-input {
+            width: 100%;
+            padding: 8px 36px 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 0.95em;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+        .bookmark-search-input:focus {
+            outline: none;
+            border-color: #3498db;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+        }
+        .bookmark-search-clear {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            padding: 4px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .bookmark-search-clear:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .bookmark-btn {
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .bookmark-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+        .bookmark-btn.active {
+            background: #3498db;
+            border-color: #3498db;
+            color: white;
+        }
+        .bookmark-btn-danger {
+            background: rgba(231, 76, 60, 0.15);
+            border-color: rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+            margin-left: auto;
+        }
+        .bookmark-btn-danger:hover {
+            background: rgba(231, 76, 60, 0.3);
+            border-color: #e74c3c;
+            color: white;
+        }
+        .bookmark-select {
+            padding: 8px 28px 8px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            outline: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 16px;
+            transition: all 0.2s;
+        }
+        .bookmark-select:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        .bookmark-select:focus-visible {
+            border-color: #3498db;
+        }
+        
+        /* Grid Layout */
+        .grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+        }
+        .bookmark-card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            width: 100%;
+        }
+        .bookmark-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(52, 152, 219, 0.5);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+        .bookmark-card:focus-visible {
+            outline: 2px solid #3498db;
+            outline-offset: -2px;
+        }
+        .bookmark-card-thumb {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        .bookmark-card-thumb img,
+        .bookmark-card-thumb video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, transform 0.4s ease;
+        }
+        .bookmark-card:hover .bookmark-card-thumb img,
+        .bookmark-card:hover .bookmark-card-thumb video {
+            transform: scale(1.08);
+        }
+        .bookmark-card-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0) 100%);
+            padding: 25px 10px 8px 10px;
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .bookmark-card-title {
+            color: #e0e0e0;
+            font-size: 0.8em;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+        .bookmark-card:hover .bookmark-card-title {
+            color: white;
+        }
+        .bookmark-card-del-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 5;
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+        .bookmark-card:hover .bookmark-card-del-btn,
+        .bookmark-card-del-btn:focus-visible {
+            opacity: 1;
+        }
+        .bookmark-card-del-btn:hover {
+            background: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+            transform: scale(1.1);
+        }
+        .bookmark-card-del-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+        
+        /* Group Headings */
+        .bookmark-group-section {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .bookmark-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        .bookmark-group-header:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .bookmark-group-header:focus-visible {
+            outline: 2px solid #3498db;
+        }
+        .bookmark-group-arrow {
+            width: 16px;
+            height: 16px;
+            fill: rgba(255, 255, 255, 0.6);
+            transition: transform 0.2s ease;
+        }
+        .bookmark-group-section.collapsed .bookmark-group-arrow {
+            transform: rotate(-90deg);
+        }
+        .bookmark-group-title {
+            font-weight: bold;
+            font-size: 0.95em;
+            color: #ddd;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bookmark-group-count {
+            font-size: 0.8em;
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        .bookmark-group-content {
+            transition: max-height 0.3s ease;
+        }
+        .bookmark-group-section.collapsed .bookmark-group-content {
+            display: none !important;
+        }
+
+        /* List View Enhanced */
+        .list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .list-view .file-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            transition: all 0.2s;
+            padding: 8px 12px;
+        }
+        .list-view .file-item:hover {
+            background: rgba(52, 152, 219, 0.12);
+            border-color: rgba(52, 152, 219, 0.3);
+            transform: translateX(4px);
+        }
+
+        /* Clear All Overlay Dialog */
+        .bookmark-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 15, 15, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            border-radius: 16px;
+        }
+        .bookmark-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .bookmark-overlay-box {
+            background: #222;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 85%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            transform: scale(0.9);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .bookmark-overlay.show .bookmark-overlay-box {
+            transform: scale(1);
+        }
+        .bookmark-overlay-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #e74c3c;
+        }
+        .bookmark-overlay-text {
+            color: #ccc;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .bookmark-overlay-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        .bookmark-overlay-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.95em;
+            transition: background 0.2s;
+        }
+        .bookmark-overlay-btn-confirm {
+            background: #e74c3c;
+            color: white;
+        }
+        .bookmark-overlay-btn-confirm:hover {
+            background: #c0392b;
+        }
+        .bookmark-overlay-btn-cancel {
+            background: #555;
+            color: white;
+        }
+        .bookmark-overlay-btn-cancel:hover {
+            background: #444;
+        }
     </style>
 </head>
 
@@ -857,10 +1241,67 @@
     </div>
 
     <!-- ブックマークモーダル -->
-    <div id="bookmark-modal" role="dialog" aria-modal="true" aria-labelledby="bookmark-title" style="display:none; position:fixed; inset:0; margin:auto; width:1000px; height:60vh; background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); border-radius:16px; z-index:9999; color:white; min-width:300px; max-width:95vw; max-height:90vh; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px); resize:both; overflow:hidden;">
+    <div id="bookmark-modal" role="dialog" aria-modal="true" aria-labelledby="bookmark-title" style="display:none; position:fixed; inset:0; margin:auto; width:1000px; height:82vh; background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); border-radius:16px; z-index:9999; color:white; min-width:300px; max-width:95vw; max-height:94vh; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px); resize:both; overflow:hidden;">
+        <!-- Clear Confirmation Overlay -->
+        <div id="bookmark-clear-confirm-overlay" class="bookmark-overlay">
+            <div class="bookmark-overlay-box">
+                <div class="bookmark-overlay-title">ブックマークの全クリア</div>
+                <div class="bookmark-overlay-text">本当にすべてのブックマークを解除しますか？この操作は取り消せません。</div>
+                <div class="bookmark-overlay-buttons">
+                    <button id="bookmark-clear-confirm-btn" class="bookmark-overlay-btn bookmark-overlay-btn-confirm">解除する</button>
+                    <button id="bookmark-clear-cancel-btn" class="bookmark-overlay-btn bookmark-overlay-btn-cancel">キャンセル</button>
+                </div>
+            </div>
+        </div>
+
         <div style="display:flex; flex-direction:column; height:100%; padding:30px; box-sizing:border-box;">
-            <h3 id="bookmark-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; flex-shrink:0;">ブックマーク</h3>
-            <div id="bookmark-list" style="flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+            <h3 id="bookmark-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; flex-shrink:0; display:flex; justify-content:space-between; align-items:center;">
+                <span>ブックマーク <span id="bookmark-modal-count" style="font-size:0.75em; color:#aaa; font-weight:normal; margin-left:6px;">(0)</span></span>
+            </h3>
+            
+            <!-- Toolbar -->
+            <div class="bookmark-toolbar">
+                <div class="bookmark-toolbar-left">
+                    <div class="bookmark-search-container">
+                        <input type="text" id="bookmark-search-input" class="bookmark-search-input" placeholder="ブックマークを検索..." aria-label="ブックマークの検索">
+                        <button id="bookmark-search-clear" class="bookmark-search-clear" title="検索クリア" aria-label="検索クリア">&times;</button>
+                    </div>
+                </div>
+                <div class="bookmark-toolbar-right">
+                    <!-- View mode toggle -->
+                    <button id="bookmark-view-toggle" class="bookmark-btn" title="表示切替 (グリッド/リスト)">
+                        <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor;"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>
+                        <span>グリッド表示</span>
+                    </button>
+                    <!-- Group by folder toggle -->
+                    <button id="bookmark-group-toggle" class="bookmark-btn" title="フォルダでグループ化">
+                        <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor;"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                        <span>グループ化</span>
+                    </button>
+                    <!-- Expand/Collapse all buttons (Group mode only) -->
+                    <button id="bookmark-expand-all-btn" class="bookmark-btn" title="グループをすべて開く">
+                        <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor;"><path d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/></svg>
+                        <span>すべて開く</span>
+                    </button>
+                    <button id="bookmark-collapse-all-btn" class="bookmark-btn" title="グループをすべて閉じる">
+                        <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor;"><path d="M12 18.17L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17zm0-12.34L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83z"/></svg>
+                        <span>すべて閉じる</span>
+                    </button>
+                    <!-- Sort select -->
+                    <select id="bookmark-sort-select" class="bookmark-select" aria-label="並び替え順">
+                        <option value="default">登録順</option>
+                        <option value="name-asc">名前順 (昇順)</option>
+                        <option value="name-desc">名前順 (降順)</option>
+                    </select>
+                    <!-- Clear all button -->
+                    <button id="bookmark-clear-all-btn" class="bookmark-btn bookmark-btn-danger" title="すべてのブックマークを解除">
+                        <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        <span>すべてクリア</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="bookmark-list" style="flex:1; min-height:0; overflow-y:auto; overflow-x:hidden;"></div>
             <div style="margin-top:24px; text-align:right; flex-shrink:0;">
                 <button id="close-bookmark-modal" style="padding:10px 24px; font-size:1.1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">閉じる</button>
             </div>
