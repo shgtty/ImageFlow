@@ -200,6 +200,7 @@ const DualView = (() => {
         galleryElement.style.left = '';
         galleryElement.style.zIndex = '';
         galleryElement.style.padding = '';
+        galleryElement.style.cursor = '';
         galleryElement.innerHTML = '';
 
         if (onExitCallback) onExitCallback(currentIndex);
