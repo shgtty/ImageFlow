@@ -62,3 +62,7 @@
 ## 2024-05-19 - Avoid redundant DOM writes in high-frequency polling functions
 **Learning:** Functions that update the UI at a high frequency (like a seekbar updating every 500ms via `setInterval` during playback) can cause severe layout thrashing if they blindly reassign DOM properties (such as `.value`, `.max`, or `.textContent`). Even if the new values are identical to the current ones, browsers will often flag the elements as "dirty," forcing unnecessary style invalidation and layout recalculations.
 **Action:** When updating DOM state inside high-frequency polling loops, always add a conditional check to ensure the new value is actually different from the current value before assigning it to the DOM.
+
+## 2024-06-09 - Avoid querying `offsetWidth`/`offsetHeight` repeatedly inside high-frequency mousemove events
+**Learning:** Even when modifying `style.left` and `style.top` inside a high-frequency `requestAnimationFrame` loop, reading `offsetWidth` and `offsetHeight` repeatedly causes layout recalculations (thrashing) if the DOM tree has been invalidated. When the element's content doesn't change, its dimensions can be safely cached to avoid these expensive synchronous layout queries.
+**Action:** When creating follow-mouse tooltips or popovers, cache `offsetWidth` and `offsetHeight` in a dataset attribute or local variable whenever the text or content updates. Reuse the cached values in subsequent frames as long as the content hasn't changed.
