@@ -1093,12 +1093,21 @@ document.addEventListener('DOMContentLoaded', () => {
             let filename = '';
 
             // ⚡ Bolt Optimization: Only update DOM text content when hovered image changes to prevent text layout recalculation
+            let tipWidth = 0;
+            let tipHeight = 0;
+
             if (cursorTooltip.dataset.currentSrc !== currentSrc) {
                 filename = typeof getFilename === 'function' ? getFilename(currentSrc) : '';
                 const foldername = typeof getFolderDisplayName === 'function' ? getFolderDisplayName(currentSrc) : '';
                 if (filename) {
                     cursorTooltip.textContent = foldername ? `${foldername} > ${filename}` : filename;
                     cursorTooltip.dataset.currentSrc = currentSrc;
+
+                    // ⚡ Bolt Optimization: Cache tooltip dimensions when content changes to prevent DOM reads on every mousemove
+                    tipWidth = cursorTooltip.offsetWidth;
+                    tipHeight = cursorTooltip.offsetHeight;
+                    cursorTooltip.dataset.tipWidth = tipWidth;
+                    cursorTooltip.dataset.tipHeight = tipHeight;
                 } else {
                     cursorTooltip.style.opacity = '0';
                     cursorTooltip.dataset.currentSrc = '';
@@ -1107,13 +1116,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (currentSrc) {
                 // If the src hasn't changed, we can assume there's a valid filename because of the previous execution
                 filename = 'valid';
+                tipWidth = parseInt(cursorTooltip.dataset.tipWidth) || 0;
+                tipHeight = parseInt(cursorTooltip.dataset.tipHeight) || 0;
             }
 
             if (filename) {
-                // ⚡ Bolt Optimization: Batch DOM reads (offsetWidth/Height) before writes (style.left/top) to eliminate Layout Thrashing
-                const tipWidth = cursorTooltip.offsetWidth;
-                const tipHeight = cursorTooltip.offsetHeight;
-
                 // Position the tooltip at the current mouse position
                 cursorTooltip.style.left = `${lastMouseX}px`;
                 cursorTooltip.style.top = `${lastMouseY}px`;
