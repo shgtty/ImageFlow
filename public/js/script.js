@@ -2255,15 +2255,18 @@ document.addEventListener('DOMContentLoaded', () => {
             resetAllSettings();
         } else if (e.key === 'PageUp') {
             e.preventDefault();
-            skipFolder(-1);
+            skipFolder(-1, 'folder');
         } else if (e.key === 'PageDown') {
             e.preventDefault();
-            skipFolder(1);
+            skipFolder(1, 'folder');
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            skipFolder(e.shiftKey ? -1 : 1, 'bookmark');
         }
     });
 
 
-    function skipFolder(direction) {
+    function skipFolder(direction, modeType = 'folder') {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
 
@@ -2283,48 +2286,71 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const currentFolder = getFolderPath(allImagesUrls[currentIndex]);
+        const isStopPoint = (i) => {
+            if (modeType === 'bookmark') {
+                return typeof window.isBookmarked === 'function' && window.isBookmarked(allImagesUrls[i]);
+            } else {
+                if (i === 0) return true;
+                if (getFolderPath(allImagesUrls[i]) !== getFolderPath(allImagesUrls[i - 1])) return true;
+                return false;
+            }
+        };
+
         let targetIndex = currentIndex;
+        let found = false;
 
         if (direction > 0) {
-            // Next folder
+            // Search forward
             for (let i = currentIndex + 1; i < allImagesUrls.length; i++) {
-                if (getFolderPath(allImagesUrls[i]) !== currentFolder) {
+                if (isStopPoint(i)) {
                     targetIndex = i;
+                    found = true;
                     break;
                 }
             }
-            if (targetIndex === currentIndex) {
-                targetIndex = 0; // loop back to first
+            if (!found) {
+                // Wrap around
+                for (let i = 0; i <= currentIndex; i++) {
+                    if (isStopPoint(i)) {
+                        targetIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
             }
         } else {
-            // Previous folder
-            let startOfCurrent = currentIndex;
-            while (startOfCurrent > 0 && getFolderPath(allImagesUrls[startOfCurrent - 1]) === currentFolder) {
-                startOfCurrent--;
+            // Search backward
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                if (isStopPoint(i)) {
+                    targetIndex = i;
+                    found = true;
+                    break;
+                }
             }
-
-            if (currentIndex > startOfCurrent) {
-                targetIndex = startOfCurrent;
-            } else {
-                if (startOfCurrent > 0) {
-                    const prevFolder = getFolderPath(allImagesUrls[startOfCurrent - 1]);
-                    targetIndex = startOfCurrent - 1;
-                    while (targetIndex > 0 && getFolderPath(allImagesUrls[targetIndex - 1]) === prevFolder) {
-                        targetIndex--;
-                    }
-                } else {
-                    const lastFolder = getFolderPath(allImagesUrls[allImagesUrls.length - 1]);
-                    targetIndex = allImagesUrls.length - 1;
-                    while (targetIndex > 0 && getFolderPath(allImagesUrls[targetIndex - 1]) === lastFolder) {
-                        targetIndex--;
+            if (!found) {
+                // Wrap around
+                for (let i = allImagesUrls.length - 1; i >= currentIndex; i--) {
+                    if (isStopPoint(i)) {
+                        targetIndex = i;
+                        found = true;
+                        break;
                     }
                 }
             }
         }
 
+        // If we didn't find any stop point (e.g. no bookmarks exist in bookmark mode), do nothing
+        if (!found) return;
+
+        const isBookmarked = modeType === 'bookmark' && typeof window.isBookmarked === 'function' && window.isBookmarked(allImagesUrls[targetIndex]);
         const folderName = getFolderDisplayName(allImagesUrls[targetIndex]);
-        showModeOverlay('フォルダ移動', folderName, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>');
+
+        if (isBookmarked) {
+            const filename = typeof getFilename === 'function' ? getFilename(allImagesUrls[targetIndex]) : '';
+            showModeOverlay('ブックマーク頭出し', `${folderName} / ${filename}`, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>');
+        } else {
+            showModeOverlay('フォルダ移動', folderName, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>');
+        }
 
         if (mode === 'dual') {
             DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
