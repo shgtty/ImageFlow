@@ -1940,6 +1940,12 @@ document.addEventListener('DOMContentLoaded', () => {
             fabContainer.classList.add('hidden');
             document.documentElement.classList.add('hide-cursor');
             
+            // Hide cursor tooltip
+            if (cursorTooltip) {
+                cursorTooltip.style.opacity = '0';
+                cursorTooltip.dataset.currentSrc = '';
+            }
+            
             // Hide status overlay
             if (modeOverlay) {
                 modeOverlay.classList.remove('show');
