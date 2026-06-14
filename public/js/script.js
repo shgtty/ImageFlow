@@ -58,6 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const seekbarTooltip = document.getElementById('seekbar-tooltip');
     const seekbarToggleBtn = document.getElementById('seekbarToggleBtn');
     const seekbarToggleIcon = document.getElementById('seekbarToggleIcon');
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsResetConfirmOverlay = document.getElementById('settings-reset-confirm-overlay');
+    const settingsResetConfirmBtn = document.getElementById('settings-reset-confirm-btn');
+    const settingsResetCancelBtn = document.getElementById('settings-reset-cancel-btn');
     const modeOverlay = document.getElementById('mode-overlay');
     let currentFilterDisplay = '<span><span class="filter-label">フィルター:</span> フィルタ無し</span>'; 
     let currentModeMessage = '';
@@ -197,14 +202,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (modeIcon) {
             if (mode === 'dual') {
-                // デュアルモード中なので、ギャラリーへ切替えるための "G" アイコンを表示
+                // デュアルビュー中なので、ギャラリービューへ切替えるための "G" アイコンを表示
                 modeIcon.innerHTML = '<text x="50%" y="72%" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="currentColor">G</text>';
-                modeBtn.title = 'ギャラリー表示へ切替 (M)';
+                modeBtn.title = 'ギャラリービューへ切替 (M)';
                 modeBtn.setAttribute('aria-label', modeBtn.title);
             } else {
-                // ギャラリーモード中なので、デュアルへ切替えるための "D" アイコンを表示
+                // ギャラリービュー中なので、デュアルビューへ切替えるための "D" アイコンを表示
                 modeIcon.innerHTML = '<text x="50%" y="72%" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="currentColor">D</text>';
-                modeBtn.title = 'デュアル表示へ切替 (M)';
+                modeBtn.title = 'デュアルビューへ切替 (M)';
                 modeBtn.setAttribute('aria-label', modeBtn.title);
             }
         }
@@ -301,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'random': 'ランダム'
             };
             const sortName = sortNames[currentSort] || 'ランダム';
-            const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
+            const modeName = mode === 'dual' ? 'デュアルビュー' : 'ギャラリービュー';
             const iconHtml = mode === 'dual'
                 ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
                 : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
@@ -350,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getStatusOverlayHTML() {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
-        const modeName = mode === 'dual' ? 'デュアルビューモード' : 'ギャラリーモード';
+        const modeName = mode === 'dual' ? 'デュアルビュー' : 'ギャラリービュー';
         const modeIcon = mode === 'dual'
             ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
             : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
@@ -824,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dualSortMode === 'folder-random') {
                 displayCount = getFolderBounds(index, allImagesUrls).total;
             }
-            showModeOverlay('デュアルビューモード', sortNames[dualSortMode] || 'ランダム', displayCount, iconHtml);
+            showModeOverlay('デュアルビュー', sortNames[dualSortMode] || 'ランダム', displayCount, iconHtml);
 
             if (gallerySortMode !== dualSortMode) {
                 fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
@@ -884,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gallerySortMode === 'folder-random') {
             displayCount = getFolderBounds(exitIndex, allImagesUrls).total;
         }
-        showModeOverlay('ギャラリーモード', sortNames[gallerySortMode] || 'ランダム', displayCount, iconHtml);
+        showModeOverlay('ギャラリービュー', sortNames[gallerySortMode] || 'ランダム', displayCount, iconHtml);
 
         if (gallerySortMode !== dualSortMode) {
             loadImages();
@@ -991,12 +996,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
                     DualView.updateImagesAndReset(allImagesUrls, targetIndex);
                     const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>';
-                    showModeOverlay('デュアルビューモード', sortName, displayCount, iconHtml);
+                    showModeOverlay('デュアルビュー', sortName, displayCount, iconHtml);
                 } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
                     GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
                     window.scrollTo(0, 0);
                     const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>';
-                    showModeOverlay('ギャラリーモード', sortName, displayCount, iconHtml);
+                    showModeOverlay('ギャラリービュー', sortName, displayCount, iconHtml);
                 }
                 updateSeekbar();
                 updateFilterBar(data);
@@ -1148,6 +1153,332 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function openSettingsModal() {
+        if (!settingsModal) return;
+        previousFocus = document.activeElement;
+        
+        syncSettingsToUI();
+        
+        settingsModal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        
+        const closeBtn = document.getElementById('close-settings-modal');
+        if (closeBtn) closeBtn.focus();
+    }
+
+    function closeSettingsModal() {
+        if (!settingsModal) return;
+        if (settingsResetConfirmOverlay) {
+            settingsResetConfirmOverlay.classList.remove('show');
+        }
+        settingsModal.style.display = 'none';
+        document.body.style.overflow = '';
+        if (previousFocus) {
+            previousFocus.focus();
+        }
+    }
+
+    function syncSettingsToUI() {
+        // Mode
+        const modeSelect = document.getElementById('settings-display-mode');
+        if (modeSelect) {
+            modeSelect.value = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        }
+        
+        // Gallery Sort
+        const gallerySortSelect = document.getElementById('settings-gallery-sort');
+        if (gallerySortSelect) {
+            gallerySortSelect.value = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
+        }
+        
+        // Dual Sort
+        const dualSortSelect = document.getElementById('settings-dual-sort');
+        if (dualSortSelect) {
+            dualSortSelect.value = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'asc';
+        }
+        
+        // Dual RTL (Direction)
+        const dualRtlCheckbox = document.getElementById('settings-dual-rtl');
+        if (dualRtlCheckbox) {
+            dualRtlCheckbox.checked = localStorage.getItem(STORAGE_KEY_DUAL_RTL) !== 'false';
+        }
+        
+        // Seekbar Visible
+        const seekbarCheckbox = document.getElementById('settings-seekbar-visible');
+        if (seekbarCheckbox) {
+            seekbarCheckbox.checked = localStorage.getItem(STORAGE_KEY_SEEKBAR_VISIBLE) === 'true';
+        }
+        
+        // Color Mode
+        const colorModeSelect = document.getElementById('settings-color-mode');
+        if (colorModeSelect) {
+            colorModeSelect.innerHTML = '';
+            colorModeNames.forEach((name, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.textContent = name;
+                colorModeSelect.appendChild(opt);
+            });
+            colorModeSelect.value = currentColorModeIndex;
+        }
+        
+        // Cursor Tooltip
+        const cursorTooltipCheckbox = document.getElementById('settings-cursor-tooltip');
+        if (cursorTooltipCheckbox) {
+            cursorTooltipCheckbox.checked = enableCursorTooltip;
+        }
+        
+        // Enable Include (Filter)
+        const enableIncludeCheckbox = document.getElementById('settings-enable-include');
+        if (enableIncludeCheckbox) {
+            enableIncludeCheckbox.checked = enableInclude;
+        }
+
+        // Columns
+        const columnRange = document.getElementById('settings-column-count');
+        const columnValueText = document.getElementById('settings-column-count-value');
+        if (columnRange && columnValueText) {
+            const cols = parseInt(localStorage.getItem('imageflow_column_count')) || 2;
+            columnRange.value = cols;
+            columnValueText.textContent = cols;
+        }
+
+        // Scroll Speed
+        const speedRange = document.getElementById('settings-scroll-speed');
+        const speedValueText = document.getElementById('settings-scroll-speed-value');
+        if (speedRange && speedValueText) {
+            const speed = parseFloat(localStorage.getItem('imageflow_scroll_speed')) || 0;
+            speedRange.value = speed;
+            speedValueText.textContent = speed.toFixed(1);
+        }
+
+        // Dual Interval
+        const intervalRange = document.getElementById('settings-dual-interval');
+        const intervalValueText = document.getElementById('settings-dual-interval-value');
+        if (intervalRange && intervalValueText) {
+            const interval = parseFloat(localStorage.getItem(STORAGE_KEY_DUAL_INTERVAL)) || 0;
+            intervalRange.value = interval;
+            intervalValueText.textContent = interval + 's';
+        }
+    }
+
+    function applySortChange(mode, newSortMode) {
+        let currentImgUrl = null;
+        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[DualView.currentIndex];
+            if (dualSortMode === 'asc') {
+                lastDualIndex = DualView.currentIndex;
+                localStorage.setItem(STORAGE_KEY_DUAL_INDEX, lastDualIndex);
+            }
+            dualSortMode = newSortMode;
+            localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
+        } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[GalleryView.currentIndex];
+            if (gallerySortMode === 'asc') {
+                localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
+            }
+            gallerySortMode = newSortMode;
+            localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
+        } else {
+            if (mode === 'dual') {
+                dualSortMode = newSortMode;
+                localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
+            } else {
+                gallerySortMode = newSortMode;
+                localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
+            }
+            updateSortIcon();
+            return;
+        }
+
+        updateSortIcon();
+
+        const activeSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        fetch(`/api/images?sort=${activeSort}&enableInclude=${enableInclude}`)
+            .then(r => r.json())
+            .then(data => {
+                currentConfigFile = data.configFile || '';
+                allImagesUrls = data.images || [];
+
+                const sortNames = {
+                    'asc': '昇順',
+                    'folder-random': 'フォルダ単位ランダム',
+                    'random': 'ランダム'
+                };
+                const sortName = sortNames[activeSort] || 'ランダム';
+
+                if (allImagesUrls.length === 0) {
+                    seekbar.max = 0;
+                    seekbar.value = 0;
+                    seekbarInfo.textContent = '0 / 0';
+                    seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+                    if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                        DualView.updateImagesAndReset([], 0, true);
+                    } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                        GalleryView.updateImagesAndReset([], 0);
+                    }
+                    showModeOverlay('画像が見つかりませんでした', sortName, 0);
+                    return;
+                }
+
+                let targetIndex = 0;
+                if (currentImgUrl) {
+                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                    if (activeSort === 'asc') {
+                        if (mode === 'dual' && lastDualIndex >= 0) {
+                            targetIndex = lastDualIndex;
+                        } else if (mode === 'gallery') {
+                            const savedGalleryIndex = parseInt(localStorage.getItem(STORAGE_KEY_GALLERY_INDEX)) || 0;
+                            targetIndex = savedGalleryIndex;
+                        } else if (newIdx >= 0) {
+                            targetIndex = newIdx;
+                        }
+                    } else {
+                        if (newIdx >= 0) targetIndex = newIdx;
+                    }
+                }
+
+                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                    DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
+                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                    GalleryView.updateImagesAndReset(allImagesUrls, targetIndex);
+                }
+                showModeOverlay('ソート変更', sortName, allImagesUrls.length);
+                updateFilterBar(data);
+            }).catch(console.error);
+    }
+
+    function setDirectionFromUI(isRtl) {
+        localStorage.setItem(STORAGE_KEY_DUAL_RTL, isRtl);
+        if (typeof DualView !== 'undefined') DualView.setDirection(isRtl);
+        if (typeof GalleryView !== 'undefined') GalleryView.setDirection(isRtl);
+        updateDirIcon();
+        showDirectionArrow(isRtl);
+        const dirText = isRtl ? '右から左へ' : '左から右へ';
+        const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>';
+        showModeOverlay('表示順変更', dirText, null, iconHtml);
+    }
+
+    function setSeekbarVisibleFromUI(visible) {
+        if (!seekbarContainer) return;
+        if (visible) {
+            seekbarContainer.classList.remove('user-hidden');
+            if (seekbarToggleIcon) seekbarToggleIcon.style.color = '#3498db';
+            localStorage.setItem(STORAGE_KEY_SEEKBAR_VISIBLE, 'true');
+            if (seekbarToggleBtn) {
+                seekbarToggleBtn.title = 'シークバー非表示 (S)';
+                seekbarToggleBtn.setAttribute('aria-label', seekbarToggleBtn.title);
+            }
+        } else {
+            seekbarContainer.classList.add('user-hidden');
+            if (seekbarToggleIcon) seekbarToggleIcon.style.color = '';
+            localStorage.setItem(STORAGE_KEY_SEEKBAR_VISIBLE, 'false');
+            if (seekbarToggleBtn) {
+                seekbarToggleBtn.title = 'シークバー表示 (S)';
+                seekbarToggleBtn.setAttribute('aria-label', seekbarToggleBtn.title);
+            }
+        }
+    }
+
+    function setColorModeFromUI(index) {
+        const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel', 'color-mode-crt'];
+        
+        if (colorModes[currentColorModeIndex]) {
+            document.body.classList.remove(colorModes[currentColorModeIndex]);
+        }
+        
+        currentColorModeIndex = parseInt(index) || 0;
+        localStorage.setItem(STORAGE_KEY_COLOR_MODE, currentColorModeIndex);
+        
+        if (colorModes[currentColorModeIndex]) {
+            document.body.classList.add(colorModes[currentColorModeIndex]);
+        }
+        
+        const paletteIcon = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1-.23-.27-.38-.62-.38-1 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>';
+        showModeOverlay('色モード', colorModeNames[currentColorModeIndex], null, paletteIcon);
+
+        if (colorModeBtn) {
+            colorModeBtn.title = `色モード変更 (${colorModeNames[currentColorModeIndex]}) (C)`;
+            colorModeBtn.setAttribute('aria-label', colorModeBtn.title);
+        }
+    }
+
+    function setCursorTooltipFromUI(enable) {
+        enableCursorTooltip = !!enable;
+        localStorage.setItem(STORAGE_KEY_CURSOR_TOOLTIP, enableCursorTooltip);
+        if (cursorTooltipIcon) {
+            cursorTooltipIcon.style.color = enableCursorTooltip ? '#3498db' : '';
+        }
+        if (!enableCursorTooltip && cursorTooltip) {
+            cursorTooltip.style.opacity = '0';
+        }
+        const stateText = enableCursorTooltip ? '有効' : '無効';
+        const iconHtml = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+        showModeOverlay('ファイル名表示', stateText, null, iconHtml);
+        if (enableCursorTooltip) updateCursorTooltipContent();
+
+        if (cursorTooltipBtn) {
+            cursorTooltipBtn.title = enableCursorTooltip ? 'ファイル名表示を無効にする (I)' : 'ファイル名表示を有効にする (I)';
+            cursorTooltipBtn.setAttribute('aria-label', cursorTooltipBtn.title);
+        }
+    }
+
+    function setIncludeEnabledFromUI(enable) {
+        enableInclude = !!enable;
+        localStorage.setItem(STORAGE_KEY_ENABLE_INCLUDE, enableInclude);
+        updateIncludeIcon();
+
+        const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+        
+        let currentImgUrl = null;
+        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[DualView.currentIndex];
+        } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive && allImagesUrls.length > 0) {
+            currentImgUrl = allImagesUrls[GalleryView.currentIndex];
+        }
+        
+        fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
+            .then(r => r.json())
+            .then(data => {
+                currentConfigFile = data.configFile || '';
+                allImagesUrls = data.images || [];
+                const total = data.totalFound !== undefined ? data.totalFound : allImagesUrls.length;
+                
+                if (total === 0) {
+                    seekbar.max = 0;
+                    seekbar.value = 0;
+                    seekbarInfo.textContent = '0 / 0';
+                    seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+                    if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                        GalleryView.updateImagesAndReset([], 0);
+                    }
+                    if (typeof DualView !== 'undefined' && DualView.isActive) {
+                        DualView.updateImagesAndReset([], 0, true);
+                    }
+                    showModeOverlay('画像が見つかりませんでした', '', 0);
+                    return;
+                }
+                
+                let targetIndex = 0;
+                if (currentImgUrl) {
+                    const newIdx = allImagesUrls.indexOf(currentImgUrl);
+                    if (newIdx >= 0) targetIndex = newIdx;
+                }
+                
+                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                    DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
+                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                    GalleryView.updateImagesAndReset(allImagesUrls, targetIndex);
+                }
+                updateFilterBar(data);
+                
+                const stateText = enableInclude ? '有効' : '無効';
+                const includeIcon = '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
+                showModeOverlay('フィルター', stateText, allImagesUrls.length, includeIcon);
+            }).catch(console.error);
+    }
+
     // --- Global Event Listeners ---
 
     reloadBtn.addEventListener('click', (e) => { e.stopPropagation(); loadImages(); });
@@ -1159,6 +1490,182 @@ document.addEventListener('DOMContentLoaded', () => {
     if(includeToggleBtn) includeToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInclude(); });
     if(colorModeBtn) colorModeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleColorMode(); });
     if(cursorTooltipBtn) cursorTooltipBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleCursorTooltip(); });
+
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openSettingsModal();
+        });
+    }
+
+    if (settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    // Settings modal event listeners
+    const closeSettingsModalBtn = document.getElementById('close-settings-modal');
+    if (closeSettingsModalBtn) {
+        closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
+    }
+
+    const settingsResetBtn = document.getElementById('settings-reset-btn');
+    if (settingsResetBtn) {
+        settingsResetBtn.addEventListener('click', () => {
+            if (settingsResetConfirmOverlay) {
+                settingsResetConfirmOverlay.classList.add('show');
+            }
+        });
+    }
+
+    if (settingsResetConfirmBtn) {
+        settingsResetConfirmBtn.addEventListener('click', () => {
+            resetAllSettings();
+            if (settingsResetConfirmOverlay) {
+                settingsResetConfirmOverlay.classList.remove('show');
+            }
+            closeSettingsModal();
+        });
+    }
+
+    if (settingsResetCancelBtn) {
+        settingsResetCancelBtn.addEventListener('click', () => {
+            if (settingsResetConfirmOverlay) {
+                settingsResetConfirmOverlay.classList.remove('show');
+            }
+        });
+    }
+
+    // Display Mode
+    const modeSelect = document.getElementById('settings-display-mode');
+    if (modeSelect) {
+        modeSelect.addEventListener('change', () => {
+            const currentMode = GalleryView.isActive ? 'gallery' : 'dual';
+            const newMode = modeSelect.value;
+            if (currentMode !== newMode) {
+                toggleMode();
+            }
+        });
+    }
+
+    // Gallery Sort
+    const gallerySortSelect = document.getElementById('settings-gallery-sort');
+    if (gallerySortSelect) {
+        gallerySortSelect.addEventListener('change', () => {
+            applySortChange('gallery', gallerySortSelect.value);
+        });
+    }
+
+    // Dual Sort
+    const dualSortSelect = document.getElementById('settings-dual-sort');
+    if (dualSortSelect) {
+        dualSortSelect.addEventListener('change', () => {
+            applySortChange('dual', dualSortSelect.value);
+        });
+    }
+
+    // Dual RTL (Direction)
+    const dualRtlCheckbox = document.getElementById('settings-dual-rtl');
+    if (dualRtlCheckbox) {
+        dualRtlCheckbox.addEventListener('change', () => {
+            setDirectionFromUI(dualRtlCheckbox.checked);
+        });
+    }
+
+    // Seekbar Visible
+    const seekbarCheckbox = document.getElementById('settings-seekbar-visible');
+    if (seekbarCheckbox) {
+        seekbarCheckbox.addEventListener('change', () => {
+            setSeekbarVisibleFromUI(seekbarCheckbox.checked);
+        });
+    }
+
+    // Color Mode
+    const colorModeSelect = document.getElementById('settings-color-mode');
+    if (colorModeSelect) {
+        colorModeSelect.addEventListener('change', () => {
+            setColorModeFromUI(colorModeSelect.value);
+        });
+    }
+
+    // Cursor Tooltip
+    const cursorTooltipCheckbox = document.getElementById('settings-cursor-tooltip');
+    if (cursorTooltipCheckbox) {
+        cursorTooltipCheckbox.addEventListener('change', () => {
+            setCursorTooltipFromUI(cursorTooltipCheckbox.checked);
+        });
+    }
+
+    // Filter Enable
+    const enableIncludeCheckbox = document.getElementById('settings-enable-include');
+    if (enableIncludeCheckbox) {
+        enableIncludeCheckbox.addEventListener('change', () => {
+            setIncludeEnabledFromUI(enableIncludeCheckbox.checked);
+        });
+    }
+
+    // Columns
+    const columnRange = document.getElementById('settings-column-count');
+    const columnValueText = document.getElementById('settings-column-count-value');
+    if (columnRange && columnValueText) {
+        columnRange.addEventListener('input', () => {
+            const cols = parseInt(columnRange.value);
+            columnValueText.textContent = cols;
+            if (typeof GalleryView !== 'undefined') {
+                if (GalleryView.isActive) {
+                    const currentCount = parseInt(localStorage.getItem('imageflow_column_count')) || 2;
+                    const delta = cols - currentCount;
+                    if (delta !== 0) {
+                        GalleryView.changeColumnCount(delta);
+                    }
+                } else {
+                    localStorage.setItem('imageflow_column_count', cols);
+                }
+            }
+        });
+    }
+
+    // Scroll Speed
+    const speedRange = document.getElementById('settings-scroll-speed');
+    const speedValueText = document.getElementById('settings-scroll-speed-value');
+    if (speedRange && speedValueText) {
+        speedRange.addEventListener('input', () => {
+            const speed = parseFloat(speedRange.value);
+            speedValueText.textContent = speed.toFixed(1);
+            if (typeof GalleryView !== 'undefined') {
+                if (GalleryView.isActive) {
+                    const currentSpeed = parseFloat(localStorage.getItem('imageflow_scroll_speed')) || 0;
+                    const delta = speed - currentSpeed;
+                    if (delta !== 0) {
+                        GalleryView.changeScrollSpeed(delta);
+                    }
+                } else {
+                    localStorage.setItem('imageflow_scroll_speed', speed);
+                }
+            }
+        });
+    }
+
+    // Dual Interval
+    const intervalRange = document.getElementById('settings-dual-interval');
+    const intervalValueText = document.getElementById('settings-dual-interval-value');
+    if (intervalRange && intervalValueText) {
+        intervalRange.addEventListener('input', () => {
+            const interval = parseFloat(intervalRange.value);
+            intervalValueText.textContent = interval + 's';
+            dualInterval = interval;
+            localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, interval);
+            if (interval !== 0) {
+                localStorage.setItem(STORAGE_KEY_DUAL_SPEED, interval);
+                lastActiveDualInterval = interval;
+            }
+            if (typeof DualView !== 'undefined') {
+                DualView.setAutoAdvance(interval);
+            }
+            updateStopBtnIcon();
+        });
+    }
 
     if(fileSelectBtn) {
         fileSelectBtn.addEventListener('click', (e) => {
@@ -1612,11 +2119,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const isFilterModalOpen = filterModal && filterModal.style.display === 'block';
         const isConfigEditModalOpen = configEditModal && configEditModal.style.display === 'block';
         const isBookmarkModalOpen = bookmarkModal && bookmarkModal.style.display === 'block';
+        const isSettingsModalOpen = settingsModal && settingsModal.style.display === 'block';
         
-        if (isFileModalOpen || isFilterModalOpen || isConfigEditModalOpen || isBookmarkModalOpen) {
+        if (e.key === 'p' || e.key === 'P') {
+            // Only allow toggling settings if no other modal is open
+            if (!isFileModalOpen && !isFilterModalOpen && !isConfigEditModalOpen && !isBookmarkModalOpen) {
+                e.preventDefault();
+                if (isSettingsModalOpen) {
+                    closeSettingsModal();
+                } else {
+                    openSettingsModal();
+                }
+                return;
+            }
+        }
+
+        if (isFileModalOpen || isFilterModalOpen || isConfigEditModalOpen || isBookmarkModalOpen || isSettingsModalOpen) {
             if (e.key === 'Escape') {
                 e.preventDefault();
-                if (isConfigEditModalOpen) {
+                if (isSettingsModalOpen) {
+                    closeSettingsModal();
+                } else if (isConfigEditModalOpen) {
                     configEditModal.style.display = 'none';
                     fileSelectModal.style.display = 'block';
                     const firstBtn = fileSelectModal.querySelector('.file-item');
@@ -1962,7 +2485,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener(type, resetActivityTimer, { passive: true });
     });
     window.addEventListener('keydown', (e) => {
-        // デュアルビューモード中でナビゲーションキー（カーソル、Home/End, PageUp/Down）操作の場合は、
+        // デュアルビュー中でナビゲーションキー（カーソル、Home/End, PageUp/Down）操作の場合は、
         // 没入感を維持するためFABなどのUIを表示しない。
         const isNavKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key);
         if (typeof DualView !== 'undefined' && DualView.isActive && isNavKey) {

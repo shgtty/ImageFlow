@@ -79,7 +79,7 @@ const DualView = (() => {
             if (e.target.closest('.fab')) return;
 
             // Block clicks if they originated inside a modal (e.g., closing the modal)
-            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal')) return;
+            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal, #settings-modal')) return;
 
             // Block clicks if clicking on a video element to allow interacting with controls
             if (e.target.closest('video')) return;
@@ -93,6 +93,8 @@ const DualView = (() => {
             if (configEditModal && configEditModal.style.display === 'block') return;
             const bookmarkModal = document.getElementById('bookmark-modal');
             if (bookmarkModal && bookmarkModal.style.display === 'block') return;
+            const settingsModal = document.getElementById('settings-modal');
+            if (settingsModal && settingsModal.style.display === 'block') return;
 
             const width = window.innerWidth;
             if (e.clientX > width / 2) {
@@ -117,6 +119,8 @@ const DualView = (() => {
             if (configEditModal && configEditModal.style.display === 'block') return;
             const bookmarkModal = document.getElementById('bookmark-modal');
             if (bookmarkModal && bookmarkModal.style.display === 'block') return;
+            const settingsModal = document.getElementById('settings-modal');
+            if (settingsModal && settingsModal.style.display === 'block') return;
 
             // ⚡ Bolt Optimization: Throttle high-frequency wheel events to prevent redundant image fetch requests and layout thrashing
             const now = Date.now();

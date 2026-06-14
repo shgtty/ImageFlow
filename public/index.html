@@ -995,6 +995,118 @@
         .bookmark-overlay-btn-cancel:hover {
             background: #444;
         }
+
+        /* Settings Modal Specific Styling */
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+        .settings-label {
+            font-weight: bold;
+            font-size: 1.05em;
+        }
+        .settings-desc {
+            font-size: 0.82em;
+            color: #aaa;
+            margin-top: 4px;
+        }
+        .settings-select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: #2a2a2a;
+            color: white;
+            font-size: 0.95em;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        .settings-select:focus {
+            border-color: #3498db;
+        }
+        .settings-select:hover {
+            background: #333;
+        }
+        .settings-toggle {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .settings-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .settings-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .2s ease-in-out;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .settings-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .2s ease-in-out;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+        .settings-toggle input:checked + .settings-slider {
+            background-color: #3498db;
+            border-color: #3498db;
+        }
+        .settings-toggle input:checked + .settings-slider:before {
+            transform: translateX(24px);
+        }
+        .settings-range-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .settings-range {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            width: 120px;
+        }
+        .settings-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+        .settings-range::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        .settings-range-value {
+            font-weight: bold;
+            font-size: 0.95em;
+            min-width: 45px;
+            text-align: right;
+        }
     </style>
 </head>
 
@@ -1133,6 +1245,13 @@
                 <svg viewBox="0 0 24 24" id="cursorTooltipIcon">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
                 </svg>
+            </button>
+        </div>
+
+        <!-- 設定ボタン -->
+        <div class="fab-wrapper" style="margin-top: 10px;">
+            <button class="fab" id="settingsBtn" title="設定画面 (P)" aria-label="設定画面">
+                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
             </button>
         </div>
 
@@ -1304,6 +1423,166 @@
             <div id="bookmark-list" style="flex:1; min-height:0; overflow-y:auto; overflow-x:hidden;"></div>
             <div style="margin-top:24px; text-align:right; flex-shrink:0;">
                 <button id="close-bookmark-modal" style="padding:10px 24px; font-size:1.1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" style="display:none; position:fixed; inset:0; margin:auto; width:600px; height:80vh; background:rgba(20,20,20,0.95); border:1px solid rgba(255,255,255,0.1); border-radius:16px; z-index:9999; color:white; min-width:300px; max-width:90vw; max-height:90vh; box-shadow:0 15px 50px rgba(0,0,0,0.8); backdrop-filter:blur(15px); resize:both; overflow:hidden;">
+        <!-- Reset Confirmation Overlay -->
+        <div id="settings-reset-confirm-overlay" class="bookmark-overlay">
+            <div class="bookmark-overlay-box">
+                <div class="bookmark-overlay-title">設定の初期化</div>
+                <div class="bookmark-overlay-text">本当にすべての設定を初期化しますか？この操作は取り消せません。</div>
+                <div class="bookmark-overlay-buttons">
+                    <button id="settings-reset-confirm-btn" class="bookmark-overlay-btn bookmark-overlay-btn-confirm">初期化する</button>
+                    <button id="settings-reset-cancel-btn" class="bookmark-overlay-btn bookmark-overlay-btn-cancel">キャンセル</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; height:100%; padding:30px; box-sizing:border-box;">
+            <h3 id="settings-title" style="margin-top:0; font-size:1.6em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px; margin-bottom:18px; flex-shrink:0; display:flex; justify-content:space-between; align-items:center;">
+                <span>設定 (P)</span>
+            </h3>
+            
+            <div style="flex:1; min-height:0; overflow-y:auto; padding-right:10px; display:flex; flex-direction:column; gap:8px;">
+                <!-- 表示モード -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">表示モード (M)</div>
+                        <div class="settings-desc">ギャラリービューとデュアルビューを切り替えます。</div>
+                    </div>
+                    <select id="settings-display-mode" class="settings-select" aria-label="表示モード">
+                        <option value="gallery">ギャラリービュー</option>
+                        <option value="dual">デュアルビュー</option>
+                    </select>
+                </div>
+
+                <!-- ギャラリービューソート順 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">ギャラリービュー ソート順 (R)</div>
+                        <div class="settings-desc">ギャラリービューのソート方法。</div>
+                    </div>
+                    <select id="settings-gallery-sort" class="settings-select" aria-label="ギャラリービューソート順">
+                        <option value="asc">名前昇順</option>
+                        <option value="folder-random">フォルダ単位ランダム</option>
+                        <option value="random">ランダム</option>
+                    </select>
+                </div>
+
+                <!-- デュアルビューソート順 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">デュアルビュー ソート順 (R)</div>
+                        <div class="settings-desc">デュアルビューのソート方法。</div>
+                    </div>
+                    <select id="settings-dual-sort" class="settings-select" aria-label="デュアルビューソート順">
+                        <option value="asc">名前昇順</option>
+                        <option value="folder-random">フォルダ単位ランダム</option>
+                        <option value="random">ランダム</option>
+                    </select>
+                </div>
+
+                <!-- 表示順方向 (RTL) -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">表示順方向 (RTL) (O)</div>
+                        <div class="settings-desc">右から左 (RTL) の表示順を有効にします。</div>
+                    </div>
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="settings-dual-rtl" aria-label="表示順方向 (RTL)">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+
+                <!-- シークバー表示 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">シークバー表示 (S)</div>
+                        <div class="settings-desc">画面下部のシークバーを表示します。</div>
+                    </div>
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="settings-seekbar-visible" aria-label="シークバー表示">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+
+                <!-- 色モード -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">色モード (C)</div>
+                        <div class="settings-desc">画面全体の色調フィルターを選択します。</div>
+                    </div>
+                    <select id="settings-color-mode" class="settings-select" aria-label="色モード">
+                    </select>
+                </div>
+
+                <!-- ファイル名表示 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">ファイル名表示 (I)</div>
+                        <div class="settings-desc">マウスカーソル付近にファイル名を表示します。</div>
+                    </div>
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="settings-cursor-tooltip" aria-label="ファイル名表示">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+
+                <!-- フィルター有効化 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">フィルター有効化 (F)</div>
+                        <div class="settings-desc">include.txt によるフィルターを適用します。</div>
+                    </div>
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="settings-enable-include" aria-label="フィルター有効化">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+
+                <!-- ギャラリービュー列数 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">ギャラリービュー列数</div>
+                        <div class="settings-desc">ギャラリービューの列数 (1〜10列)。</div>
+                    </div>
+                    <div class="settings-range-container">
+                        <input type="range" id="settings-column-count" min="1" max="10" step="1" class="settings-range" aria-label="ギャラリービュー列数">
+                        <span id="settings-column-count-value" class="settings-range-value">2</span>
+                    </div>
+                </div>
+
+                <!-- ギャラリービュー自動スクロール速度 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">自動スクロール速度</div>
+                        <div class="settings-desc">ギャラリービュー時のスクロール速度。</div>
+                    </div>
+                    <div class="settings-range-container">
+                        <input type="range" id="settings-scroll-speed" min="-10" max="10" step="0.5" class="settings-range" aria-label="自動スクロール速度">
+                        <span id="settings-scroll-speed-value" class="settings-range-value">0.0</span>
+                    </div>
+                </div>
+
+                <!-- デュアルビュー自動再生秒数 -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">デュアルビュー 自動再生間隔</div>
+                        <div class="settings-desc">デュアルビュー表示時の自動再生秒数 (0で停止)。</div>
+                    </div>
+                    <div class="settings-range-container">
+                        <input type="range" id="settings-dual-interval" min="0" max="60" step="1" class="settings-range" aria-label="デュアルビュー自動再生間隔">
+                        <span id="settings-dual-interval-value" class="settings-range-value">0s</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <button id="settings-reset-btn" style="padding:10px 20px; font-size:1em; background:#e74c3c; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">設定を初期化 (0)</button>
+                <button id="close-settings-modal" style="padding:10px 24px; font-size:1.1em; background:#444; border:none; color:white; cursor:pointer; border-radius:8px; font-weight:bold; transition:background 0.2s;">閉じる</button>
             </div>
         </div>
     </div>
