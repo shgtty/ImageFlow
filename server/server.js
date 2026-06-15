@@ -694,7 +694,24 @@ const server = http.createServer((req, res) => {
             const groups = new Map();
             for (let i = 0; i < allImages.length; i++) {
                 const img = allImages[i];
-                const folderKey = img.includes('|') ? img.split('|')[0] : path.dirname(img);
+                let folderKey;
+                if (img.includes('|')) {
+                    const parts = img.split('|');
+                    const archivePath = parts[0];
+                    const innerPath = parts[1];
+                    if (innerPath) {
+                        const lastSlash = Math.max(innerPath.lastIndexOf('/'), innerPath.lastIndexOf('\\'));
+                        if (lastSlash >= 0) {
+                            folderKey = archivePath + '|' + innerPath.substring(0, lastSlash);
+                        } else {
+                            folderKey = archivePath;
+                        }
+                    } else {
+                        folderKey = archivePath;
+                    }
+                } else {
+                    folderKey = path.dirname(img);
+                }
                 if (!groups.has(folderKey)) {
                     groups.set(folderKey, []);
                 }
