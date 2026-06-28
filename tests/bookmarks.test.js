@@ -96,13 +96,13 @@ test('Bookmarks API CSV functionality', async (t) => {
         assert.ok(fs.existsSync(tempBookmarksPath));
         const fileContent = fs.readFileSync(tempBookmarksPath, 'utf-8');
         // Rows should be: dirPath, fileName, configFile
-        const expectedCSV = 'C:\\TestFolder1,image.png,temp_folders.txt\n';
+        const expectedCSV = '.,C:\\TestFolder1\\image.png,temp_folders.txt\n';
         assert.strictEqual(fileContent.replace(/\r\n/g, '\n'), expectedCSV);
     });
 
     await t.test('GET /api/bookmarks reads CSV format correctly', async () => {
         // Setup CSV file manually
-        const csvContent = 'C:\\TestFolder2,pic.jpg,temp_folders.txt\n';
+        const csvContent = '.,C:\\TestFolder2\\pic.jpg,temp_folders.txt\n';
         fs.writeFileSync(tempBookmarksPath, csvContent, 'utf-8');
 
         const res = await makeRequest(port, 'GET', '/api/bookmarks');
@@ -115,7 +115,7 @@ test('Bookmarks API CSV functionality', async (t) => {
 
     await t.test('POST /api/bookmarks (remove) updates CSV content', async () => {
         // Setup initial CSV
-        const initialCSV = 'C:\\TestFolder1,image.png,temp_folders.txt\nC:\\TestFolder2,pic.jpg,temp_folders.txt\n';
+        const initialCSV = '.,C:\\TestFolder1\\image.png,temp_folders.txt\n.,C:\\TestFolder2\\pic.jpg,temp_folders.txt\n';
         fs.writeFileSync(tempBookmarksPath, initialCSV, 'utf-8');
 
         const payload = JSON.stringify({ action: 'remove', path: 'C:\\TestFolder1\\image.png' });
@@ -128,12 +128,12 @@ test('Bookmarks API CSV functionality', async (t) => {
 
         // Verify CSV file is updated
         const fileContent = fs.readFileSync(tempBookmarksPath, 'utf-8').replace(/\r\n/g, '\n');
-        assert.strictEqual(fileContent, 'C:\\TestFolder2,pic.jpg,temp_folders.txt\n');
+        assert.strictEqual(fileContent, '.,C:\\TestFolder2\\pic.jpg,temp_folders.txt\n');
     });
 
     await t.test('POST /api/bookmarks (clear) removes all bookmarks', async () => {
         // Setup initial CSV
-        const initialCSV = 'C:\\TestFolder1,image.png,temp_folders.txt\nC:\\TestFolder2,pic.jpg,temp_folders.txt\n';
+        const initialCSV = '.,C:\\TestFolder1\\image.png,temp_folders.txt\n.,C:\\TestFolder2\\pic.jpg,temp_folders.txt\n';
         fs.writeFileSync(tempBookmarksPath, initialCSV, 'utf-8');
 
         const payload = JSON.stringify({ action: 'clear' });
@@ -151,7 +151,7 @@ test('Bookmarks API CSV functionality', async (t) => {
 
     await t.test('GET /api/bookmark-config returns the config file name for a bookmark', async () => {
         // Setup initial CSV
-        const csvContent = 'C:\\TestFolder1,image.png,temp_folders.txt\nC:\\TestFolder2,pic.jpg,another_config.txt\n';
+        const csvContent = '.,C:\\TestFolder1\\image.png,temp_folders.txt\n.,C:\\TestFolder2\\pic.jpg,another_config.txt\n';
         fs.writeFileSync(tempBookmarksPath, csvContent, 'utf-8');
 
         // Check first bookmark

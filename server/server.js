@@ -48,6 +48,9 @@ function setBookmarksFile(newPath) {
     BOOKMARKS_FILE = newPath;
 }
 
+// ⚡ Bolt Optimization: Cache parsed bookmarks to avoid synchronous file reads blocking the event loop on every image request
+let bookmarksCache = { mtime: 0, paths: [] };
+
 function parseCSV(text) {
     const lines = [];
     let row = [];
@@ -587,6 +590,7 @@ const server = http.createServer((req, res) => {
                         }
                         
                         fs.writeFileSync(BOOKMARKS_FILE, toCSV(rows), 'utf-8');
+                        bookmarksCache.mtime = 0; // Invalidate cache since file was modified
                         const bookmarks = rows.map(rowToPath).filter(Boolean);
                         
                         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -773,16 +777,21 @@ const server = http.createServer((req, res) => {
             const allowedPaths = getAllowedPaths();
             let isAllowed = allowedPaths.some(allowed => isPathInside(allowed, resolvedPath));
 
-            // Also allow if the file is explicitly in bookmarks
-            if (!isAllowed && fs.existsSync(BOOKMARKS_FILE)) {
+            // ⚡ Bolt Optimization: Cache bookmarks to avoid synchronous fs.readFileSync blocking event loop on every /image request
+            if (!isAllowed) {
                 try {
-                    const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
-                    const rows = parseCSV(csvContent);
-                    const bookmarkedPaths = rows.map(rowToPath).filter(Boolean);
-                    isAllowed = bookmarkedPaths.some(bookmarkPath => {
-                        const bPath = bookmarkPath.includes('|') ? bookmarkPath.split('|')[0] : bookmarkPath;
-                        return path.resolve(bPath) === resolvedPath;
-                    });
+                    if (fs.existsSync(BOOKMARKS_FILE)) {
+                        const stats = fs.statSync(BOOKMARKS_FILE);
+                        if (bookmarksCache.mtime !== stats.mtimeMs) {
+                            const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
+                            bookmarksCache.paths = parseCSV(csvContent).map(rowToPath).filter(Boolean);
+                            bookmarksCache.mtime = stats.mtimeMs;
+                        }
+                        isAllowed = bookmarksCache.paths.some(bookmarkPath => {
+                            const bPath = bookmarkPath.includes('|') ? bookmarkPath.split('|')[0] : bookmarkPath;
+                            return path.resolve(bPath) === resolvedPath;
+                        });
+                    }
                 } catch (e) {
                     console.error('Error checking allowed path in bookmarks:', e);
                 }
