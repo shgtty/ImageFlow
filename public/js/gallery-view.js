@@ -336,13 +336,13 @@ const GalleryView = (() => {
         const scrollAmount = Math.trunc(accumulatedScroll);
         accumulatedScroll -= scrollAmount;
 
-        if (scrollAmount !== 0) {
-            window.scrollBy({ top: scrollAmount, left: 0, behavior: 'instant' });
-        }
-
         // ⚡ Bolt Optimization: Batch DOM reads before DOM writes to prevent layout thrashing on every frame
         const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
         const currentScrollY = window.scrollY;
+
+        if (scrollAmount !== 0) {
+            window.scrollBy({ top: scrollAmount, left: 0, behavior: 'instant' });
+        }
 
         if (currentIndex < allImagesUrls.length && pendingImages < BATCH_SIZE && currentScrollY >= maxScroll - 2000) {
             renderNextBatch(BATCH_SIZE);
