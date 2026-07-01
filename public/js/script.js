@@ -2678,20 +2678,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bookmarkViewMode === 'grid') {
             bookmarkViewToggle.classList.add('active');
             bookmarkViewToggle.querySelector('span').textContent = 'グリッド表示';
+            bookmarkViewToggle.setAttribute('aria-label', 'リスト表示に切替');
             bookmarkViewToggle.querySelector('svg').innerHTML = '<path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/>';
         } else {
             bookmarkViewToggle.classList.remove('active');
             bookmarkViewToggle.querySelector('span').textContent = 'リスト表示';
+            bookmarkViewToggle.setAttribute('aria-label', 'グリッド表示に切替');
             bookmarkViewToggle.querySelector('svg').innerHTML = '<path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/>';
         }
         
         // Update group toggle button and expand/collapse all visibility
         if (bookmarkGroupByFolder) {
             bookmarkGroupToggle.classList.add('active');
+            bookmarkGroupToggle.setAttribute('aria-label', 'フォルダのグループ化を解除');
             if (bookmarkExpandAllBtn) bookmarkExpandAllBtn.disabled = false;
             if (bookmarkCollapseAllBtn) bookmarkCollapseAllBtn.disabled = false;
         } else {
             bookmarkGroupToggle.classList.remove('active');
+            bookmarkGroupToggle.setAttribute('aria-label', 'フォルダでグループ化');
             if (bookmarkExpandAllBtn) bookmarkExpandAllBtn.disabled = true;
             if (bookmarkCollapseAllBtn) bookmarkCollapseAllBtn.disabled = true;
         }
@@ -3151,6 +3155,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 header.className = 'bookmark-group-header';
                 header.setAttribute('role', 'button');
                 header.setAttribute('tabindex', '0');
+                header.setAttribute('aria-expanded', !isCollapsed);
+                header.setAttribute('aria-label', `グループ ${groupKey} を${isCollapsed ? '開く' : '閉じる'}`);
                 
                 const arrowSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                 arrowSvg.setAttribute('class', 'bookmark-group-arrow');
