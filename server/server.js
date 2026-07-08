@@ -49,7 +49,7 @@ function setBookmarksFile(newPath) {
 }
 
 // ⚡ Bolt Optimization: Cache parsed bookmarks to avoid synchronous file reads blocking the event loop on every image request
-let bookmarksCache = { mtime: 0, paths: [] };
+let bookmarksCache = { mtime: 0, paths: [], resolvedPathsSet: new Set() };
 
 function parseCSV(text) {
     const lines = [];
@@ -785,12 +785,16 @@ const server = http.createServer((req, res) => {
                         if (bookmarksCache.mtime !== stats.mtimeMs) {
                             const csvContent = fs.readFileSync(BOOKMARKS_FILE, 'utf-8');
                             bookmarksCache.paths = parseCSV(csvContent).map(rowToPath).filter(Boolean);
+
+                            // ⚡ Bolt Optimization: Pre-calculate resolved paths and store them in a Set for O(1) lookups
+                            bookmarksCache.resolvedPathsSet = new Set(bookmarksCache.paths.map(bookmarkPath => {
+                                const bPath = bookmarkPath.includes('|') ? bookmarkPath.split('|')[0] : bookmarkPath;
+                                return path.resolve(bPath);
+                            }));
                             bookmarksCache.mtime = stats.mtimeMs;
                         }
-                        isAllowed = bookmarksCache.paths.some(bookmarkPath => {
-                            const bPath = bookmarkPath.includes('|') ? bookmarkPath.split('|')[0] : bookmarkPath;
-                            return path.resolve(bPath) === resolvedPath;
-                        });
+                        // ⚡ Bolt Optimization: O(1) Set lookup instead of O(N) array iteration with repeated path.resolve calls
+                        isAllowed = bookmarksCache.resolvedPathsSet.has(resolvedPath);
                     }
                 } catch (e) {
                     console.error('Error checking allowed path in bookmarks:', e);
