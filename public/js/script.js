@@ -3156,7 +3156,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 header.setAttribute('role', 'button');
                 header.setAttribute('tabindex', '0');
                 header.setAttribute('aria-expanded', !isCollapsed);
-                header.setAttribute('aria-label', `グループ ${groupKey} を${isCollapsed ? '開く' : '閉じる'}`);
                 
                 const arrowSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                 arrowSvg.setAttribute('class', 'bookmark-group-arrow');
@@ -3188,9 +3187,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (expandedFolders.has(groupKey)) {
                         expandedFolders.delete(groupKey);
                         section.classList.add('collapsed');
+                        header.setAttribute('aria-expanded', 'false');
                     } else {
                         expandedFolders.add(groupKey);
                         section.classList.remove('collapsed');
+                        header.setAttribute('aria-expanded', 'true');
                     }
                 };
                 
