@@ -5,3 +5,7 @@
 ## 2026-07-08 - Syncing ARIA States with Visual Toggles
 **Learning:** When toggling visual states (like expanding/collapsing a section via CSS classes), ARIA attributes like `aria-expanded` must be explicitly updated in JavaScript to match the visual state, otherwise screen readers fall out of sync.
 **Action:** Always ensure ARIA attributes are updated in the same event handlers that handle the visual state changes.
+
+## 2024-07-14 - Semantic Button Types
+**Learning:** Buttons without an explicit `type` attribute implicitly default to `type="submit"`. In a UI with many interactive buttons but no actual forms, this can cause unintended form submissions or page reloads if elements get wrapped in a `<form>` tag in the future.
+**Action:** Always explicitly add `type="button"` to buttons that act as UI triggers and are not meant to submit data.
