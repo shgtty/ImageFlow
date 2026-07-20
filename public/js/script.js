@@ -24,6 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileSelectModal = document.getElementById('file-select-modal');
     const closeFileModal = document.getElementById('close-file-modal');
     const fileListContainer = document.getElementById('file-list');
+    const applyFileModal = document.getElementById('apply-file-modal');
+    const configFilterInput = document.getElementById('config-filter-input');
+    const uncheckAllConfig = document.getElementById('uncheck-all-config');
+    const clearConfigFilter = document.getElementById('clear-config-filter');
+    const configSelectError = document.getElementById('config-select-error');
 
     // Filter modal UI elements
     const filterModal = document.getElementById('filter-modal');
@@ -1670,6 +1675,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if(fileSelectBtn) {
         fileSelectBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (configFilterInput) {
+                configFilterInput.value = '';
+            }
+            if (clearConfigFilter) {
+                clearConfigFilter.style.display = 'none';
+            }
+            if (configSelectError) {
+                configSelectError.textContent = '';
+                configSelectError.style.display = 'none';
+            }
             fetch('/api/config-files')
                 .then(r => r.json())
                 .then(res => {
@@ -1681,103 +1696,108 @@ document.addEventListener('DOMContentLoaded', () => {
                     res.files.forEach(file => {
                         const itemContainer = document.createElement('div');
                         itemContainer.className = 'file-item';
-                        itemContainer.setAttribute('role', 'button');
+                        itemContainer.setAttribute('role', 'checkbox');
+                        const isActive = Array.isArray(res.current) ? res.current.includes(file) : (file === res.current);
+                        itemContainer.setAttribute('aria-checked', isActive ? 'true' : 'false');
                         itemContainer.setAttribute('tabindex', '0');
-                        if (file === res.current) {
-                            itemContainer.classList.add('active');
-                        }
+                        itemContainer.setAttribute('data-filename', file);
+                        itemContainer.style.display = 'flex';
+                        itemContainer.style.alignItems = 'center';
+                        itemContainer.style.justifyContent = 'space-between';
+                        itemContainer.style.padding = '8px 12px';
+                        itemContainer.style.borderRadius = '8px';
+                        itemContainer.style.cursor = 'pointer';
+                        itemContainer.style.transition = 'background 0.2s';
+
+                        const leftDiv = document.createElement('div');
+                        leftDiv.style.display = 'flex';
+                        leftDiv.style.alignItems = 'center';
+                        leftDiv.style.gap = '10px';
+                        leftDiv.style.flex = '1';
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = isActive;
+                        checkbox.style.cursor = 'pointer';
+                        checkbox.style.width = '18px';
+                        checkbox.style.height = '18px';
+                        checkbox.style.accentColor = '#3498db';
 
                         const textSpan = document.createElement('span');
-                        textSpan.textContent = file === res.current ? `${file} (選択中)` : file;
+                        textSpan.textContent = file;
+                        textSpan.style.fontSize = '1.05em';
+
+                        leftDiv.appendChild(checkbox);
+                        leftDiv.appendChild(textSpan);
+                        itemContainer.appendChild(leftDiv);
 
                         const editBtn = document.createElement('button');
                         editBtn.className = 'edit-file-btn';
                         editBtn.title = 'ファイルを編集';
                         editBtn.setAttribute('aria-label', `${file} を編集`);
-                        editBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+                        editBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:currentColor;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+                        editBtn.style.background = 'transparent';
+                        editBtn.style.border = 'none';
+                        editBtn.style.color = '#aaa';
+                        editBtn.style.cursor = 'pointer';
+                        editBtn.style.padding = '4px';
+                        editBtn.style.borderRadius = '4px';
+                        editBtn.style.display = 'flex';
+                        editBtn.style.alignItems = 'center';
+                        editBtn.style.justifyContent = 'center';
                         editBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
                             openConfigEditModal(file);
                         });
 
-                        const handleSelectFile = () => {
-                            fetch('/api/set-config-file', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ file: file })
-                            }).then(r => r.json()).then(postRes => {
-                                if (postRes.success) {
-                                    fileSelectModal.style.display = 'none';
-                                    document.body.style.overflow = ''; // Restore overflow
-                                    if (previousFocus) {
-                                        previousFocus.focus();
-                                    }
-                                    
-                                    const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
-                                    const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
-                                    
-                                    fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
-                                        .then(r => r.json())
-                                        .then(data => {
-                                            currentConfigFile = data.configFile || file;
-                                            allImagesUrls = data.images || [];
-                                            
-                                            if (allImagesUrls.length === 0) {
-                                                seekbar.max = 0;
-                                                seekbar.value = 0;
-                                                seekbarInfo.textContent = '0 / 0';
-                                                seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
-                                                
-                                                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
-                                                    DualView.updateImagesAndReset([], 0, true);
-                                                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
-                                                    GalleryView.updateImagesAndReset([], 0);
-                                                }
-                                                showModeOverlay('画像が見つかりませんでした', `ファイル: ${file}`, 0);
-                                                return;
-                                            }
+                        itemContainer.appendChild(editBtn);
 
-                                            seekbar.max = Math.max(0, allImagesUrls.length - 1);
-                                            
-                                            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
-                                                DualView.updateImagesAndReset(allImagesUrls, 0, true);
-                                            } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
-                                                GalleryView.updateImagesAndReset(allImagesUrls, 0, { restoreSpeed: true });
-                                                window.scrollTo(0, 0);
-                                            } else {
-                                                loadImages();
-                                            }
-                                            
-                                            updateSeekbar();
-                                            // ⚡ Optimization: Update filter bar after reloading images to reflect new server state
-                                            updateFilterBar(data);
-                                            
-                                            let displayCount = allImagesUrls.length;
-                                            if (currentSort === 'folder-random') {
-                                                displayCount = getFolderBounds(0, allImagesUrls).total;
-                                            }
-                                            showModeOverlay('設定変更', `ファイル: ${file}`, displayCount);
-                                        })
-                                        .catch(err => {
-                                            console.error('Error post-set fetch:', err);
-                                            loadImages();
-                                        });
-                                } else {
-                                    alert(postRes.error);
-                                }
-                            });
+                        if (isActive) {
+                            itemContainer.classList.add('active');
+                            itemContainer.style.background = 'rgba(52, 152, 219, 0.15)';
+                            itemContainer.style.border = '1px solid rgba(52, 152, 219, 0.4)';
+                        } else {
+                            itemContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+                        }
+
+                        const toggleSelection = () => {
+                            checkbox.checked = !checkbox.checked;
+                            itemContainer.setAttribute('aria-checked', checkbox.checked ? 'true' : 'false');
+                            if (checkbox.checked) {
+                                itemContainer.classList.add('active');
+                                itemContainer.style.background = 'rgba(52, 152, 219, 0.15)';
+                                itemContainer.style.border = '1px solid rgba(52, 152, 219, 0.4)';
+                            } else {
+                                itemContainer.classList.remove('active');
+                                itemContainer.style.background = '';
+                                itemContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+                            }
                         };
 
-                        itemContainer.addEventListener('click', handleSelectFile);
-                        itemContainer.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                handleSelectFile();
+                        itemContainer.addEventListener('click', (e) => {
+                            if (e.target !== checkbox) {
+                                toggleSelection();
+                            } else {
+                                itemContainer.setAttribute('aria-checked', checkbox.checked ? 'true' : 'false');
+                                if (checkbox.checked) {
+                                    itemContainer.classList.add('active');
+                                    itemContainer.style.background = 'rgba(52, 152, 219, 0.15)';
+                                    itemContainer.style.border = '1px solid rgba(52, 152, 219, 0.4)';
+                                } else {
+                                    itemContainer.classList.remove('active');
+                                    itemContainer.style.background = '';
+                                    itemContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+                                }
                             }
                         });
 
-                        itemContainer.appendChild(textSpan);
-                        itemContainer.appendChild(editBtn);
+                        itemContainer.addEventListener('keydown', (e) => {
+                            if (e.key === ' ' || e.key === 'Enter') {
+                                e.preventDefault();
+                                toggleSelection();
+                            }
+                        });
+
                         fileListContainer.appendChild(itemContainer);
                     });
                     previousFocus = document.activeElement;
@@ -1791,6 +1811,150 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch(console.error);
+        });
+    }
+
+    if (applyFileModal) {
+        applyFileModal.addEventListener('click', () => {
+            const checkedItems = Array.from(fileListContainer.querySelectorAll('.file-item'))
+                .filter(item => {
+                    const cb = item.querySelector('input[type="checkbox"]');
+                    return cb && cb.checked;
+                })
+                .map(item => item.getAttribute('data-filename'));
+
+            if (checkedItems.length === 0) {
+                if (configSelectError) {
+                    configSelectError.textContent = '少なくとも1つの設定ファイルを選択してください。';
+                    configSelectError.style.display = 'block';
+                    if (configSelectError._timeout) clearTimeout(configSelectError._timeout);
+                    configSelectError._timeout = setTimeout(() => {
+                        configSelectError.style.display = 'none';
+                    }, 4000);
+                }
+                return;
+            }
+
+            applyFileModal.disabled = true;
+            const originalText = applyFileModal.textContent;
+            applyFileModal.textContent = '適用中...';
+
+            fetch('/api/set-config-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: checkedItems })
+            }).then(r => r.json()).then(postRes => {
+                applyFileModal.disabled = false;
+                applyFileModal.textContent = originalText;
+                
+                if (postRes.success) {
+                    fileSelectModal.style.display = 'none';
+                    document.body.style.overflow = ''; // Restore overflow
+                    if (previousFocus) {
+                        previousFocus.focus();
+                    }
+                    
+                    const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+                    const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+                    
+                    fetch(`/api/images?sort=${currentSort}&enableInclude=${enableInclude}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            currentConfigFile = data.configFile || checkedItems.join(', ');
+                            allImagesUrls = data.images || [];
+                            
+                            if (allImagesUrls.length === 0) {
+                                seekbar.max = 0;
+                                seekbar.value = 0;
+                                seekbarInfo.textContent = '0 / 0';
+                                seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+                                
+                                if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                    DualView.updateImagesAndReset([], 0, true);
+                                } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                    GalleryView.updateImagesAndReset([], 0);
+                                }
+                                showModeOverlay('画像が見つかりませんでした', `ファイル: ${currentConfigFile}`, 0);
+                                return;
+                            }
+
+                            seekbar.max = Math.max(0, allImagesUrls.length - 1);
+                            
+                            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                DualView.updateImagesAndReset(allImagesUrls, 0, true);
+                            } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                GalleryView.updateImagesAndReset(allImagesUrls, 0, { restoreSpeed: true });
+                                window.scrollTo(0, 0);
+                            } else {
+                                loadImages();
+                            }
+                            
+                            updateSeekbar();
+                            // ⚡ Optimization: Update filter bar after reloading images to reflect new server state
+                            updateFilterBar(data);
+                            
+                            let displayCount = allImagesUrls.length;
+                            if (currentSort === 'folder-random') {
+                                displayCount = getFolderBounds(0, allImagesUrls).total;
+                            }
+                            showModeOverlay('設定変更', `ファイル: ${currentConfigFile}`, displayCount);
+                        })
+                        .catch(err => {
+                            console.error('Error post-set fetch:', err);
+                            loadImages();
+                        });
+                } else {
+                    alert(postRes.error || '設定の更新に失敗しました。');
+                }
+            }).catch(err => {
+                applyFileModal.disabled = false;
+                applyFileModal.textContent = originalText;
+                console.error(err);
+            });
+        });
+    }
+
+    function updateConfigFilterUI() {
+        const query = configFilterInput.value.toLowerCase().trim();
+        if (clearConfigFilter) {
+            clearConfigFilter.style.display = query ? 'flex' : 'none';
+        }
+        const items = fileListContainer.querySelectorAll('.file-item');
+        items.forEach(item => {
+            const filename = item.getAttribute('data-filename').toLowerCase();
+            if (filename.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    if (configFilterInput) {
+        configFilterInput.addEventListener('input', updateConfigFilterUI);
+    }
+
+    if (clearConfigFilter) {
+        clearConfigFilter.addEventListener('click', () => {
+            configFilterInput.value = '';
+            updateConfigFilterUI();
+            configFilterInput.focus();
+        });
+    }
+
+    if (uncheckAllConfig) {
+        uncheckAllConfig.addEventListener('click', () => {
+            const items = fileListContainer.querySelectorAll('.file-item');
+            items.forEach(item => {
+                const cb = item.querySelector('input[type="checkbox"]');
+                if (cb) {
+                    cb.checked = false;
+                }
+                item.setAttribute('aria-checked', 'false');
+                item.classList.remove('active');
+                item.style.background = '';
+                item.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+            });
         });
     }
 

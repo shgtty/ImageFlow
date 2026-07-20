@@ -9,33 +9,46 @@ const MAX_CACHE_SIZE = 100;
 
 const PORT = 8000;
 let initialArg = process.argv[2] || path.join(__dirname, '..', 'config', 'folders.txt');
-let CONFIG_FILE = initialArg;
+let CONFIG_FILES = [];
 let configDir = null;
 
 if (fs.existsSync(initialArg) && fs.statSync(initialArg).isDirectory()) {
     configDir = initialArg;
     // 設定フォルダ内に前回の設定ファイル名を保存する
     const lastConfStatePath = path.join(configDir, '.last_config.state');
-    let activeConf = null;
+    let activeConfs = null;
     if (fs.existsSync(lastConfStatePath)) {
         const saved = fs.readFileSync(lastConfStatePath, 'utf8').trim();
-        if (saved && fs.existsSync(path.join(configDir, saved))) {
-            activeConf = saved;
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    activeConfs = parsed.filter(f => fs.existsSync(path.join(configDir, f)));
+                }
+            } catch(e) {
+                const split = saved.split(',').map(f => f.trim()).filter(f => f && fs.existsSync(path.join(configDir, f)));
+                if (split.length > 0) {
+                    activeConfs = split;
+                }
+            }
         }
     }
-    if (!activeConf) {
+    if (!activeConfs || activeConfs.length === 0) {
         let files = [];
         try {
             files = fs.readdirSync(configDir).filter(f => f.endsWith('.txt'));
         } catch(e) {}
         if (files.length > 0) {
-            activeConf = files[0];
+            activeConfs = [files[0]];
         } else {
-            activeConf = 'folders.txt';
+            activeConfs = ['folders.txt'];
         }
     }
-    CONFIG_FILE = path.join(configDir, activeConf);
+    CONFIG_FILES = activeConfs.map(f => path.join(configDir, f));
+} else {
+    CONFIG_FILES = [initialArg];
 }
+let CONFIG_FILE = CONFIG_FILES[0] || initialArg;
 const INCLUDE_FILE = process.argv[3] || path.join(__dirname, '..', 'config', 'include.txt');
 const EXCLUDE_FILE = process.argv[4] || path.join(__dirname, '..', 'config', 'exclude.txt');
 let isInitialArgDir = false;
@@ -179,19 +192,52 @@ const cachedConfig = {
 
 function loadFolders() {
     try {
-        if (!fs.existsSync(CONFIG_FILE)) {
-            const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
-            fs.writeFileSync(CONFIG_FILE, defaultFoldersText, 'utf-8');
+        const foldersSet = new Set();
+        for (const filePath of CONFIG_FILES) {
+            if (!fs.existsSync(filePath)) {
+                if (path.basename(filePath) === 'folders.txt' || CONFIG_FILES.length === 1) {
+                    const defaultFoldersText = `# 画像を読み込みたいフォルダのフルパスを1行ずつ記述してください。サブフォルダも自動的に検索されます。\n# 先頭が「#」で始まる行はコメントとして無視されます。\n\n# 例:\n# C:\\Users\\Public\\Pictures\n# D:\\Photos\\Vacation\nC:\\\n`;
+                    fs.writeFileSync(filePath, defaultFoldersText, 'utf-8');
+                } else {
+                    continue;
+                }
+            }
+            const content = fs.readFileSync(filePath, 'utf-8');
+            content.split('\n')
+                   .map(line => line.trim())
+                   .filter(line => line && !line.startsWith('#'))
+                   .map(line => path.resolve(line))
+                   .filter(line => fs.existsSync(line))
+                   .forEach(folder => foldersSet.add(folder));
         }
-        const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
-        cachedConfig.folders = content.split('\n')
-                         .map(line => line.trim())
-                         .filter(line => line && !line.startsWith('#'))
-                         .map(line => path.resolve(line))
-                         .filter(line => fs.existsSync(line));
+        cachedConfig.folders = Array.from(foldersSet);
     } catch (err) {
         console.error('Error handling folders.txt:', err);
     }
+}
+
+function getConfigFileForPath(fullPath) {
+    if (CONFIG_FILES.length === 0) return 'folders.txt';
+    if (CONFIG_FILES.length === 1) return path.basename(CONFIG_FILES[0]);
+    
+    const resolvedPath = path.resolve(fullPath.includes('|') ? fullPath.split('|')[0] : fullPath);
+    for (const filePath of CONFIG_FILES) {
+        try {
+            if (fs.existsSync(filePath)) {
+                const content = fs.readFileSync(filePath, 'utf-8');
+                const fileFolders = content.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line && !line.startsWith('#'))
+                    .map(line => path.resolve(line));
+                for (const folder of fileFolders) {
+                    if (resolvedPath.startsWith(folder)) {
+                        return path.basename(filePath);
+                    }
+                }
+            }
+        } catch(e) {}
+    }
+    return path.basename(CONFIG_FILES[0]);
 }
 
 function loadIncludes() {
@@ -238,6 +284,16 @@ function loadExcludes() {
 }
 
 let configWatcher = null;
+let configWatchers = [];
+function clearConfigWatchers() {
+    configWatchers.forEach(w => {
+        try {
+            w.close();
+        } catch(e) {}
+    });
+    configWatchers = [];
+    configWatcher = null;
+}
 function watchFile(filePath, reloadFunc, label) {
     if (!fs.existsSync(path.dirname(filePath))) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -408,7 +464,7 @@ const server = http.createServer((req, res) => {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     files: txtFiles,
-                    current: path.basename(CONFIG_FILE)
+                    current: CONFIG_FILES.map(f => path.basename(f))
                 }));
             })
             .catch(e => {
@@ -423,26 +479,42 @@ const server = http.createServer((req, res) => {
             collectRequestBody(req, res, (body) => {
                 try {
                     const data = JSON.parse(body);
-                    if (data.file && configDir) {
-                        const newConfigPath = path.join(configDir, data.file);
+                    let inputFiles = [];
+                    if (data.files && Array.isArray(data.files)) {
+                        inputFiles = data.files;
+                    } else if (data.file) {
+                        inputFiles = [data.file];
+                    }
 
-                        if (isPathInside(configDir, newConfigPath) && fs.existsSync(newConfigPath) && fs.statSync(newConfigPath).isFile()) {
-                            // Update CONFIG_FILE and save to state
-                            CONFIG_FILE = newConfigPath;
-                            const lastConfStatePath = path.join(configDir, '.last_config.state');
-                            fs.writeFileSync(lastConfStatePath, data.file, 'utf8');
-
-                            // Re-watch the new file
-                            if (configWatcher) {
-                                configWatcher.close();
+                    if (inputFiles.length > 0 && configDir) {
+                        const validatedFiles = [];
+                        const validatedPaths = [];
+                        for (const file of inputFiles) {
+                            const newConfigPath = path.join(configDir, file);
+                            if (isPathInside(configDir, newConfigPath) && fs.existsSync(newConfigPath) && fs.statSync(newConfigPath).isFile()) {
+                                validatedFiles.push(file);
+                                validatedPaths.push(newConfigPath);
                             }
-                            configWatcher = watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
+                        }
 
-                            // Reload settings
+                        if (validatedFiles.length > 0) {
+                            CONFIG_FILES = validatedPaths;
+                            CONFIG_FILE = CONFIG_FILES[0];
+                            const lastConfStatePath = path.join(configDir, '.last_config.state');
+                            fs.writeFileSync(lastConfStatePath, JSON.stringify(validatedFiles), 'utf8');
+
+                            clearConfigWatchers();
+                            CONFIG_FILES.forEach(filePath => {
+                                configWatchers.push(watchFile(filePath, loadFolders, path.basename(filePath)));
+                            });
+                            if (configWatchers.length > 0) {
+                                configWatcher = configWatchers[0];
+                            }
+
                             loadFolders();
 
                             res.writeHead(200, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ success: true, file: data.file }));
+                            res.end(JSON.stringify({ success: true, files: validatedFiles, configFile: validatedFiles.join(', ') }));
                             return;
                         }
                     }
@@ -570,7 +642,7 @@ const server = http.createServer((req, res) => {
                             } catch (e) {}
                         }
                         
-                        const configFileName = path.basename(CONFIG_FILE);
+                        const configFileName = getConfigFileForPath(data.path);
                         
                         if (data.action === 'add' && data.path) {
                             const exists = rows.some(row => {
@@ -759,7 +831,7 @@ const server = http.createServer((req, res) => {
             filterMode: includeMode,
             filterInclude: includes,
             isConfigDir: !!configDir,
-            configFile: path.basename(CONFIG_FILE)
+            configFile: CONFIG_FILES.map(f => path.basename(f)).join(', ')
         }));
         return;
     }
@@ -987,6 +1059,7 @@ const server = http.createServer((req, res) => {
 });
 
 function setConfigFile(newPath) {
+    CONFIG_FILES = [newPath];
     CONFIG_FILE = newPath;
 }
 
@@ -997,7 +1070,13 @@ if (require.main === module) {
     loadExcludes();
 
     // Watch for changes
-    configWatcher = watchFile(CONFIG_FILE, loadFolders, 'folders.txt');
+    clearConfigWatchers();
+    CONFIG_FILES.forEach(filePath => {
+        configWatchers.push(watchFile(filePath, loadFolders, path.basename(filePath)));
+    });
+    if (configWatchers.length > 0) {
+        configWatcher = configWatchers[0];
+    }
     watchFile(INCLUDE_FILE, loadIncludes, 'include.txt');
     watchFile(EXCLUDE_FILE, loadExcludes, 'exclude.txt');
 
