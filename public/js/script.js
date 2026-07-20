@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const uncheckAllConfig = document.getElementById('uncheck-all-config');
     const clearConfigFilter = document.getElementById('clear-config-filter');
     const configSelectError = document.getElementById('config-select-error');
+    const selectedFilesContainer = document.getElementById('selected-files-container');
 
     // Filter modal UI elements
     const filterModal = document.getElementById('filter-modal');
@@ -1672,6 +1673,44 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function updateSelectedFilesDisplay() {
+        if (!selectedFilesContainer || !fileListContainer) return;
+        selectedFilesContainer.innerHTML = '';
+        
+        const checkedItems = Array.from(fileListContainer.querySelectorAll('.file-item'))
+            .filter(item => {
+                const cb = item.querySelector('input[type="checkbox"]');
+                return cb && cb.checked;
+            });
+
+        if (checkedItems.length === 0) {
+            const noSelectionSpan = document.createElement('span');
+            noSelectionSpan.textContent = '選択されていません';
+            noSelectionSpan.style.color = 'rgba(255, 255, 255, 0.4)';
+            noSelectionSpan.style.fontSize = '0.9em';
+            noSelectionSpan.style.fontStyle = 'italic';
+            noSelectionSpan.style.padding = '4px 0';
+            selectedFilesContainer.appendChild(noSelectionSpan);
+            return;
+        }
+
+        checkedItems.forEach(item => {
+            const filename = item.getAttribute('data-filename');
+            const chip = document.createElement('span');
+            chip.textContent = filename;
+            chip.style.background = 'rgba(52, 152, 219, 0.15)';
+            chip.style.border = '1px solid rgba(52, 152, 219, 0.4)';
+            chip.style.color = '#3498db';
+            chip.style.padding = '4px 10px';
+            chip.style.borderRadius = '16px';
+            chip.style.fontSize = '0.85em';
+            chip.style.fontWeight = 'bold';
+            chip.style.display = 'inline-flex';
+            chip.style.alignItems = 'center';
+            selectedFilesContainer.appendChild(chip);
+        });
+    }
+
     if(fileSelectBtn) {
         fileSelectBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1772,6 +1811,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 itemContainer.style.background = '';
                                 itemContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
                             }
+                            updateSelectedFilesDisplay();
                         };
 
                         itemContainer.addEventListener('click', (e) => {
@@ -1788,6 +1828,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     itemContainer.style.background = '';
                                     itemContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
                                 }
+                                updateSelectedFilesDisplay();
                             }
                         });
 
@@ -1800,6 +1841,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         fileListContainer.appendChild(itemContainer);
                     });
+                    updateSelectedFilesDisplay();
                     previousFocus = document.activeElement;
                     fileSelectModal.style.display = 'block';
                     document.body.style.overflow = 'hidden'; // Block background scroll
@@ -1955,6 +1997,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.style.background = '';
                 item.style.border = '1px solid rgba(255, 255, 255, 0.05)';
             });
+            updateSelectedFilesDisplay();
         });
     }
 
