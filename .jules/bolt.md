@@ -7,3 +7,6 @@
 ## 2024-05-19 - O(N) Array Operations in Hot Endpoints
 **Learning:** Performing O(N) array scans (`Array.prototype.some`) combined with synchronous operations like `path.resolve` inside frequently called API endpoints (e.g., `/image`) causes significant event loop lag and degrades server throughput.
 **Action:** Pre-calculate the necessary values during cache validation (e.g., resolving bookmark paths) and store them in a `Set` to enable O(1) lookups during the request cycle.
+## 2024-05-19 - Expensive System Calls in Hot Loops
+**Learning:** `path.resolve` requires evaluating the current working directory (`process.cwd()`) and doing complex string manipulations. Calling this repeatedly inside tight loops or high-frequency endpoints (like checking allowed directories for every chunk in the `/image` stream) causes measurable CPU overhead and degrades server throughput.
+**Action:** Wrap `path.resolve` inside a cache (`Map`) for frequently evaluated paths.
