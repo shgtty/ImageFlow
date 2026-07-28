@@ -256,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (reloadBtn) {
             reloadBtn.disabled = true;
+            reloadBtn.setAttribute('aria-busy', 'true');
             const svg = reloadBtn.querySelector('svg');
             if (svg) svg.classList.add('spin');
         }
@@ -342,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             if (reloadBtn) {
                 reloadBtn.disabled = false;
+                reloadBtn.removeAttribute('aria-busy');
                 const svg = reloadBtn.querySelector('svg');
                 if (svg) svg.classList.remove('spin');
             }
