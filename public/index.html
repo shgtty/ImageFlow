@@ -1311,7 +1311,7 @@
                 <span style="color:rgba(255,255,255,0.4); font-size:0.9em; font-style:italic;">選択されていません</span>
             </div>
             <div style="margin-bottom:14px; flex-shrink:0; position:relative; display:flex; align-items:center;">
-                <input type="text" id="config-filter-input" placeholder="設定ファイルを検索..." style="width:100%; padding:10px 36px 10px 12px; background:#222; border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1em; box-sizing:border-box; outline:none; transition:border-color 0.2s; font-family:inherit;">
+                <input type="text" id="config-filter-input" placeholder="設定ファイルを検索..." aria-label="設定ファイルを検索" style="width:100%; padding:10px 36px 10px 12px; background:#222; border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1em; box-sizing:border-box; outline:none; transition:border-color 0.2s; font-family:inherit;">
                 <button type="button" id="clear-config-filter" aria-label="検索ワードを消去" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:#888; font-size:1.4em; cursor:pointer; padding:2px; line-height:1; display:none; align-items:center; justify-content:center; transition:color 0.2s;">&times;</button>
             </div>
             <div id="file-list" style="flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
@@ -1505,7 +1505,7 @@
                         <div class="settings-desc">右から左 (RTL) の表示順を有効にします。</div>
                     </div>
                     <label class="settings-toggle">
-                        <input type="checkbox" id="settings-dual-rtl" aria-label="表示順方向 (RTL)">
+                        <input type="checkbox" role="switch" id="settings-dual-rtl" aria-label="表示順方向 (RTL)">
                         <span class="settings-slider"></span>
                     </label>
                 </div>
@@ -1517,7 +1517,7 @@
                         <div class="settings-desc">画面下部のシークバーを表示します。</div>
                     </div>
                     <label class="settings-toggle">
-                        <input type="checkbox" id="settings-seekbar-visible" aria-label="シークバー表示">
+                        <input type="checkbox" role="switch" id="settings-seekbar-visible" aria-label="シークバー表示">
                         <span class="settings-slider"></span>
                     </label>
                 </div>
@@ -1539,7 +1539,7 @@
                         <div class="settings-desc">マウスカーソル付近にファイル名を表示します。</div>
                     </div>
                     <label class="settings-toggle">
-                        <input type="checkbox" id="settings-cursor-tooltip" aria-label="ファイル名表示">
+                        <input type="checkbox" role="switch" id="settings-cursor-tooltip" aria-label="ファイル名表示">
                         <span class="settings-slider"></span>
                     </label>
                 </div>
@@ -1551,7 +1551,7 @@
                         <div class="settings-desc">include.txt によるフィルターを適用します。</div>
                     </div>
                     <label class="settings-toggle">
-                        <input type="checkbox" id="settings-enable-include" aria-label="フィルター有効化">
+                        <input type="checkbox" role="switch" id="settings-enable-include" aria-label="フィルター有効化">
                         <span class="settings-slider"></span>
                     </label>
                 </div>
