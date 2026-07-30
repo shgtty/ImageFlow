@@ -3299,10 +3299,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!bookmarkListContainer) return;
         bookmarkListContainer.innerHTML = '';
         
+        // ⚡ Bolt Optimization: Use Maps to memoize expensive string operations during filtering, sorting, and grouping to prevent UI freezing for large bookmark lists
+        const formatCache = new Map();
+        const getFormattedName = (path) => {
+            let name = formatCache.get(path);
+            if (name === undefined) {
+                name = formatBookmarkName(path);
+                formatCache.set(path, name);
+            }
+            return name;
+        };
+
+        const groupCache = new Map();
+        const getGroupName = (path) => {
+            let name = groupCache.get(path);
+            if (name === undefined) {
+                name = getBookmarkParentGroup(path);
+                groupCache.set(path, name);
+            }
+            return name;
+        };
+
         // 1. Filtering
         let filtered = (window.bookmarks || []).filter(localPath => {
             if (!bookmarkSearchQuery) return true;
-            const displayName = formatBookmarkName(localPath).toLowerCase();
+            const displayName = getFormattedName(localPath).toLowerCase();
             return displayName.includes(bookmarkSearchQuery) || localPath.toLowerCase().includes(bookmarkSearchQuery);
         });
         
@@ -3325,9 +3346,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Sorting
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (bookmarkSortMode === 'name-asc') {
-            filtered.sort((a, b) => collator.compare(formatBookmarkName(a), formatBookmarkName(b)));
+            filtered.sort((a, b) => collator.compare(getFormattedName(a), getFormattedName(b)));
         } else if (bookmarkSortMode === 'name-desc') {
-            filtered.sort((a, b) => collator.compare(formatBookmarkName(b), formatBookmarkName(a)));
+            filtered.sort((a, b) => collator.compare(getFormattedName(b), getFormattedName(a)));
         }
         
         // 3. Grouping and Rendering
@@ -3337,7 +3358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Group the items
             const groups = new Map();
             filtered.forEach(localPath => {
-                const groupKey = getBookmarkParentGroup(localPath);
+                const groupKey = getGroupName(localPath);
                 if (!groups.has(groupKey)) {
                     groups.set(groupKey, []);
                 }

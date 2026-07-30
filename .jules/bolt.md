@@ -10,3 +10,6 @@
 ## 2024-05-19 - Expensive System Calls in Hot Loops
 **Learning:** `path.resolve` requires evaluating the current working directory (`process.cwd()`) and doing complex string manipulations. Calling this repeatedly inside tight loops or high-frequency endpoints (like checking allowed directories for every chunk in the `/image` stream) causes measurable CPU overhead and degrades server throughput.
 **Action:** Wrap `path.resolve` inside a cache (`Map`) for frequently evaluated paths.
+## 2024-05-19 - O(N log N) String Parsing in Sort Loops
+**Learning:** Calling complex string manipulation functions (like regex or multiple splits/joins) directly inside `Array.prototype.sort()` comparator functions or `forEach` rendering loops causes catastrophic performance degradation (O(N log N) and O(N) respectively) for large lists, leading to severe UI freezing.
+**Action:** When filtering, sorting, or grouping large lists in the frontend based on derived string values, always memoize the derived values using a `Map` cache or implement a Schwartzian transform to ensure the expensive operation runs at most O(N) times.
