@@ -1759,6 +1759,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
                         checkbox.checked = isActive;
+                        checkbox.tabIndex = -1;
+                        checkbox.setAttribute('aria-hidden', 'true');
                         checkbox.style.cursor = 'pointer';
                         checkbox.style.width = '18px';
                         checkbox.style.height = '18px';
@@ -1773,6 +1775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         itemContainer.appendChild(leftDiv);
 
                         const editBtn = document.createElement('button');
+                        editBtn.type = 'button';
                         editBtn.className = 'edit-file-btn';
                         editBtn.title = 'ファイルを編集';
                         editBtn.setAttribute('aria-label', `${file} を編集`);
@@ -2839,6 +2842,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.createBookmarkButton = function(url) {
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'bookmark-star-btn';
         const bookmarked = window.isBookmarked(url);
         if (bookmarked) {
@@ -3161,6 +3165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nameSpan.title = localPath;
             
             const delBtn = document.createElement('button');
+            delBtn.type = 'button';
             delBtn.className = 'edit-file-btn';
             delBtn.style.color = '#e74c3c';
             delBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
@@ -3264,6 +3269,7 @@ document.addEventListener('DOMContentLoaded', () => {
             infoDiv.appendChild(titleDiv);
 
             const delBtn = document.createElement('button');
+            delBtn.type = 'button';
             delBtn.className = 'bookmark-card-del-btn';
             delBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
             delBtn.title = '削除';
