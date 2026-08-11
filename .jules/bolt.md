@@ -13,3 +13,6 @@
 ## 2024-05-19 - O(N log N) String Parsing in Sort Loops
 **Learning:** Calling complex string manipulation functions (like regex or multiple splits/joins) directly inside `Array.prototype.sort()` comparator functions or `forEach` rendering loops causes catastrophic performance degradation (O(N log N) and O(N) respectively) for large lists, leading to severe UI freezing.
 **Action:** When filtering, sorting, or grouping large lists in the frontend based on derived string values, always memoize the derived values using a `Map` cache or implement a Schwartzian transform to ensure the expensive operation runs at most O(N) times.
+## 2024-05-19 - Expensive Object Instantiation in Render Loops
+**Learning:** Instantiating `Intl.Collator` (or other complex objects) inside high-frequency rendering functions (like `renderBookmarkList`) causes significant performance overhead and unnecessary garbage collection because it is re-created every time the list is filtered, sorted, or refreshed.
+**Action:** Move the instantiation of such expensive objects to an outer scope (module level) so they are initialized only once and reused across all function invocations.

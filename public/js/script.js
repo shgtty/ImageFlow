@@ -3297,6 +3297,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ⚡ Bolt Optimization: Instantiate Intl.Collator once to prevent redundant expensive initialization on every render loop
+    const bookmarkCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
     function renderBookmarkList() {
         if (!bookmarkListContainer) return;
         bookmarkListContainer.innerHTML = '';
@@ -3346,11 +3349,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 2. Sorting
-        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (bookmarkSortMode === 'name-asc') {
-            filtered.sort((a, b) => collator.compare(getFormattedName(a), getFormattedName(b)));
+            filtered.sort((a, b) => bookmarkCollator.compare(getFormattedName(a), getFormattedName(b)));
         } else if (bookmarkSortMode === 'name-desc') {
-            filtered.sort((a, b) => collator.compare(getFormattedName(b), getFormattedName(a)));
+            filtered.sort((a, b) => bookmarkCollator.compare(getFormattedName(b), getFormattedName(a)));
         }
         
         // 3. Grouping and Rendering
@@ -3368,7 +3370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Sort group keys
-            const sortedGroupKeys = Array.from(groups.keys()).sort(collator.compare);
+            const sortedGroupKeys = Array.from(groups.keys()).sort(bookmarkCollator.compare);
             
             sortedGroupKeys.forEach(groupKey => {
                 const groupItems = groups.get(groupKey);
