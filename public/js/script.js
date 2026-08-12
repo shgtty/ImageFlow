@@ -3345,11 +3345,28 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (filtered.length === 0) {
             const emptyMsg = document.createElement('div');
-            emptyMsg.style.padding = '40px 20px';
+            emptyMsg.style.padding = '60px 20px';
             emptyMsg.style.textAlign = 'center';
             emptyMsg.style.color = '#aaa';
-            emptyMsg.style.fontSize = '1.1em';
-            emptyMsg.textContent = bookmarkSearchQuery ? '一致するブックマークはありません。' : 'ブックマークはありません。';
+
+            if (bookmarkSearchQuery) {
+                emptyMsg.style.fontSize = '1.1em';
+                emptyMsg.textContent = '一致するブックマークはありません。';
+            } else {
+                emptyMsg.innerHTML = `
+                    <div style="margin-bottom: 16px;">
+                        <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: rgba(255, 255, 255, 0.2);">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                        </svg>
+                    </div>
+                    <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 8px; color: #ddd;">ブックマークはありません</div>
+                    <div style="font-size: 0.95em; color: #888; line-height: 1.5; max-width: 400px; margin: 0 auto;">
+                        画像にマウスを重ねて右上の☆マークをクリックすると、ここに追加されます。<br>
+                        お気に入りの画像を保存して、いつでも見返しましょう。
+                    </div>
+                `;
+            }
+
             bookmarkListContainer.appendChild(emptyMsg);
             return;
         }

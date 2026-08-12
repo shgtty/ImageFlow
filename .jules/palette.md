@@ -13,6 +13,15 @@
 ## 2025-02-14 - Checkbox-Based Toggle UI Accessibility
 **Learning:** When using `<input type="checkbox">` elements visually styled as toggle switches, screen readers will announce them as standard checkboxes (checked/unchecked) unless explicitly told otherwise. This mismatch between visual appearance (switch) and auditory feedback (checkbox) can confuse users.
 **Action:** Always add `role="switch"` to checkboxes styled as toggle switches to ensure screen readers announce them properly as switches (on/off).
+
+## 2024-08-11 - [Accessible Custom List Items with Native Inputs]
+**Learning:** When building custom accessible list items (like `role="checkbox"` `div` elements) that internally use a native purely visual `<input type="checkbox">` for styling or state representation, the inner native input will cause double-focusing and confusing redundant announcements by screen readers if left as-is.
+**Action:** Always explicitly add `tabindex="-1"` and `aria-hidden="true"` to the inner native `<input>` when its parent element is already acting as the focusable and accessible interactive widget (`role="checkbox"`, `tabindex="0"`, `aria-checked="..."`). This delegates all accessibility responsibilities to the properly ARIA-labeled parent and prevents the native input from interfering with keyboard navigation or screen reader flow.
+
+## 2025-03-01 - Providing Helpful Empty States with Call-to-Actions
+**Learning:** A plain text message like "No items found" in empty states (like the bookmark list) lacks guidance, especially if the primary action (adding a bookmark) is only discovered via hover interactions on the main view.
+**Action:** When a list is naturally empty (e.g., no items added yet), replace the plain text with an icon and a helpful, descriptive instruction detailing exactly how the user can populate the list, enhancing discoverability of hidden or hover-dependent features.
+
 ## 2024-08-11 - [Accessible Custom List Items with Native Inputs]
 **Learning:** When building custom accessible list items (like `role="checkbox"` `div` elements) that internally use a native purely visual `<input type="checkbox">` for styling or state representation, the inner native input will cause double-focusing and confusing redundant announcements by screen readers if left as-is.
 **Action:** Always explicitly add `tabindex="-1"` and `aria-hidden="true"` to the inner native `<input>` when its parent element is already acting as the focusable and accessible interactive widget (`role="checkbox"`, `tabindex="0"`, `aria-checked="..."`). This delegates all accessibility responsibilities to the properly ARIA-labeled parent and prevents the native input from interfering with keyboard navigation or screen reader flow.
