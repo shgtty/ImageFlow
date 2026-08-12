@@ -112,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Bookmark State ---
     window.bookmarks = [];
+    // ⚡ Bolt Optimization: Use a Set for O(1) bookmark lookups to prevent O(N * M) performance degradation when navigating large lists
+    window.bookmarksSet = new Set();
 
     // --- Initialization ---
     if (typeof DualView !== 'undefined') DualView.init();
@@ -2778,6 +2780,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 const data = await res.json();
                 window.bookmarks = data.bookmarks || [];
+                window.bookmarksSet = new Set(window.bookmarks);
             }
         } catch (e) {
             console.error('Failed to load bookmarks', e);
@@ -2786,17 +2789,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.isBookmarked = function(url) {
         const localPath = getLocalPathFromUrl(url);
-        return window.bookmarks.includes(localPath);
+        return window.bookmarksSet.has(localPath);
     };
 
     window.toggleBookmark = async function(url, btnElement) {
         const localPath = getLocalPathFromUrl(url);
-        const isCurrentlyBookmarked = window.bookmarks.includes(localPath);
+        const isCurrentlyBookmarked = window.bookmarksSet.has(localPath);
         const action = isCurrentlyBookmarked ? 'remove' : 'add';
 
         // Optimistic UI update
         if (action === 'add') {
             window.bookmarks.push(localPath);
+            window.bookmarksSet.add(localPath);
             if (btnElement) {
                 btnElement.classList.add('bookmarked');
                 btnElement.setAttribute('aria-pressed', 'true');
@@ -2805,6 +2809,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             window.bookmarks = window.bookmarks.filter(p => p !== localPath);
+            window.bookmarksSet.delete(localPath);
             if (btnElement) {
                 btnElement.classList.remove('bookmarked');
                 btnElement.setAttribute('aria-pressed', 'false');
@@ -2823,6 +2828,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data.success) {
                 window.bookmarks = data.bookmarks;
+                window.bookmarksSet = new Set(window.bookmarks);
             }
         } catch (e) {
             console.error('Bookmark toggle failed', e);
@@ -2998,6 +3004,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = await res.json();
                     if (data.success) {
                         window.bookmarks = data.bookmarks || [];
+                        window.bookmarksSet = new Set(window.bookmarks);
                         renderBookmarkList();
                         
                         // Update visible main gallery buttons
