@@ -528,12 +528,18 @@ const GalleryView = (() => {
         }
 
         // 4. LAST, INVERT, PLAY: アニメーションの実行
+        // ⚡ Bolt Optimization: Batch DOM reads (getBoundingClientRect) before applying animations (writes) to eliminate synchronous Layout Thrashing
+        const newPositions = new Map();
+        existingItems.forEach(item => {
+            const img = item.querySelector('img') || item;
+            newPositions.set(item, img.getBoundingClientRect());
+        });
+
         existingItems.forEach(item => {
             const oldPos = imgPositions.get(item);
             if (!oldPos) return;
 
-            const img = item.querySelector('img') || item;
-            const newPos = img.getBoundingClientRect();
+            const newPos = newPositions.get(item);
             if (newPos.width === 0 || newPos.height === 0 || oldPos.width === 0 || oldPos.height === 0) return;
 
             const deltaX = oldPos.left - newPos.left;

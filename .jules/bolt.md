@@ -16,3 +16,6 @@
 ## 2024-05-19 - Expensive Object Instantiation in Render Loops
 **Learning:** Instantiating `Intl.Collator` (or other complex objects) inside high-frequency rendering functions (like `renderBookmarkList`) causes significant performance overhead and unnecessary garbage collection because it is re-created every time the list is filtered, sorted, or refreshed.
 **Action:** Move the instantiation of such expensive objects to an outer scope (module level) so they are initialized only once and reused across all function invocations.
+## 2026-08-18 - FLIP Animation Layout Thrashing
+**Learning:** Calling `getBoundingClientRect()` and `Element.animate()` sequentially inside a single loop iterating over multiple DOM nodes causes synchronous layout recalculation (Layout Thrashing) because the browser must update the layout before reading the next element's bounds.
+**Action:** Always strictly batch DOM reads and writes by separating them into two discrete loops: first, loop to cache all `getBoundingClientRect()` values into a Map, and second, loop to apply the `animate()` calls using the cached values.
