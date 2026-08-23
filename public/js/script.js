@@ -1736,6 +1736,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
                     fileListContainer.innerHTML = '';
+                    if (res.files.length === 0) {
+                        fileListContainer.innerHTML = `
+                            <div style="text-align: center; color: #aaa; padding: 20px 0;">
+                                <div style="margin-bottom: 10px;">
+                                    <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: rgba(255, 255, 255, 0.2);">
+                                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                    </svg>
+                                </div>
+                                <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 8px; color: #ddd;">設定ファイルがありません</div>
+                                <div style="font-size: 0.9em; color: #888; line-height: 1.4;">
+                                    <code>config</code> フォルダ内に <code>.txt</code> ファイルを配置すると<br>
+                                    ここに表示されます。
+                                </div>
+                            </div>
+                        `;
+                    }
                     res.files.forEach(file => {
                         const itemContainer = document.createElement('div');
                         itemContainer.className = 'file-item';
