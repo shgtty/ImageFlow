@@ -19,3 +19,6 @@
 ## 2026-08-18 - FLIP Animation Layout Thrashing
 **Learning:** Calling `getBoundingClientRect()` and `Element.animate()` sequentially inside a single loop iterating over multiple DOM nodes causes synchronous layout recalculation (Layout Thrashing) because the browser must update the layout before reading the next element's bounds.
 **Action:** Always strictly batch DOM reads and writes by separating them into two discrete loops: first, loop to cache all `getBoundingClientRect()` values into a Map, and second, loop to apply the `animate()` calls using the cached values.
+## 2024-05-19 - elementFromPoint on MouseMove
+**Learning:** Using `document.elementFromPoint()` inside high-frequency events like `mousemove` causes synchronous layout and hit-testing overhead, leading to frame drops (jank) even if wrapped in `requestAnimationFrame`.
+**Action:** Always track the hovered element by reading `e.target` in the `mousemove` listener or using event delegation, instead of querying it computationally.

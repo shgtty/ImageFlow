@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let enableCursorTooltip = localStorage.getItem(STORAGE_KEY_CURSOR_TOOLTIP) === 'true';
     let lastMouseX = 0;
     let lastMouseY = 0;
+    let hoveredImageElement = null;
     let lastDualIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || -1; 
     let gallerySortMode = localStorage.getItem(STORAGE_KEY_GALLERY_SORT) || 'random';
     let dualSortMode = localStorage.getItem(STORAGE_KEY_DUAL_SORT) || 'asc';
@@ -1102,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const target = document.elementFromPoint(lastMouseX, lastMouseY);
+        const target = hoveredImageElement;
         if (target && target.tagName === 'IMG') {
             const currentSrc = target.src;
             let filename = '';
@@ -2152,6 +2153,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('mousemove', (e) => {
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
+
+        // ⚡ Bolt Optimization: Track hovered element via e.target to avoid
+        // expensive synchronous document.elementFromPoint hit-testing.
+        if (e.target && e.target.tagName === 'IMG') {
+            hoveredImageElement = e.target;
+        } else {
+            hoveredImageElement = null;
+        }
+
         if (!enableCursorTooltip || !cursorTooltip) return;
 
         if (!isTooltipUpdateScheduled) {
