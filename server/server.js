@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
-const { isPathInside } = require('./utils');
+const { isPathInside, getResolvedPath } = require('./utils');
 
 const zipCache = new Map();
 const MAX_CACHE_SIZE = 100;
@@ -206,7 +206,7 @@ function loadFolders() {
             content.split('\n')
                    .map(line => line.trim())
                    .filter(line => line && !line.startsWith('#'))
-                   .map(line => path.resolve(line))
+                   .map(line => getResolvedPath(line))
                    .filter(line => fs.existsSync(line))
                    .forEach(folder => foldersSet.add(folder));
         }
@@ -220,7 +220,7 @@ function getConfigFileForPath(fullPath) {
     if (CONFIG_FILES.length === 0) return 'folders.txt';
     if (CONFIG_FILES.length === 1) return path.basename(CONFIG_FILES[0]);
     
-    const resolvedPath = path.resolve(fullPath.includes('|') ? fullPath.split('|')[0] : fullPath);
+    const resolvedPath = getResolvedPath(fullPath.includes('|') ? fullPath.split('|')[0] : fullPath);
     for (const filePath of CONFIG_FILES) {
         try {
             if (fs.existsSync(filePath)) {
@@ -228,7 +228,7 @@ function getConfigFileForPath(fullPath) {
                 const fileFolders = content.split('\n')
                     .map(line => line.trim())
                     .filter(line => line && !line.startsWith('#'))
-                    .map(line => path.resolve(line));
+                    .map(line => getResolvedPath(line));
                 for (const folder of fileFolders) {
                     if (resolvedPath.startsWith(folder)) {
                         return path.basename(filePath);
@@ -845,7 +845,7 @@ const server = http.createServer((req, res) => {
             const [basePath, entryName] = isZipEntry ? imgPath.split('|') : [imgPath, null];
 
             // Path Traversal check
-            const resolvedPath = path.resolve(basePath);
+            const resolvedPath = getResolvedPath(basePath);
             const allowedPaths = getAllowedPaths();
             let isAllowed = allowedPaths.some(allowed => isPathInside(allowed, resolvedPath));
 
@@ -861,7 +861,7 @@ const server = http.createServer((req, res) => {
                             // ⚡ Bolt Optimization: Pre-calculate resolved paths and store them in a Set for O(1) lookups
                             bookmarksCache.resolvedPathsSet = new Set(bookmarksCache.paths.map(bookmarkPath => {
                                 const bPath = bookmarkPath.includes('|') ? bookmarkPath.split('|')[0] : bookmarkPath;
-                                return path.resolve(bPath);
+                                return getResolvedPath(bPath);
                             }));
                             bookmarksCache.mtime = stats.mtimeMs;
                         }
@@ -1014,7 +1014,7 @@ const server = http.createServer((req, res) => {
     }
 
     // Serve static files from 'public' directory
-    const publicDir = path.resolve(__dirname, '..', 'public');
+    const publicDir = getResolvedPath(path.join(__dirname, '..', 'public'));
     let requestedPath = (rawPathname === '/' || rawPathname === '') ? '/index.html' : rawPathname;
 
     // Decode URI component to handle %2e etc.
@@ -1027,7 +1027,7 @@ const server = http.createServer((req, res) => {
     }
 
     const filePath = path.join(publicDir, requestedPath);
-    const resolvedPath = path.resolve(filePath);
+    const resolvedPath = getResolvedPath(filePath);
 
     // Security check: ensure the resolved path is within the public directory
     if (!isPathInside(publicDir, resolvedPath)) {
