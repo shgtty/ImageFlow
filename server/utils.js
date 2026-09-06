@@ -28,5 +28,6 @@ function isPathInside(baseDir, targetPath) {
 }
 
 module.exports = {
-    isPathInside
+    isPathInside,
+    getResolvedPath
 };

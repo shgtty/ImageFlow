@@ -22,3 +22,6 @@
 ## 2024-05-19 - elementFromPoint on MouseMove
 **Learning:** Using `document.elementFromPoint()` inside high-frequency events like `mousemove` causes synchronous layout and hit-testing overhead, leading to frame drops (jank) even if wrapped in `requestAnimationFrame`.
 **Action:** Always track the hovered element by reading `e.target` in the `mousemove` listener or using event delegation, instead of querying it computationally.
+## 2026-09-01 - Cached path.resolve
+**Learning:** `path.resolve` can be expensive in hot loops. Although earlier optimizations cached it in a specific context, creating a global helper `getResolvedPath` in `utils.js` applies it consistently across the server.
+**Action:** Always check if a globally accessible cached helper already exists before implementing a new one to prevent bugs and code duplication.
