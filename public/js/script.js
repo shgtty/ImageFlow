@@ -1051,14 +1051,15 @@ document.addEventListener('DOMContentLoaded', () => {
         showModeOverlay('表示順変更', dirText, null, '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M19 15l-3.5-3.5L14 13l2.5 2.5H5v2h11.5L14 20l1.5 1.5L19 18v-3zM5 9l3.5 3.5L10 11 7.5 8.5H19v-2H7.5L10 4 8.5 2.5 5 6v3z"/></svg>');
     }
 
-    function toggleColorMode() {
+    function toggleColorMode(reverse = false) {
         const colorModes = ['', 'color-mode-gray', 'color-mode-sepia', 'color-mode-invert', 'color-mode-contrast', 'color-mode-saturate', 'color-mode-blur', 'color-mode-pixel', 'color-mode-crt'];
         
         if (colorModes[currentColorModeIndex]) {
             document.body.classList.remove(colorModes[currentColorModeIndex]);
         }
         
-        currentColorModeIndex = (currentColorModeIndex + 1) % colorModes.length;
+        const step = reverse ? -1 : 1;
+        currentColorModeIndex = (currentColorModeIndex + step + colorModes.length) % colorModes.length;
         localStorage.setItem(STORAGE_KEY_COLOR_MODE, currentColorModeIndex);
         
         if (colorModes[currentColorModeIndex]) {
@@ -1499,7 +1500,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dirBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleDirection(); });
     seekbarToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSeekbar(); });
     if(includeToggleBtn) includeToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInclude(); });
-    if(colorModeBtn) colorModeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleColorMode(); });
+    if(colorModeBtn) colorModeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleColorMode(e.shiftKey); });
     if(cursorTooltipBtn) cursorTooltipBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleCursorTooltip(); });
 
     if (settingsBtn) {
@@ -2417,7 +2418,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === 'b' || e.key === 'B') {
             openBookmarkModal();
         } else if (e.key === 'c' || e.key === 'C') {
-            toggleColorMode();
+            toggleColorMode(e.shiftKey);
         } else if (e.key === 'i' || e.key === 'I') {
             toggleCursorTooltip();
         } else if (e.key === 'f' || e.key === 'F') {
