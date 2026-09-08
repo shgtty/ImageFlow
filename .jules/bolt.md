@@ -25,3 +25,6 @@
 ## 2026-09-01 - Cached path.resolve
 **Learning:** `path.resolve` can be expensive in hot loops. Although earlier optimizations cached it in a specific context, creating a global helper `getResolvedPath` in `utils.js` applies it consistently across the server.
 **Action:** Always check if a globally accessible cached helper already exists before implementing a new one to prevent bugs and code duplication.
+## 2025-01-08 - Ineffective Wheel Event Throttling for Discrete Navigations
+**Learning:** Throttling high-frequency mouse wheel events for discrete navigation actions (like next/prev slides in a carousel/dual-view) to extremely low values (e.g., 10ms) is ineffective and functions as an anti-pattern. Because smooth-scrolling mice and trackpads can fire dozens of events per second, a 10ms throttle still allows rapid-fire redundant network fetch requests and layout thrashing, causing severe UI skipping and jank.
+**Action:** Apply a much larger time-based throttle (e.g., 250ms) to ensure discrete navigations only occur once per intentional user scroll gesture.
