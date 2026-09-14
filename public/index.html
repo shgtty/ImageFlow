@@ -1107,10 +1107,363 @@
             min-width: 45px;
             text-align: right;
         }
+
+        /* --- 画面左端 フォルダ・ZIP内フォルダ一覧ドロワー --- */
+        #drawer-hover-trigger {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 24px;
+            height: 100vh;
+            z-index: 1050;
+            pointer-events: auto;
+            background: transparent;
+        }
+
+        #folder-drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 340px;
+            max-width: calc(100vw - 40px);
+            height: 100vh;
+            z-index: 1100;
+            background: rgba(18, 20, 26, 0.96);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.6);
+            transform: translateX(-100%);
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            color: #eee;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #folder-drawer.open,
+        #folder-drawer.pinned {
+            transform: translateX(0);
+        }
+
+        /* 非アクティブ時のカーソル非表示でもドロワー内は通常カーソルを表示 */
+        body.hide-cursor #folder-drawer,
+        body.hide-cursor #folder-drawer * {
+            cursor: default !important;
+        }
+
+        body.hide-cursor #folder-drawer [role="button"],
+        body.hide-cursor #folder-drawer button,
+        body.hide-cursor #folder-drawer input {
+            cursor: pointer !important;
+        }
+
+        body.hide-cursor #folder-drawer input[type="text"] {
+            cursor: text !important;
+        }
+
+        .folder-drawer-header {
+            padding: 16px 16px 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .folder-drawer-title-area {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .folder-drawer-main-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05em;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .folder-drawer-icon {
+            width: 20px;
+            height: 20px;
+            fill: #3498db;
+            flex-shrink: 0;
+        }
+
+        .folder-drawer-total-count {
+            font-size: 0.75em;
+            font-weight: normal;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 2px 8px;
+            border-radius: 12px;
+            color: #bbb;
+        }
+
+        .folder-drawer-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .drawer-icon-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .drawer-icon-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .drawer-icon-btn:focus-visible {
+            outline: 2px solid #3498db;
+        }
+
+        .drawer-icon-btn.active {
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+        .drawer-icon-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .folder-drawer-search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            padding: 6px 10px;
+            gap: 8px;
+            transition: border-color 0.2s;
+        }
+
+        .folder-drawer-search-box:focus-within {
+            border-color: #3498db;
+        }
+
+        .folder-drawer-search-box .search-icon {
+            width: 16px;
+            height: 16px;
+            fill: #777;
+            flex-shrink: 0;
+        }
+
+        .folder-drawer-search-box input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 0.9em;
+            width: 100%;
+        }
+
+        .folder-drawer-search-box input::placeholder {
+            color: #666;
+        }
+
+        #drawer-search-clear {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        #drawer-search-clear:hover {
+            color: #fff;
+        }
+
+        .folder-drawer-list {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .folder-drawer-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+
+        .folder-drawer-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .folder-drawer-item:focus-visible {
+            outline: 2px solid #3498db;
+            outline-offset: -1px;
+        }
+
+        .folder-drawer-item.active {
+            background: rgba(52, 152, 219, 0.18);
+            border-color: rgba(52, 152, 219, 0.5);
+        }
+
+        .folder-drawer-thumb-box {
+            width: 54px;
+            height: 54px;
+            border-radius: 6px;
+            background: #000;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        .folder-drawer-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .folder-drawer-thumb-fallback {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+        }
+
+        .folder-drawer-thumb-fallback svg {
+            width: 26px;
+            height: 26px;
+            fill: currentColor;
+        }
+
+        .folder-drawer-video-badge {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 3px;
+            padding: 2px 4px;
+            display: flex;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .folder-drawer-video-badge svg {
+            width: 12px;
+            height: 12px;
+            fill: #fff;
+        }
+
+        .folder-drawer-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .folder-drawer-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #f0f0f0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .folder-drawer-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .folder-drawer-badge.badge-zip {
+            font-size: 0.7em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #8e44ad, #9b59b6);
+            color: #fff;
+            padding: 1px 5px;
+            border-radius: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        .folder-drawer-count {
+            font-size: 0.75em;
+            color: #888;
+        }
+
+        .folder-drawer-empty {
+            padding: 30px 10px;
+            text-align: center;
+            color: #777;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 
 <body>
+    <!-- 画面左端 ホバートリガー領域 -->
+    <div id="drawer-hover-trigger" aria-hidden="true"></div>
+
+    <!-- 画面左端 フォルダ・ZIP内フォルダ一覧ドロワー -->
+    <aside id="folder-drawer" class="folder-drawer" aria-label="フォルダ一覧" role="region">
+        <div class="folder-drawer-header">
+            <div class="folder-drawer-title-area">
+                <div class="folder-drawer-main-title">
+                    <svg viewBox="0 0 24 24" class="folder-drawer-icon"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                    <span>フォルダ一覧</span>
+                    <span id="drawer-folder-count" class="folder-drawer-total-count">0 フォルダ</span>
+                </div>
+                <div class="folder-drawer-actions">
+                    <button type="button" id="drawer-pin-btn" class="drawer-icon-btn" title="ピン留め（常に表示）" aria-pressed="false" aria-label="フォルダ一覧をピン留め">
+                        <svg viewBox="0 0 24 24"><path d="M16 9V4l1 0c0.55 0 1-0.45 1-1s-0.45-1-1-1H7C6.45 2 6 2.45 6 3s0.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/></svg>
+                    </button>
+                    <button type="button" id="drawer-close-btn" class="drawer-icon-btn" title="閉じる" aria-label="フォルダ一覧を閉じる">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="folder-drawer-search-box">
+                <svg viewBox="0 0 24 24" class="search-icon"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="drawer-search-input" placeholder="フォルダ名で絞り込み..." aria-label="フォルダ検索">
+                <button type="button" id="drawer-search-clear" style="display:none;" aria-label="検索クリア">&times;</button>
+            </div>
+        </div>
+        <div id="folder-drawer-list" class="folder-drawer-list"></div>
+    </aside>
+
     <div id="mode-overlay" role="status" aria-live="polite"></div>
     <div id="cursor-tooltip"></div>
     <div id="direction-overlay"></div>
@@ -1601,6 +1954,7 @@
     </div>
 
     <script src="js/utils.js"></script>
+    <script src="js/folder-drawer.js"></script>
     <script src="js/dual-view.js"></script>
     <script src="js/gallery-view.js"></script>
     <script src="js/script.js"></script>

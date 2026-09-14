@@ -78,8 +78,8 @@ const DualView = (() => {
             if (!isActive) return;
             if (e.target.closest('.fab')) return;
 
-            // Block clicks if they originated inside a modal (e.g., closing the modal)
-            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal, #settings-modal')) return;
+            // Block clicks if they originated inside a modal or drawer
+            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal, #settings-modal, #folder-drawer, #drawer-hover-trigger')) return;
 
             // Block clicks if clicking on a video element to allow interacting with controls
             if (e.target.closest('video')) return;
@@ -109,6 +109,9 @@ const DualView = (() => {
         let lastWheelTime = 0;
         currentWheelHandler = (e) => {
             if (!isActive) return;
+
+            // Block wheel if over folder drawer or a modal
+            if (e.target.closest('#folder-drawer, #drawer-hover-trigger, #file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal, #settings-modal')) return;
 
             // Block wheel if a modal is open
             const fileSelectModal = document.getElementById('file-select-modal');
@@ -150,8 +153,8 @@ const DualView = (() => {
             const bookmarkModal = document.getElementById('bookmark-modal');
             if (bookmarkModal && bookmarkModal.style.display === 'block') { galleryElement.style.cursor = ''; return; }
 
-            // Block custom cursor if hovering over UI elements
-            if (e.target.closest('.fab, #seekbar-container, .bookmark-star-btn')) {
+            // Block custom cursor if hovering over UI elements or drawer
+            if (e.target.closest('.fab, #seekbar-container, .bookmark-star-btn, #folder-drawer, #drawer-hover-trigger')) {
                 galleryElement.style.cursor = '';
                 return;
             }

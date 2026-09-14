@@ -119,6 +119,98 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialization ---
     if (typeof DualView !== 'undefined') DualView.init();
     if (typeof GalleryView !== 'undefined') GalleryView.init();
+    if (typeof FolderDrawer !== 'undefined') {
+        FolderDrawer.init({
+            onJump: async (url, index, folder) => {
+                const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+                const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
+
+                if (currentSort === 'random') {
+                    // ランダム表示時にドロワーからフォルダを選択した場合は、
+                    // 選択したフォルダの「フォルダ単位ランダム表示」に切り替える
+                    const targetFolderPath = folder ? folder.folderPath : (typeof getFolderPath === 'function' ? getFolderPath(url) : '');
+                    
+                    if (mode === 'dual') {
+                        dualSortMode = 'folder-random';
+                        localStorage.setItem(STORAGE_KEY_DUAL_SORT, 'folder-random');
+                    } else {
+                        gallerySortMode = 'folder-random';
+                        localStorage.setItem(STORAGE_KEY_GALLERY_SORT, 'folder-random');
+                    }
+                    updateSortIcon();
+
+                    try {
+                        const res = await fetch(`/api/images?sort=folder-random&enableInclude=${enableInclude}`);
+                        if (!res.ok) throw new Error('Failed to fetch folder-random images');
+                        const data = await res.json();
+
+                        currentConfigFile = data.configFile || '';
+                        allImagesUrls = data.images || [];
+                        updateFolderDrawer();
+
+                        if (allImagesUrls.length === 0) {
+                            seekbar.max = 0;
+                            seekbar.value = 0;
+                            seekbarInfo.textContent = '0 / 0';
+                            seekbar.setAttribute('aria-valuetext', seekbarInfo.textContent);
+                            if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                                DualView.updateImagesAndReset([], 0, true);
+                            } else if (mode === 'gallery' && typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                                GalleryView.updateImagesAndReset([], 0);
+                            }
+                            return;
+                        }
+
+                        // 選択されたフォルダに属する先頭の画像インデックスを探す
+                        let targetIndex = -1;
+                        if (targetFolderPath) {
+                            for (let i = 0; i < allImagesUrls.length; i++) {
+                                if (getFolderPath(allImagesUrls[i]) === targetFolderPath) {
+                                    targetIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        if (targetIndex === -1) {
+                            targetIndex = 0;
+                        }
+
+                        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                        if (mode === 'dual' && typeof DualView !== 'undefined' && DualView.isActive) {
+                            DualView.updateImagesAndReset(allImagesUrls, targetIndex, true);
+                        } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+                            GalleryView.updateImagesAndReset(allImagesUrls, targetIndex, { restoreSpeed: true });
+                        }
+                        updateSeekbar();
+
+                        const folderDisplayName = folder ? folder.displayName : (typeof getFolderDisplayName === 'function' ? getFolderDisplayName(allImagesUrls[targetIndex]) : '');
+                        const displayCount = getFolderBounds(targetIndex, allImagesUrls).total;
+                        const modeName = mode === 'dual' ? 'デュアルビュー' : 'ギャラリービュー';
+                        const sortNames = {
+                            'asc': '昇順',
+                            'folder-random': 'フォルダ単位ランダム',
+                            'random': 'ランダム'
+                        };
+                        const iconHtml = mode === 'dual'
+                            ? '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h10v6zm0-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>'
+                            : '<svg class="mode-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zm-9 9h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>';
+                        showModeOverlay(modeName, `${sortNames['folder-random']} [${folderDisplayName}]`, displayCount, iconHtml);
+                    } catch (err) {
+                        console.error('Error switching to folder-random mode:', err);
+                        jumpToImage(url);
+                    }
+                } else {
+                    jumpToImage(url);
+                }
+            }
+        });
+    }
+
+    function updateFolderDrawer() {
+        if (typeof FolderDrawer !== 'undefined') {
+            FolderDrawer.setImages(allImagesUrls);
+        }
+    }
 
     updateSortIcon();
     updateModeIcon();
@@ -276,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.totalFound === 0) {
                 allImagesUrls = []; // Clear current list if nothing found
+                updateFolderDrawer();
                 seekbar.max = 0;
                 seekbar.value = 0;
                 seekbarInfo.textContent = '0 / 0';
@@ -292,6 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             allImagesUrls = data.images;
+            updateFolderDrawer();
             // Calculate targetIndex first so we know where we start
             let targetIndex = 0;
             if (mode === 'dual' && typeof DualView !== 'undefined') {
@@ -682,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         .then(data => {
                             currentConfigFile = data.configFile || '';
                             allImagesUrls = data.images || [];
+                            updateFolderDrawer();
                             const total = data.totalFound !== undefined ? data.totalFound : allImagesUrls.length;
                             
                             if (total === 0) {
@@ -782,6 +877,10 @@ document.addEventListener('DOMContentLoaded', () => {
             seekbar.setAttribute('aria-valuetext', newText);
         }
 
+        if (typeof FolderDrawer !== 'undefined' && allImagesUrls[currentIndex]) {
+            FolderDrawer.setActiveImage(allImagesUrls[currentIndex]);
+        }
+
         updateStopBtnIcon();
     }
 
@@ -846,6 +945,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
                     currentConfigFile = data.configFile || '';
                     allImagesUrls = data.images;
+                    updateFolderDrawer();
                     
                     if (allImagesUrls.length === 0) {
                         seekbar.max = 0;
@@ -948,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 currentConfigFile = data.configFile || '';
                 allImagesUrls = data.images;
+                updateFolderDrawer();
 
                 const sortNames = {
                     'asc': '昇順',
@@ -1311,6 +1412,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 currentConfigFile = data.configFile || '';
                 allImagesUrls = data.images || [];
+                updateFolderDrawer();
 
                 const sortNames = {
                     'asc': '昇順',
@@ -1455,6 +1557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 currentConfigFile = data.configFile || '';
                 allImagesUrls = data.images || [];
+                updateFolderDrawer();
                 const total = data.totalFound !== undefined ? data.totalFound : allImagesUrls.length;
                 
                 if (total === 0) {
@@ -1929,6 +2032,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         .then(data => {
                             currentConfigFile = data.configFile || checkedItems.join(', ');
                             allImagesUrls = data.images || [];
+                            updateFolderDrawer();
                             
                             if (allImagesUrls.length === 0) {
                                 seekbar.max = 0;
@@ -2346,6 +2450,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }, true); // キャプチャフェーズで実行し、stopPropagation() の影響を受けないようにする
 
     document.addEventListener('keydown', (e) => {
+        // --- Input Element Focus Handling ---
+        // テキスト入力欄（INPUT, TEXTAREA 等）にフォーカスがある場合は、ショートカットキーを無効化
+        const activeEl = document.activeElement;
+        const isTextInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        if (isTextInput) {
+            if (e.key === 'Escape') {
+                activeEl.blur();
+            }
+            return;
+        }
+
         // --- Soft Reload during Fullscreen ---
         if (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R')) || (e.metaKey && (e.key === 'r' || e.key === 'R'))) {
             if (document.fullscreenElement) {
@@ -2362,6 +2477,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const isBookmarkModalOpen = bookmarkModal && bookmarkModal.style.display === 'block';
         const isSettingsModalOpen = settingsModal && settingsModal.style.display === 'block';
         
+        // --- Folder Drawer Interaction ---
+        const isFolderDrawerOpen = typeof FolderDrawer !== 'undefined' && FolderDrawer.isOpen;
+        if (isFolderDrawerOpen && e.key === 'Escape') {
+            e.preventDefault();
+            FolderDrawer.close();
+            return;
+        }
+
+        if (e.key === 'd' || e.key === 'D') {
+            if (!isFileModalOpen && !isFilterModalOpen && !isConfigEditModalOpen && !isBookmarkModalOpen && !isSettingsModalOpen) {
+                if (!document.activeElement || (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
+                    e.preventDefault();
+                    if (typeof FolderDrawer !== 'undefined') {
+                        FolderDrawer.toggle();
+                    }
+                    return;
+                }
+            }
+        }
+
         if (e.key === 'p' || e.key === 'P') {
             // Only allow toggling settings if no other modal is open
             if (!isFileModalOpen && !isFilterModalOpen && !isConfigEditModalOpen && !isBookmarkModalOpen) {
@@ -2727,6 +2862,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (activityTimeout) clearTimeout(activityTimeout);
         activityTimeout = setTimeout(() => {
+            if (typeof FolderDrawer !== 'undefined' && FolderDrawer.isOpen) {
+                return;
+            }
             fabContainer.classList.add('hidden');
             document.documentElement.classList.add('hide-cursor');
             
@@ -3536,6 +3674,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         currentConfigFile = data.configFile || configData.configFile;
                         allImagesUrls = data.images || [];
+                        updateFolderDrawer();
                         
                         if (allImagesUrls.length === 0) {
                             seekbar.max = 0;
