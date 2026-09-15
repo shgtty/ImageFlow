@@ -214,6 +214,25 @@ function isVideoUrl(url) {
     }
 }
 
+
+/**
+ * ⚡ Bolt Optimization: Creates a debounced function that delays invoking func until after wait milliseconds have elapsed
+ * @param {Function} func - The function to debounce
+ * @param {number} wait - The number of milliseconds to delay
+ * @returns {Function} The debounced function
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds, isVideoUrl };
+    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds, isVideoUrl, debounce };
 }

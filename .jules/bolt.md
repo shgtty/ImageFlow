@@ -25,3 +25,6 @@
 ## 2026-09-01 - Cached path.resolve
 **Learning:** `path.resolve` can be expensive in hot loops. Although earlier optimizations cached it in a specific context, creating a global helper `getResolvedPath` in `utils.js` applies it consistently across the server.
 **Action:** Always check if a globally accessible cached helper already exists before implementing a new one to prevent bugs and code duplication.
+## 2024-05-19 - Un-debounced High-Frequency Search Inputs
+**Learning:** Attaching heavy UI updates (like `renderBookmarkList()` or `updateConfigFilterUI()`) directly to the `input` event on search fields causes them to execute synchronously on every single keystroke. For fast typists or large lists, this leads to massive redundant string processing and DOM layout thrashing, severely dropping frames and causing input lag.
+**Action:** Always wrap the event handlers for search text inputs in a `debounce` function (typically ~300ms) to ensure the expensive rendering logic only fires after the user has paused typing.

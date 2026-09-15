@@ -196,6 +196,11 @@ const FolderDrawer = (() => {
                 });
             });
 
+            // ⚡ Bolt Optimization: Debounce folder search input to prevent redundant UI rendering on every keystroke
+            const debouncedRenderList = typeof debounce === 'function' ? debounce((query) => {
+                renderList(query);
+            }, 300) : null;
+
             searchInputEl.addEventListener('input', () => {
                 if (closeTimer) {
                     clearTimeout(closeTimer);
@@ -205,7 +210,11 @@ const FolderDrawer = (() => {
                 if (clearSearchBtn) {
                     clearSearchBtn.style.display = query ? 'block' : 'none';
                 }
-                renderList(query);
+                if (debouncedRenderList) {
+                    debouncedRenderList(query);
+                } else {
+                    renderList(query);
+                }
             });
         }
 
