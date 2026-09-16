@@ -2102,7 +2102,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (configFilterInput) {
-        configFilterInput.addEventListener('input', updateConfigFilterUI);
+        // ⚡ Bolt Optimization: Debounce config filter input to prevent redundant UI rendering on every keystroke
+        const debouncedUpdateConfigFilterUI = typeof debounce === 'function' ? debounce(updateConfigFilterUI, 300) : updateConfigFilterUI;
+        configFilterInput.addEventListener('input', debouncedUpdateConfigFilterUI);
     }
 
     if (clearConfigFilter) {
@@ -3087,12 +3089,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Toolbar Event Listeners ---
     if (bookmarkSearchInput) {
-        bookmarkSearchInput.addEventListener('input', (e) => {
-            bookmarkSearchQuery = e.target.value.trim().toLowerCase();
+        // ⚡ Bolt Optimization: Debounce bookmark search input to prevent redundant UI rendering and string processing on every keystroke
+        const debouncedBookmarkSearch = typeof debounce === 'function' ? debounce((query) => {
+            bookmarkSearchQuery = query;
             if (bookmarkSearchClear) {
                 bookmarkSearchClear.style.display = bookmarkSearchQuery ? 'flex' : 'none';
             }
             renderBookmarkList();
+        }, 300) : null;
+
+        bookmarkSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim().toLowerCase();
+            if (debouncedBookmarkSearch) {
+                debouncedBookmarkSearch(query);
+            } else {
+                bookmarkSearchQuery = query;
+                if (bookmarkSearchClear) {
+                    bookmarkSearchClear.style.display = bookmarkSearchQuery ? 'flex' : 'none';
+                }
+                renderBookmarkList();
+            }
         });
     }
 
