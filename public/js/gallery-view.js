@@ -112,10 +112,10 @@ const GalleryView = (() => {
         columnHeights = new Array(columnCount).fill(0);
 
         // Render first batch
-        renderNextBatch(30);
+        renderNextBatch(30, true);
     }
 
-    function renderNextBatch(count = BATCH_SIZE) {
+    function renderNextBatch(count = BATCH_SIZE, isInitial = false) {
         if (allImagesUrls.length === 0) return;
         if (currentIndex >= allImagesUrls.length) {
             // Should normally not happen if we loop but just a safety check
@@ -177,6 +177,8 @@ const GalleryView = (() => {
                         img.controls = false;
                     }
                 });
+            } else if (isInitial) {
+                img.decoding = 'async';
             }
             wrapper.appendChild(img);
 
