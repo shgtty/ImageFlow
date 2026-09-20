@@ -86,10 +86,64 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_DUAL_INDEX = 'imageflow_dual_index';
     const STORAGE_KEY_DUAL_SPEED = 'imageflow_dual_speed';
     const STORAGE_KEY_GALLERY_INDEX = 'imageflow_gallery_index';
+    const STORAGE_KEY_GALLERY_FOLDER_PATH = 'imageflow_gallery_folder_path';
+    const STORAGE_KEY_DUAL_FOLDER_PATH = 'imageflow_dual_folder_path';
     const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
     const STORAGE_KEY_ENABLE_INCLUDE = 'imageflow_enable_include';
     const STORAGE_KEY_COLOR_MODE = 'imageflow_color_mode';
     const STORAGE_KEY_CURSOR_TOOLTIP = 'imageflow_cursor_tooltip';
+    const STORAGE_KEY_GALLERY_CONFIG_FILES = 'imageflow_gallery_config_files';
+    const STORAGE_KEY_DUAL_CONFIG_FILES = 'imageflow_dual_config_files';
+
+    function getModeConfigFiles(mode) {
+        const key = mode === 'dual' ? STORAGE_KEY_DUAL_CONFIG_FILES : STORAGE_KEY_GALLERY_CONFIG_FILES;
+        const val = localStorage.getItem(key);
+        if (val) {
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            } catch(e) {}
+        }
+        return null;
+    }
+
+    function setModeConfigFiles(mode, files) {
+        const key = mode === 'dual' ? STORAGE_KEY_DUAL_CONFIG_FILES : STORAGE_KEY_GALLERY_CONFIG_FILES;
+        localStorage.setItem(key, JSON.stringify(files));
+    }
+
+    function areConfigFilesMatching(currentConfigStr, targetFiles) {
+        if (!currentConfigStr || !targetFiles || targetFiles.length === 0) return false;
+        const currentList = currentConfigStr.split(',').map(s => s.trim()).filter(Boolean).sort();
+        const targetList = targetFiles.slice().sort();
+        if (currentList.length !== targetList.length) return false;
+        return currentList.every((file, i) => file === targetList[i]);
+    }
+
+    async function ensureConfigFileForMode(mode) {
+        const targetFiles = getModeConfigFiles(mode);
+        if (!targetFiles || targetFiles.length === 0) {
+            return false;
+        }
+        if (areConfigFilesMatching(currentConfigFile, targetFiles)) {
+            return false;
+        }
+        try {
+            const res = await fetch('/api/set-config-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: targetFiles, mode: mode })
+            });
+            const data = await res.json();
+            if (data.success) {
+                currentConfigFile = data.configFile || targetFiles.join(', ');
+                return true;
+            }
+        } catch (e) {
+            console.error('Error switching config file for mode:', mode, e);
+        }
+        return false;
+    }
 
     let isDraggingSeekbar = false;
     let isResetting = false;
@@ -133,9 +187,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (mode === 'dual') {
                         dualSortMode = 'folder-random';
                         localStorage.setItem(STORAGE_KEY_DUAL_SORT, 'folder-random');
+                        if (targetFolderPath) {
+                            localStorage.setItem(STORAGE_KEY_DUAL_FOLDER_PATH, targetFolderPath);
+                        }
                     } else {
                         gallerySortMode = 'folder-random';
                         localStorage.setItem(STORAGE_KEY_GALLERY_SORT, 'folder-random');
+                        if (targetFolderPath) {
+                            localStorage.setItem(STORAGE_KEY_GALLERY_FOLDER_PATH, targetFolderPath);
+                        }
                     }
                     updateSortIcon();
 
@@ -246,10 +306,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State Persistence ---
     setInterval(() => {
-        if (typeof DualView !== 'undefined' && DualView.isActive && dualSortMode === 'asc') {
-            localStorage.setItem(STORAGE_KEY_DUAL_INDEX, DualView.currentIndex);
-        } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive && gallerySortMode === 'asc') {
-            localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
+        if (typeof DualView !== 'undefined' && DualView.isActive) {
+            if (dualSortMode === 'asc') {
+                localStorage.setItem(STORAGE_KEY_DUAL_INDEX, DualView.currentIndex);
+            } else if (dualSortMode === 'folder-random') {
+                const url = allImagesUrls[DualView.currentIndex];
+                if (url && typeof getFolderPath === 'function') {
+                    const fp = getFolderPath(url);
+                    if (fp) localStorage.setItem(STORAGE_KEY_DUAL_FOLDER_PATH, fp);
+                }
+            }
+        } else if (typeof GalleryView !== 'undefined' && GalleryView.isActive) {
+            if (gallerySortMode === 'asc') {
+                localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
+            } else if (gallerySortMode === 'folder-random') {
+                const url = allImagesUrls[GalleryView.currentIndex];
+                if (url && typeof getFolderPath === 'function') {
+                    const fp = getFolderPath(url);
+                    if (fp) localStorage.setItem(STORAGE_KEY_GALLERY_FOLDER_PATH, fp);
+                }
+            }
         }
         updateSeekbar();
     }, 2000);
@@ -347,6 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadImages() {
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+        await ensureConfigFileForMode(mode);
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
 
         if (reloadBtn) {
@@ -392,11 +469,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (dualSortMode === 'asc') {
                     targetIndex = parseInt(localStorage.getItem(STORAGE_KEY_DUAL_INDEX)) || 0;
                     if (targetIndex >= allImagesUrls.length) targetIndex = 0;
+                } else if (dualSortMode === 'folder-random') {
+                    const savedFolder = localStorage.getItem(STORAGE_KEY_DUAL_FOLDER_PATH);
+                    if (savedFolder && typeof getFolderPath === 'function') {
+                        for (let i = 0; i < allImagesUrls.length; i++) {
+                            if (getFolderPath(allImagesUrls[i]) === savedFolder) {
+                                targetIndex = i;
+                                break;
+                            }
+                        }
+                    }
                 }
             } else if (typeof GalleryView !== 'undefined') {
                 if (gallerySortMode === 'asc') {
                     targetIndex = parseInt(localStorage.getItem(STORAGE_KEY_GALLERY_INDEX)) || 0;
                     if (targetIndex >= allImagesUrls.length) targetIndex = 0;
+                } else if (gallerySortMode === 'folder-random') {
+                    const savedFolder = localStorage.getItem(STORAGE_KEY_GALLERY_FOLDER_PATH);
+                    if (savedFolder && typeof getFolderPath === 'function') {
+                        for (let i = 0; i < allImagesUrls.length; i++) {
+                            if (getFolderPath(allImagesUrls[i]) === savedFolder) {
+                                targetIndex = i;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -913,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    function toggleMode() {
+    async function toggleMode() {
         if (typeof DualView === 'undefined' || typeof GalleryView === 'undefined') return;
 
         if (GalleryView.isActive) {
@@ -922,6 +1019,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentImgUrl = allImagesUrls[index];
             if (gallerySortMode === 'asc') {
                 localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, index);
+            } else if (gallerySortMode === 'folder-random' && currentImgUrl && typeof getFolderPath === 'function') {
+                const fp = getFolderPath(currentImgUrl);
+                if (fp) localStorage.setItem(STORAGE_KEY_GALLERY_FOLDER_PATH, fp);
             }
             GalleryView.exit();
 
@@ -941,7 +1041,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             showModeOverlay('デュアルビュー', sortNames[dualSortMode] || 'ランダム', displayCount, iconHtml);
 
-            if (gallerySortMode !== dualSortMode) {
+            const switchedConfig = await ensureConfigFileForMode('dual');
+
+            if (switchedConfig || gallerySortMode !== dualSortMode) {
                 fetch(`/api/images?sort=${dualSortMode}&enableInclude=${enableInclude}`).then(r => r.json()).then(data => {
                     currentConfigFile = data.configFile || '';
                     allImagesUrls = data.images;
@@ -961,6 +1063,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     let targetIndex;
                     if (dualSortMode === 'asc' && lastDualIndex >= 0) {
                         targetIndex = lastDualIndex;
+                    } else if (dualSortMode === 'folder-random') {
+                        const savedFolder = localStorage.getItem(STORAGE_KEY_DUAL_FOLDER_PATH);
+                        let found = -1;
+                        if (savedFolder && typeof getFolderPath === 'function') {
+                            for (let i = 0; i < allImagesUrls.length; i++) {
+                                if (getFolderPath(allImagesUrls[i]) === savedFolder) {
+                                    found = i;
+                                    break;
+                                }
+                            }
+                        }
+                        targetIndex = (found >= 0) ? found : 0;
                     } else {
                         const newIdx = allImagesUrls.indexOf(currentImgUrl);
                         targetIndex = (newIdx >= 0) ? newIdx : 0;
@@ -976,15 +1090,26 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStopBtnIcon();
         } else if (DualView.isActive) {
             const index = DualView.currentIndex; // DualView needs an index getter
+            const currentImgUrl = allImagesUrls[index];
+            if (dualSortMode === 'folder-random' && currentImgUrl && typeof getFolderPath === 'function') {
+                const fp = getFolderPath(currentImgUrl);
+                if (fp) localStorage.setItem(STORAGE_KEY_DUAL_FOLDER_PATH, fp);
+            }
             DualView.exit();
         }
     }
 
-    function handleDualExit(exitIndex) {
+    async function handleDualExit(exitIndex) {
         if (isResetting) return;
         if (dualSortMode === 'asc') {
             lastDualIndex = exitIndex; // ソート（昇順）モード終了時の位置を保存
             localStorage.setItem(STORAGE_KEY_DUAL_INDEX, exitIndex);
+        } else if (dualSortMode === 'folder-random') {
+            const exitUrl = allImagesUrls[exitIndex];
+            if (exitUrl && typeof getFolderPath === 'function') {
+                const fp = getFolderPath(exitUrl);
+                if (fp) localStorage.setItem(STORAGE_KEY_DUAL_FOLDER_PATH, fp);
+            }
         }
         localStorage.setItem(STORAGE_KEY_MODE, 'gallery');
         updateSortIcon();
@@ -1002,7 +1127,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         showModeOverlay('ギャラリービュー', sortNames[gallerySortMode] || 'ランダム', displayCount, iconHtml);
 
-        if (gallerySortMode !== dualSortMode) {
+        const switchedConfig = await ensureConfigFileForMode('gallery');
+
+        if (switchedConfig || gallerySortMode !== dualSortMode) {
             loadImages();
         } else {
             GalleryView.enter(allImagesUrls, exitIndex, { onEnd: handleGalleryEnd });
@@ -1027,6 +1154,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dualSortMode === 'asc') {
                 lastDualIndex = DualView.currentIndex;
                 localStorage.setItem(STORAGE_KEY_DUAL_INDEX, lastDualIndex);
+            } else if (dualSortMode === 'folder-random' && currentImgUrl && typeof getFolderPath === 'function') {
+                const fp = getFolderPath(currentImgUrl);
+                if (fp) localStorage.setItem(STORAGE_KEY_DUAL_FOLDER_PATH, fp);
             }
             dualSortMode = nextSortMode(dualSortMode);
             localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
@@ -1035,6 +1165,9 @@ document.addEventListener('DOMContentLoaded', () => {
             currentImgUrl = allImagesUrls[GalleryView.currentIndex];
             if (gallerySortMode === 'asc') {
                 localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
+            } else if (gallerySortMode === 'folder-random' && currentImgUrl && typeof getFolderPath === 'function') {
+                const fp = getFolderPath(currentImgUrl);
+                if (fp) localStorage.setItem(STORAGE_KEY_GALLERY_FOLDER_PATH, fp);
             }
             gallerySortMode = nextSortMode(gallerySortMode);
             localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
@@ -1089,8 +1222,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (newIdx >= 0) {
                             targetIndex = newIdx;
                         } else {
-                            // フォールバック: とりあえず0から
-                            targetIndex = 0;
+                            const savedFolder = localStorage.getItem(mode === 'dual' ? STORAGE_KEY_DUAL_FOLDER_PATH : STORAGE_KEY_GALLERY_FOLDER_PATH);
+                            let found = -1;
+                            if (savedFolder && typeof getFolderPath === 'function') {
+                                for (let i = 0; i < allImagesUrls.length; i++) {
+                                    if (getFolderPath(allImagesUrls[i]) === savedFolder) {
+                                        found = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            targetIndex = (found >= 0) ? found : 0;
                         }
                     } else {
                         // ランダム表示へ移行する場合は、シャッフルされたリストの先頭から表示して画面を完全に再描画する
@@ -1382,6 +1524,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dualSortMode === 'asc') {
                 lastDualIndex = DualView.currentIndex;
                 localStorage.setItem(STORAGE_KEY_DUAL_INDEX, lastDualIndex);
+            } else if (dualSortMode === 'folder-random' && currentImgUrl && typeof getFolderPath === 'function') {
+                const fp = getFolderPath(currentImgUrl);
+                if (fp) localStorage.setItem(STORAGE_KEY_DUAL_FOLDER_PATH, fp);
             }
             dualSortMode = newSortMode;
             localStorage.setItem(STORAGE_KEY_DUAL_SORT, dualSortMode);
@@ -1389,6 +1534,9 @@ document.addEventListener('DOMContentLoaded', () => {
             currentImgUrl = allImagesUrls[GalleryView.currentIndex];
             if (gallerySortMode === 'asc') {
                 localStorage.setItem(STORAGE_KEY_GALLERY_INDEX, GalleryView.currentIndex);
+            } else if (gallerySortMode === 'folder-random' && currentImgUrl && typeof getFolderPath === 'function') {
+                const fp = getFolderPath(currentImgUrl);
+                if (fp) localStorage.setItem(STORAGE_KEY_GALLERY_FOLDER_PATH, fp);
             }
             gallerySortMode = newSortMode;
             localStorage.setItem(STORAGE_KEY_GALLERY_SORT, gallerySortMode);
@@ -1446,6 +1594,22 @@ document.addEventListener('DOMContentLoaded', () => {
                             targetIndex = savedGalleryIndex;
                         } else if (newIdx >= 0) {
                             targetIndex = newIdx;
+                        }
+                    } else if (activeSort === 'folder-random') {
+                        if (newIdx >= 0) {
+                            targetIndex = newIdx;
+                        } else {
+                            const savedFolder = localStorage.getItem(mode === 'dual' ? STORAGE_KEY_DUAL_FOLDER_PATH : STORAGE_KEY_GALLERY_FOLDER_PATH);
+                            let found = -1;
+                            if (savedFolder && typeof getFolderPath === 'function') {
+                                for (let i = 0; i < allImagesUrls.length; i++) {
+                                    if (getFolderPath(allImagesUrls[i]) === savedFolder) {
+                                        found = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            targetIndex = (found >= 0) ? found : 0;
                         }
                     } else {
                         if (newIdx >= 0) targetIndex = newIdx;
@@ -1833,7 +1997,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 configSelectError.textContent = '';
                 configSelectError.style.display = 'none';
             }
-            fetch('/api/config-files')
+            const currentMode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+            const modeBadge = document.getElementById('file-select-mode-badge');
+            if (modeBadge) {
+                modeBadge.textContent = currentMode === 'dual' ? 'デュアルビュー' : 'ギャラリービュー';
+            }
+            fetch(`/api/config-files?mode=${encodeURIComponent(currentMode)}`)
                 .then(r => r.json())
                 .then(res => {
                     if (res.error) {
@@ -1857,11 +2026,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         `;
                     }
+                    const savedModeFiles = getModeConfigFiles(currentMode);
+                    let activeConfigFiles = savedModeFiles;
+                    if (!activeConfigFiles || activeConfigFiles.length === 0) {
+                        if (res.modeCurrent && res.modeCurrent.length > 0) {
+                            activeConfigFiles = res.modeCurrent;
+                        } else if (currentMode === 'dual' && res.files.includes('dual_folders.txt')) {
+                            activeConfigFiles = ['dual_folders.txt'];
+                        } else {
+                            activeConfigFiles = res.current;
+                        }
+                    }
+
                     res.files.forEach(file => {
                         const itemContainer = document.createElement('div');
                         itemContainer.className = 'file-item';
                         itemContainer.setAttribute('role', 'checkbox');
-                        const isActive = Array.isArray(res.current) ? res.current.includes(file) : (file === res.current);
+                        const isActive = Array.isArray(activeConfigFiles) ? activeConfigFiles.includes(file) : (file === activeConfigFiles);
                         itemContainer.setAttribute('aria-checked', isActive ? 'true' : 'false');
                         itemContainer.setAttribute('tabindex', '0');
                         itemContainer.setAttribute('data-filename', file);
@@ -2009,10 +2190,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalText = applyFileModal.textContent;
             applyFileModal.textContent = '適用中...';
 
+            const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
+            setModeConfigFiles(mode, checkedItems);
+
             fetch('/api/set-config-file', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ files: checkedItems })
+                body: JSON.stringify({ files: checkedItems, mode: mode })
             }).then(r => r.json()).then(postRes => {
                 applyFileModal.disabled = false;
                 applyFileModal.textContent = originalText;
@@ -2780,10 +2964,14 @@ document.addEventListener('DOMContentLoaded', () => {
             STORAGE_KEY_DUAL_INDEX,
             STORAGE_KEY_DUAL_SPEED,
             STORAGE_KEY_GALLERY_INDEX,
+            STORAGE_KEY_GALLERY_FOLDER_PATH,
+            STORAGE_KEY_DUAL_FOLDER_PATH,
             STORAGE_KEY_SEEKBAR_VISIBLE,
             STORAGE_KEY_ENABLE_INCLUDE,
             STORAGE_KEY_COLOR_MODE,
             STORAGE_KEY_CURSOR_TOOLTIP,
+            STORAGE_KEY_GALLERY_CONFIG_FILES,
+            STORAGE_KEY_DUAL_CONFIG_FILES,
             'imageflow_scroll_speed',
             'imageflow_column_count'
         ];

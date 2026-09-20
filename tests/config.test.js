@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadFolders, cachedConfig, setConfigFile } = require('../server/server.js');
+const { loadFolders, cachedConfig, setConfigFile, setConfigDir, getStateFilePath, readSavedConfigFiles } = require('../server/server.js');
 
 test('loadFolders configuration parsing', async (t) => {
     const mockConfigPath = path.resolve(__dirname, 'mock_folders.txt');
@@ -96,3 +96,62 @@ test('loadFolders configuration parsing', async (t) => {
         assert.ok(errorMock.mock.calls[0].arguments[0].includes('Error handling folders.txt'));
     });
 });
+
+test('mode-specific config file state handling', async (t) => {
+    const tempConfigDir = path.resolve(__dirname, 'temp_mode_config_dir');
+    if (!fs.existsSync(tempConfigDir)) {
+        fs.mkdirSync(tempConfigDir, { recursive: true });
+    }
+    setConfigDir(tempConfigDir);
+
+    const galleryState = path.join(tempConfigDir, '.last_config_gallery.state');
+    const dualState = path.join(tempConfigDir, '.last_config_dual.state');
+    const galleryTxt = path.join(tempConfigDir, 'gallery.txt');
+    const dualTxt = path.join(tempConfigDir, 'dual.txt');
+    const defaultTxt = path.join(tempConfigDir, 'folders.txt');
+
+    fs.writeFileSync(galleryTxt, 'C:\\dummy1\n', 'utf8');
+    fs.writeFileSync(dualTxt, 'C:\\dummy2\n', 'utf8');
+    fs.writeFileSync(defaultTxt, 'C:\\dummy3\n', 'utf8');
+
+    t.after(() => {
+        // Cleanup temp dir
+        try {
+            fs.rmSync(tempConfigDir, { recursive: true, force: true });
+        } catch(e) {}
+        setConfigDir(null);
+    });
+
+    await t.test('getStateFilePath returns correct paths for gallery and dual', () => {
+        assert.strictEqual(getStateFilePath('gallery'), galleryState);
+        assert.strictEqual(getStateFilePath('dual'), dualState);
+        assert.strictEqual(getStateFilePath(''), galleryState);
+        assert.strictEqual(getStateFilePath(null), galleryState);
+    });
+
+    await t.test('readSavedConfigFiles retrieves mode-specific files independently', () => {
+        fs.writeFileSync(galleryState, JSON.stringify(['gallery.txt']), 'utf8');
+        fs.writeFileSync(dualState, JSON.stringify(['dual.txt']), 'utf8');
+
+        const galleryConfigs = readSavedConfigFiles('gallery');
+        const dualConfigs = readSavedConfigFiles('dual');
+
+        assert.deepStrictEqual(galleryConfigs, ['gallery.txt']);
+        assert.deepStrictEqual(dualConfigs, ['dual.txt']);
+    });
+
+    await t.test('readSavedConfigFiles falls back to mode default txt files when state does not exist', () => {
+        if (fs.existsSync(galleryState)) fs.unlinkSync(galleryState);
+        if (fs.existsSync(dualState)) fs.unlinkSync(dualState);
+
+        const dualTxtPath = path.join(tempConfigDir, 'dual_folders.txt');
+        fs.writeFileSync(dualTxtPath, 'C:\\dummy_dual\n', 'utf8');
+
+        const galleryConfigs = readSavedConfigFiles('gallery');
+        const dualConfigs = readSavedConfigFiles('dual');
+
+        assert.deepStrictEqual(galleryConfigs, ['folders.txt']);
+        assert.deepStrictEqual(dualConfigs, ['dual_folders.txt']);
+    });
+});
+

@@ -12,27 +12,52 @@ let initialArg = process.argv[2] || path.join(__dirname, '..', 'config', 'folder
 let CONFIG_FILES = [];
 let configDir = null;
 
+function getStateFilePath(mode) {
+    if (!configDir) return null;
+    const targetMode = mode === 'dual' ? 'dual' : 'gallery';
+    return path.join(configDir, `.last_config_${targetMode}.state`);
+}
+
+function readSavedConfigFiles(mode) {
+    if (!configDir) return null;
+    const targetMode = mode === 'dual' ? 'dual' : 'gallery';
+    const statePath = getStateFilePath(targetMode);
+
+    if (statePath && fs.existsSync(statePath)) {
+        try {
+            const saved = fs.readFileSync(statePath, 'utf8').trim();
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) {
+                        const existing = parsed.filter(f => fs.existsSync(path.join(configDir, f)));
+                        if (existing.length > 0) return existing;
+                    }
+                } catch(e) {
+                    const split = saved.split(',').map(f => f.trim()).filter(f => f && fs.existsSync(path.join(configDir, f)));
+                    if (split.length > 0) return split;
+                }
+            }
+        } catch(e) {}
+    }
+
+    // デフォルトフォールバック
+    if (targetMode === 'dual') {
+        if (fs.existsSync(path.join(configDir, 'dual_folders.txt'))) {
+            return ['dual_folders.txt'];
+        }
+    }
+    if (fs.existsSync(path.join(configDir, 'folders.txt'))) {
+        return ['folders.txt'];
+    }
+
+    return null;
+}
+
 if (fs.existsSync(initialArg) && fs.statSync(initialArg).isDirectory()) {
     configDir = initialArg;
     // 設定フォルダ内に前回の設定ファイル名を保存する
-    const lastConfStatePath = path.join(configDir, '.last_config.state');
-    let activeConfs = null;
-    if (fs.existsSync(lastConfStatePath)) {
-        const saved = fs.readFileSync(lastConfStatePath, 'utf8').trim();
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    activeConfs = parsed.filter(f => fs.existsSync(path.join(configDir, f)));
-                }
-            } catch(e) {
-                const split = saved.split(',').map(f => f.trim()).filter(f => f && fs.existsSync(path.join(configDir, f)));
-                if (split.length > 0) {
-                    activeConfs = split;
-                }
-            }
-        }
-    }
+    let activeConfs = readSavedConfigFiles('gallery');
     if (!activeConfs || activeConfs.length === 0) {
         let files = [];
         try {
@@ -458,13 +483,20 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ error: 'Config directory is not set' }));
             return;
         }
+        const reqMode = reqUrl.searchParams.get('mode'); // 'gallery' or 'dual'
         fs.promises.readdir(configDir)
             .then(files => {
                 const txtFiles = files.filter(f => f.toLowerCase().endsWith('.txt'));
+                let modeCurrent = null;
+                if (reqMode) {
+                    modeCurrent = readSavedConfigFiles(reqMode);
+                }
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     files: txtFiles,
-                    current: CONFIG_FILES.map(f => path.basename(f))
+                    current: CONFIG_FILES.map(f => path.basename(f)),
+                    mode: reqMode,
+                    modeCurrent: modeCurrent
                 }));
             })
             .catch(e => {
@@ -500,8 +532,12 @@ const server = http.createServer((req, res) => {
                         if (validatedFiles.length > 0) {
                             CONFIG_FILES = validatedPaths;
                             CONFIG_FILE = CONFIG_FILES[0];
-                            const lastConfStatePath = path.join(configDir, '.last_config.state');
-                            fs.writeFileSync(lastConfStatePath, JSON.stringify(validatedFiles), 'utf8');
+
+                            const targetMode = data.mode === 'dual' ? 'dual' : 'gallery';
+                            const modeStatePath = getStateFilePath(targetMode);
+                            if (modeStatePath) {
+                                fs.writeFileSync(modeStatePath, JSON.stringify(validatedFiles), 'utf8');
+                            }
 
                             clearConfigWatchers();
                             CONFIG_FILES.forEach(filePath => {
@@ -514,7 +550,7 @@ const server = http.createServer((req, res) => {
                             loadFolders();
 
                             res.writeHead(200, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ success: true, files: validatedFiles, configFile: validatedFiles.join(', ') }));
+                            res.end(JSON.stringify({ success: true, files: validatedFiles, mode: targetMode, configFile: validatedFiles.join(', ') }));
                             return;
                         }
                     }
@@ -1063,6 +1099,10 @@ function setConfigFile(newPath) {
     CONFIG_FILE = newPath;
 }
 
+function setConfigDir(newDir) {
+    configDir = newDir;
+}
+
 if (require.main === module) {
     // Initial load
     loadFolders();
@@ -1095,6 +1135,9 @@ module.exports = {
     loadFolders,
     cachedConfig,
     setConfigFile,
+    setConfigDir,
+    getStateFilePath,
+    readSavedConfigFiles,
     setBookmarksFile,
     server
 };
