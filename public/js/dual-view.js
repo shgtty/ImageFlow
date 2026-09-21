@@ -423,6 +423,10 @@ const DualView = (() => {
             window.updateCursorTooltipContent(true);
         }
 
+        if (typeof window.updateSeekbar === 'function') {
+            window.updateSeekbar();
+        }
+
         // Preload next
         preloadDimensions(currentIndex + lastShownCount, 4);
     }
@@ -605,7 +609,7 @@ const DualView = (() => {
             const mode = localStorage.getItem('imageflow_display_mode') || 'gallery';
             const currentSort = mode === 'dual' ? localStorage.getItem('imageflow_dual_sort') : localStorage.getItem('imageflow_gallery_sort');
             
-            if (currentSort === 'folder-random' && typeof getFolderBounds === 'function') {
+            if ((currentSort === 'folder-random' || currentSort === 'asc') && typeof getFolderBounds === 'function') {
                 const bounds = getFolderBounds(currentIndex, images);
                 displayIndex = bounds.relativeIndex;
                 displayTotal = bounds.total;

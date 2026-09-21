@@ -953,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let newVal = 0;
         let newText = '';
 
-        if (currentSort === 'folder-random') {
+        if (currentSort === 'folder-random' || currentSort === 'asc') {
             const bounds = getFolderBounds(currentIndex, allImagesUrls);
             newMax = Math.max(0, bounds.total - 1);
             newVal = bounds.relativeIndex;
@@ -980,6 +980,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateStopBtnIcon();
     }
+
+    window.updateSeekbar = updateSeekbar;
 
     function updateStopBtnIcon() {
         if (!stopBtn) return;
@@ -2519,7 +2521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
-        if (currentSort === 'folder-random') {
+        if (currentSort === 'folder-random' || currentSort === 'asc') {
             const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
             const bounds = getFolderBounds(currentIndex, allImagesUrls);
             absoluteIndex = bounds.start + val;
@@ -2543,7 +2545,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
         const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
-        if (currentSort === 'folder-random') {
+        if (currentSort === 'folder-random' || currentSort === 'asc') {
             const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
             const bounds = getFolderBounds(currentIndex, allImagesUrls);
             absoluteIndex = bounds.start + val;
@@ -2574,7 +2576,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const mode = localStorage.getItem(STORAGE_KEY_MODE) || 'gallery';
                 const currentSort = mode === 'dual' ? dualSortMode : gallerySortMode;
-                if (currentSort === 'folder-random') {
+                if (currentSort === 'folder-random' || currentSort === 'asc') {
                     const currentIndex = mode === 'dual' ? DualView.currentIndex : GalleryView.currentIndex;
                     const bounds = getFolderBounds(currentIndex, allImagesUrls);
                     const index = Math.round(pct * (bounds.total - 1));
