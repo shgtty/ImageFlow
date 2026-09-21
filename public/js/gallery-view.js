@@ -95,12 +95,18 @@ const GalleryView = (() => {
         // Clear gallery
         galleryElement.innerHTML = '';
         columns = [];
+        if (typeof window.updateCursorTooltipContent === 'function') {
+            window.updateCursorTooltipContent(true);
+        }
     }
 
     function renderInitial() {
         currentRenderId++;
         galleryElement.innerHTML = '';
         columns = [];
+        if (typeof window.updateCursorTooltipContent === 'function') {
+            window.updateCursorTooltipContent(true);
+        }
 
         // Initialize columns
         for (let i = 0; i < columnCount; i++) {
@@ -268,6 +274,10 @@ const GalleryView = (() => {
                 }
                 pendingImages--;
                 nextToPlace++;
+            }
+
+            if (nextToPlace > 0 && typeof window.updateCursorTooltipContent === 'function') {
+                window.updateCursorTooltipContent(true);
             }
         }
 

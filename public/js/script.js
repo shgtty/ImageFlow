@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if ((typeof DualView !== 'undefined' && DualView.isActive && DualView.interval > 0 && !DualView.isPaused) ||
             (typeof GalleryView !== 'undefined' && GalleryView.isActive && GalleryView.scrollSpeed !== 0 && !GalleryView.isPaused)) {
             updateSeekbar();
-            updateCursorTooltipContent();
+            updateCursorTooltipContent(true);
         }
     }, 500);
 
@@ -1014,6 +1014,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof DualView === 'undefined' || typeof GalleryView === 'undefined') return;
 
         if (GalleryView.isActive) {
+            hoveredImageElement = null;
+            if (cursorTooltip) {
+                cursorTooltip.style.opacity = '0';
+                cursorTooltip.dataset.currentSrc = '';
+            }
             // 昇順モード（asc）なら位置復元、ランダムモード（random）ならギャラリーに同期
             const index = GalleryView.currentIndex;
             const currentImgUrl = allImagesUrls[index];
@@ -1101,6 +1106,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleDualExit(exitIndex) {
         if (isResetting) return;
+        hoveredImageElement = null;
+        if (cursorTooltip) {
+            cursorTooltip.style.opacity = '0';
+            cursorTooltip.dataset.currentSrc = '';
+        }
         if (dualSortMode === 'asc') {
             lastDualIndex = exitIndex; // ソート（昇順）モード終了時の位置を保存
             localStorage.setItem(STORAGE_KEY_DUAL_INDEX, exitIndex);
@@ -1338,7 +1348,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateCursorTooltipContent() {
+    function getMediaElementUnderMouse() {
+        if (lastMouseX <= 0 && lastMouseY <= 0) return null;
+        if (lastMouseX >= window.innerWidth || lastMouseY >= window.innerHeight) return null;
+
+        const el = document.elementFromPoint(lastMouseX, lastMouseY);
+        if (!el) return null;
+
+        // UI要素（ボタン、ドロワー、シークバー、モーダル）上ならツールチップを表示しない
+        if (el.closest && el.closest('.fab, #seekbar-container, #folder-drawer, #drawer-hover-trigger, .modal, .modal-content, #settings-modal, #file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal')) {
+            return null;
+        }
+
+        if (el.tagName === 'IMG' || el.tagName === 'VIDEO') {
+            return el;
+        }
+
+        const wrapper = el.closest ? el.closest('.image-wrapper') : null;
+        if (wrapper) {
+            return wrapper.querySelector('img, video');
+        }
+
+        return null;
+    }
+
+    function updateCursorTooltipContent(forceRefresh = false) {
         if (!enableCursorTooltip || !cursorTooltip) return;
 
         // マウスカーソルが非表示状態（操作がない時など）なら、ツールチップも隠す
@@ -1347,16 +1381,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (forceRefresh || !hoveredImageElement || !hoveredImageElement.isConnected) {
+            hoveredImageElement = getMediaElementUnderMouse();
+        }
+
         const target = hoveredImageElement;
-        if (target && target.tagName === 'IMG') {
-            const currentSrc = target.src;
+        if (target && (target.tagName === 'IMG' || target.tagName === 'VIDEO') && target.isConnected) {
+            const currentSrc = target.currentSrc || target.src;
             let filename = '';
 
             // ⚡ Bolt Optimization: Only update DOM text content when hovered image changes to prevent text layout recalculation
             let tipWidth = 0;
             let tipHeight = 0;
 
-            if (cursorTooltip.dataset.currentSrc !== currentSrc) {
+            if (forceRefresh || cursorTooltip.dataset.currentSrc !== currentSrc) {
                 filename = typeof getFilename === 'function' ? getFilename(currentSrc) : '';
                 const foldername = typeof getFolderDisplayName === 'function' ? getFolderDisplayName(currentSrc) : '';
                 if (filename) {
@@ -1407,6 +1445,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cursorTooltip.dataset.currentSrc = '';
         }
     }
+
+    window.updateCursorTooltipContent = updateCursorTooltipContent;
 
     function openSettingsModal() {
         if (!settingsModal) return;
@@ -2447,8 +2487,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ⚡ Bolt Optimization: Track hovered element via e.target to avoid
         // expensive synchronous document.elementFromPoint hit-testing.
-        if (e.target && e.target.tagName === 'IMG') {
+        if (e.target && (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO')) {
             hoveredImageElement = e.target;
+        } else if (e.target && e.target.closest && e.target.closest('.image-wrapper') && !e.target.closest('.fab, #seekbar-container, #folder-drawer, #drawer-hover-trigger, .modal')) {
+            hoveredImageElement = e.target.closest('.image-wrapper').querySelector('img, video');
         } else {
             hoveredImageElement = null;
         }

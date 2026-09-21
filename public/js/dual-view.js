@@ -210,6 +210,10 @@ const DualView = (() => {
         galleryElement.style.cursor = '';
         galleryElement.innerHTML = '';
 
+        if (typeof window.updateCursorTooltipContent === 'function') {
+            window.updateCursorTooltipContent(true);
+        }
+
         if (onExitCallback) onExitCallback(currentIndex);
     }
 
@@ -414,6 +418,10 @@ const DualView = (() => {
         galleryElement.innerHTML = '';
         galleryElement.appendChild(container);
         resetTimer();
+
+        if (typeof window.updateCursorTooltipContent === 'function') {
+            window.updateCursorTooltipContent(true);
+        }
 
         // Preload next
         preloadDimensions(currentIndex + lastShownCount, 4);
