@@ -1102,6 +1102,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fp = getFolderPath(currentImgUrl);
                 if (fp) localStorage.setItem(STORAGE_KEY_DUAL_FOLDER_PATH, fp);
             }
+            const isPlaying = (DualView.interval > 0 && !DualView.isPaused);
+            if (isPlaying) {
+                dualInterval = DualView.interval;
+                lastActiveDualInterval = dualInterval;
+                localStorage.setItem(STORAGE_KEY_DUAL_SPEED, lastActiveDualInterval);
+                localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, dualInterval);
+            } else {
+                dualInterval = 0;
+                localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, 0);
+            }
             DualView.exit();
         }
     }
@@ -2634,6 +2644,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     DualView.togglePause();
                 }
             } else {
+                dualInterval = 0;
                 localStorage.setItem(STORAGE_KEY_DUAL_INTERVAL, 0);
                 DualView.stop();
             }

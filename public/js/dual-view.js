@@ -50,6 +50,7 @@ const DualView = (() => {
         currentIndex = startIndex;
         onExitCallback = onExit;
         isPaused = false;
+        advanceInterval = 0;
 
         // Apply styles
         document.body.style.overflow = 'hidden';
@@ -178,6 +179,8 @@ const DualView = (() => {
         isActive = false;
 
         stopTimer();
+        advanceInterval = 0;
+        isPaused = false;
 
         if (currentClickHandler) {
             window.removeEventListener('click', currentClickHandler);
