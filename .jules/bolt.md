@@ -28,3 +28,6 @@
 ## 2024-05-19 - Un-debounced High-Frequency Search Inputs
 **Learning:** Attaching heavy UI updates (like `renderBookmarkList()` or `updateConfigFilterUI()`) directly to the `input` event on search fields causes them to execute synchronously on every single keystroke. For fast typists or large lists, this leads to massive redundant string processing and DOM layout thrashing, severely dropping frames and causing input lag.
 **Action:** Always wrap the event handlers for search text inputs in a `debounce` function (typically ~300ms) to ensure the expensive rendering logic only fires after the user has paused typing.
+## 2024-05-19 - Expensive String Manipulations in Render Loops
+**Learning:** Functions that perform string splitting and manipulation (like `getFolderDisplayName` which uses `String.prototype.split`) allocate new array objects on every call. When called inside high-frequency render functions (like `renderBookmarkList` or `updateCursorTooltipContent`), this causes excessive Garbage Collection (GC) overhead and CPU spikes.
+**Action:** Always memoize derived string values using a `Map` cache (e.g., `folderDisplayNameCache`) when the transformation depends on an input that changes infrequently or is repeated across many elements.

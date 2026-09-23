@@ -66,6 +66,9 @@ function getFolderPath(url, base) {
     }
 }
 
+// ⚡ Bolt Optimization: Cache for getFolderDisplayName to prevent redundant string allocations and regex/split operations in hot UI loops
+const folderDisplayNameCache = new Map();
+
 /**
  * Gets a display name for the folder from an image URL.
  * @param {string} url - The image URL.
@@ -73,13 +76,23 @@ function getFolderPath(url, base) {
  * @returns {string} The folder's display name.
  */
 function getFolderDisplayName(url, base) {
+    if (!url) return '不明なフォルダ';
+    const cacheKey = base ? `${url}|${base}` : url;
+    if (folderDisplayNameCache.has(cacheKey)) return folderDisplayNameCache.get(cacheKey);
+
+    let result = '不明なフォルダ';
     let pathStr = getFolderPath(url, base);
-    if (!pathStr) return '不明なフォルダ';
-    if (pathStr.includes('|')) {
-        pathStr = pathStr.split('|')[1] || pathStr.split('|')[0];
+    if (pathStr) {
+        if (pathStr.includes('|')) {
+            pathStr = pathStr.split('|')[1] || pathStr.split('|')[0];
+        }
+        const parts = pathStr.split(/[/\\]/);
+        result = parts[parts.length - 1] || pathStr;
     }
-    const parts = pathStr.split(/[/\\]/);
-    return parts[parts.length - 1] || pathStr;
+
+    if (folderDisplayNameCache.size > 10000) folderDisplayNameCache.clear();
+    folderDisplayNameCache.set(cacheKey, result);
+    return result;
 }
 
 // ⚡ Bolt Optimization: Cache for getFilename to prevent redundant regex/URL parsing
