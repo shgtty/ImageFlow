@@ -3353,12 +3353,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 400);
         }
         
+        // Hide speed indicator
+        const speedIndicator = document.getElementById('speed-indicator');
+        if (speedIndicator) {
+            speedIndicator.style.opacity = '0';
+        }
+
         lastActivityReset = 0;
         if (typeof lastMouseX === 'number' && typeof lastMouseY === 'number' && (lastMouseX !== 0 || lastMouseY !== 0)) {
             lastActivityMouseX = lastMouseX;
             lastActivityMouseY = lastMouseY;
         }
     }
+    window.hideUI = hideUI;
 
     function resetActivityTimer() {
         // ⚡ Bolt Optimization: Throttle the UI hide timer reset to prevent thousands of clearTimeout/setTimeout calls on continuous mousemove
@@ -3416,6 +3423,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function isDualViewNavClick(e) {
+        if (typeof DualView === 'undefined' || !DualView.isActive) return false;
+        if (e.button !== undefined && e.button !== 0) return false;
+
+        if (e.target && e.target.closest) {
+            if (e.target.closest('.fab, #folder-drawer, #drawer-hover-trigger, #seekbar-container, .bookmark-star-btn, video, audio, input, textarea, select, button, label, a')) {
+                return false;
+            }
+            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal, #settings-modal, .modal')) {
+                return false;
+            }
+        }
+
+        const fileSelectModal = document.getElementById('file-select-modal');
+        if (fileSelectModal && fileSelectModal.style.display === 'block') return false;
+        const filterModal = document.getElementById('filter-modal');
+        if (filterModal && filterModal.style.display === 'block') return false;
+        const configEditModal = document.getElementById('config-edit-modal');
+        if (configEditModal && configEditModal.style.display === 'block') return false;
+        const bookmarkModal = document.getElementById('bookmark-modal');
+        if (bookmarkModal && bookmarkModal.style.display === 'block') return false;
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal && settingsModal.style.display === 'block') return false;
+
+        return true;
+    }
+
     window.addEventListener('mousemove', handleMouseMoveActivity, { passive: true });
     ['mousedown', 'touchstart'].forEach(type => {
         window.addEventListener(type, (e) => {
@@ -3430,6 +3464,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastActivityMouseX = clientX;
                 lastActivityMouseY = clientY;
             }
+
+            // デュアルビュー中に画像領域をクリックしてページを切り替える場合、UIを表示させない
+            if (isDualViewNavClick(e)) {
+                hideUI();
+                return;
+            }
+
             resetActivityTimer();
         }, { passive: true });
     });

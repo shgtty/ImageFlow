@@ -77,13 +77,14 @@ const DualView = (() => {
         // Handle clicks for navigation
         currentClickHandler = (e) => {
             if (!isActive) return;
-            if (e.target.closest('.fab')) return;
+            if (e.button !== undefined && e.button !== 0) return;
+            if (e.target.closest('.fab, #seekbar-container, .bookmark-star-btn')) return;
 
             // Block clicks if they originated inside a modal or drawer
-            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal, #settings-modal, #folder-drawer, #drawer-hover-trigger')) return;
+            if (e.target.closest('#file-select-modal, #filter-modal, #config-edit-modal, #bookmark-modal, #settings-modal, #folder-drawer, #drawer-hover-trigger, .modal')) return;
 
-            // Block clicks if clicking on a video element to allow interacting with controls
-            if (e.target.closest('video')) return;
+            // Block clicks if clicking on interactive/form/media controls
+            if (e.target.closest('video, audio, input, textarea, select, button, label, a')) return;
 
             // Block clicks if a modal is open
             const fileSelectModal = document.getElementById('file-select-modal');
@@ -97,11 +98,18 @@ const DualView = (() => {
             const settingsModal = document.getElementById('settings-modal');
             if (settingsModal && settingsModal.style.display === 'block') return;
 
+            // Hide UI during page flip
+            if (typeof hideUI === 'function') {
+                hideUI();
+            } else if (typeof window !== 'undefined' && typeof window.hideUI === 'function') {
+                window.hideUI();
+            }
+
             const width = window.innerWidth;
             if (e.clientX > width / 2) {
-                isRightToLeft ? prev() : next();
+                isRightToLeft ? prev(undefined, true) : next(undefined, true);
             } else {
-                isRightToLeft ? next() : prev();
+                isRightToLeft ? next(undefined, true) : prev(undefined, true);
             }
         };
         window.addEventListener('click', currentClickHandler);
