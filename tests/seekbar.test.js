@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { getFolderBounds, getFolderPath } = require('../public/js/utils.js');
+const { getFolderBounds, getFolderPath, isCursorInSeekbarHoverArea, isTextInputElement } = require('../public/js/utils.js');
 
 test('Seekbar page count and relative indexing logic', async (t) => {
     const urls = [
@@ -133,5 +133,165 @@ test('Seekbar page count and relative indexing logic', async (t) => {
         // Hover at 50% in random mode
         tipText = simulateSeekbarHover(0.5, 0, 'random', urls);
         assert.strictEqual(tipText, '4 / 6'); // Math.round(0.5 * 5) = 3 -> index 3 is image 4 of 6
+    });
+
+    await t.test('isCursorInSeekbarHoverArea: area "all" detects any X coordinate within bottom threshold', () => {
+        const vw = 1920;
+        const vh = 1080;
+        // Near bottom (dist = 50px <= 90px)
+        assert.strictEqual(isCursorInSeekbarHoverArea(100, 1030, vw, vh, { area: 'all' }), true);
+        assert.strictEqual(isCursorInSeekbarHoverArea(960, 1030, vw, vh, { area: 'all' }), true);
+        assert.strictEqual(isCursorInSeekbarHoverArea(1850, 1030, vw, vh, { area: 'all' }), true);
+
+        // Above threshold (dist = 100px > 90px)
+        assert.strictEqual(isCursorInSeekbarHoverArea(960, 980, vw, vh, { area: 'all' }), false);
+
+        // Below screen bottom (clientY > 1080)
+        assert.strictEqual(isCursorInSeekbarHoverArea(960, 1090, vw, vh, { area: 'all' }), false);
+
+        // Disabled
+        assert.strictEqual(isCursorInSeekbarHoverArea(960, 1030, vw, vh, { enabled: false, area: 'all' }), false);
+    });
+
+    await t.test('isCursorInSeekbarHoverArea: area "center" detects only central seekbar span', () => {
+        const vw = 1920;
+        const vh = 1080;
+        // In 1920vw, seekbar width = min(1920 * 0.7, 900) = 900px.
+        // Center is 960. Left bound = (1920 - 900)/2 - 20 = 510 - 20 = 490px.
+        // Right bound = 510 + 900 + 20 = 1430px.
+
+        // Inside center horizontal span
+        assert.strictEqual(isCursorInSeekbarHoverArea(960, 1030, vw, vh, { area: 'center' }), true);
+        assert.strictEqual(isCursorInSeekbarHoverArea(500, 1030, vw, vh, { area: 'center' }), true);
+        assert.strictEqual(isCursorInSeekbarHoverArea(1420, 1030, vw, vh, { area: 'center' }), true);
+
+        // Outside center horizontal span (edges of screen)
+        assert.strictEqual(isCursorInSeekbarHoverArea(100, 1030, vw, vh, { area: 'center' }), false);
+        assert.strictEqual(isCursorInSeekbarHoverArea(1800, 1030, vw, vh, { area: 'center' }), false);
+
+        // Default area is 'center' when options.area is omitted
+        assert.strictEqual(isCursorInSeekbarHoverArea(960, 1030, vw, vh), true);
+        assert.strictEqual(isCursorInSeekbarHoverArea(100, 1030, vw, vh), false);
+    });
+
+    await t.test('seekbar hover peek lifecycle simulation (show, delay hide, drag protection)', () => {
+        let isUserHidden = true;
+        let isPeekVisible = false;
+        let isDragging = false;
+        let hideTimer = null;
+
+        function showPeek() {
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+            if (isUserHidden) isPeekVisible = true;
+        }
+
+        function scheduleHide(delay = 50) {
+            if (isDragging) return;
+            if (hideTimer) clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => {
+                if (!isDragging) isPeekVisible = false;
+                hideTimer = null;
+            }, delay);
+        }
+
+        // 1. Move cursor into bottom area -> show peek
+        showPeek();
+        assert.strictEqual(isPeekVisible, true);
+
+        // 2. Start dragging slider
+        isDragging = true;
+
+        // 3. Move cursor outside -> schedule hide, but dragging prevents hiding
+        scheduleHide(10);
+        assert.strictEqual(isPeekVisible, true);
+
+        // 4. Release drag outside -> schedule hide triggers
+        isDragging = false;
+        scheduleHide(10);
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                assert.strictEqual(isPeekVisible, false);
+                resolve();
+            }, 30);
+        });
+    });
+
+    await t.test('isTextInputElement correctly classifies input types', () => {
+        // Non-text inputs (shortcuts should NOT be blocked)
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT', type: 'range' }), false);
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT', type: 'checkbox' }), false);
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT', type: 'radio' }), false);
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT', type: 'button' }), false);
+        assert.strictEqual(isTextInputElement(null), false);
+        assert.strictEqual(isTextInputElement({ tagName: 'DIV' }), false);
+
+        // Text inputs (shortcuts SHOULD be blocked)
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT', type: 'text' }), true);
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT', type: 'search' }), true);
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT', type: 'password' }), true);
+        assert.strictEqual(isTextInputElement({ tagName: 'INPUT' }), true); // default type is text
+        assert.strictEqual(isTextInputElement({ tagName: 'TEXTAREA' }), true);
+        assert.strictEqual(isTextInputElement({ tagName: 'DIV', isContentEditable: true }), true);
+    });
+
+    await t.test('seekbar drag and change lifecycle blurs seekbar to release keyboard control', () => {
+        let activeElement = null;
+        let isDraggingSeekbar = false;
+
+        const seekbarMock = {
+            tagName: 'INPUT',
+            type: 'range',
+            focus() {
+                activeElement = this;
+            },
+            blur() {
+                if (activeElement === this) {
+                    activeElement = null;
+                }
+            }
+        };
+
+        // 1. User starts dragging seekbar (browser focuses range input)
+        seekbarMock.focus();
+        isDraggingSeekbar = true;
+        assert.strictEqual(activeElement, seekbarMock);
+        assert.strictEqual(isDraggingSeekbar, true);
+
+        // 2. User releases drag (change event or mouseup triggers)
+        function handleChange() {
+            isDraggingSeekbar = false;
+            seekbarMock.blur();
+        }
+        function handleMouseUp() {
+            if (isDraggingSeekbar) {
+                isDraggingSeekbar = false;
+                seekbarMock.blur();
+            }
+        }
+
+        // Test mouseup releasing drag
+        handleMouseUp();
+        assert.strictEqual(isDraggingSeekbar, false);
+        assert.strictEqual(activeElement, null, 'Seekbar must be blurred after mouseup');
+
+        // Test change releasing focus
+        seekbarMock.focus();
+        assert.strictEqual(activeElement, seekbarMock);
+        handleChange();
+        assert.strictEqual(activeElement, null, 'Seekbar must be blurred after change event');
+
+        // 3. Failsafe in keydown: if activeElement is still seekbar, blur it immediately
+        seekbarMock.focus();
+        assert.strictEqual(activeElement, seekbarMock);
+        function handleKeyDownFailsafe() {
+            if (activeElement === seekbarMock) {
+                seekbarMock.blur();
+            }
+        }
+        handleKeyDownFailsafe();
+        assert.strictEqual(activeElement, null, 'Failsafe in keydown must blur seekbar if focused');
     });
 });

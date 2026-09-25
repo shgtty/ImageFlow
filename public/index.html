@@ -233,6 +233,12 @@
             pointer-events: none;
         }
 
+        #seekbar-container.user-hidden.peek-visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         #seekbar {
             width: 100%;
             -webkit-appearance: none;
@@ -1876,6 +1882,30 @@
                         <input type="checkbox" role="switch" id="settings-seekbar-visible" aria-label="シークバー表示">
                         <span class="settings-slider"></span>
                     </label>
+                </div>
+
+                <!-- シークバー非表示時のホバー一時表示 -->
+                <div class="settings-row" id="settings-seekbar-hover-peek-row">
+                    <div>
+                        <div class="settings-label">非表示時のホバー一時表示</div>
+                        <div class="settings-desc">シークバー非表示時でも、画面下部にマウスを近づけると一時表示します。</div>
+                    </div>
+                    <label class="settings-toggle">
+                        <input type="checkbox" role="switch" id="settings-seekbar-hover-peek" aria-label="非表示時のホバー一時表示">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+
+                <!-- ホバー検知エリア -->
+                <div class="settings-row" id="settings-seekbar-hover-area-row">
+                    <div>
+                        <div class="settings-label">ホバー検知エリア</div>
+                        <div class="settings-desc">ホバー一時表示に反応する画面下部の範囲。</div>
+                    </div>
+                    <select id="settings-seekbar-hover-area" class="settings-select" aria-label="ホバー検知エリア">
+                        <option value="center">シークバー付近 (中央)</option>
+                        <option value="all">画面下部全体 (全幅)</option>
+                    </select>
                 </div>
 
                 <!-- 色モード -->

@@ -89,6 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_GALLERY_FOLDER_PATH = 'imageflow_gallery_folder_path';
     const STORAGE_KEY_DUAL_FOLDER_PATH = 'imageflow_dual_folder_path';
     const STORAGE_KEY_SEEKBAR_VISIBLE = 'imageflow_seekbar_visible';
+    const STORAGE_KEY_SEEKBAR_HOVER_PEEK = 'imageflow_seekbar_hover_peek';
+    const STORAGE_KEY_SEEKBAR_HOVER_AREA = 'imageflow_seekbar_hover_area';
+    const DEFAULT_SEEKBAR_HOVER_PEEK = true;
+    const DEFAULT_SEEKBAR_HOVER_AREA = 'center'; // 'center' or 'all'
+    let isSeekbarHoverPeekEnabled = localStorage.getItem(STORAGE_KEY_SEEKBAR_HOVER_PEEK) !== 'false';
+    let seekbarHoverArea = localStorage.getItem(STORAGE_KEY_SEEKBAR_HOVER_AREA) || DEFAULT_SEEKBAR_HOVER_AREA;
+    let seekbarPeekHideTimer = null;
+    const SEEKBAR_PEEK_HIDE_DELAY = 1000;
     const STORAGE_KEY_ENABLE_INCLUDE = 'imageflow_enable_include';
     const STORAGE_KEY_COLOR_MODE = 'imageflow_color_mode';
     const STORAGE_KEY_CURSOR_TOOLTIP = 'imageflow_cursor_tooltip';
@@ -664,8 +672,69 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.add('animate');
     }
  
+    // --- Seekbar Hover Peek Logic ---
+    function showSeekbarPeek() {
+        if (!seekbarContainer) return;
+        if (seekbarPeekHideTimer) {
+            clearTimeout(seekbarPeekHideTimer);
+            seekbarPeekHideTimer = null;
+        }
+        if (seekbarContainer.classList.contains('user-hidden')) {
+            seekbarContainer.classList.add('peek-visible');
+        }
+    }
+
+    function scheduleHideSeekbarPeek(delay = SEEKBAR_PEEK_HIDE_DELAY) {
+        if (!seekbarContainer) return;
+        if (isDraggingSeekbar) return; // Do not hide while dragging
+        if (seekbarPeekHideTimer) {
+            clearTimeout(seekbarPeekHideTimer);
+        }
+        seekbarPeekHideTimer = setTimeout(() => {
+            if (!isDraggingSeekbar && seekbarContainer) {
+                seekbarContainer.classList.remove('peek-visible');
+            }
+            seekbarPeekHideTimer = null;
+        }, delay);
+    }
+
+    function hideSeekbarPeekImmediately() {
+        if (seekbarPeekHideTimer) {
+            clearTimeout(seekbarPeekHideTimer);
+            seekbarPeekHideTimer = null;
+        }
+        if (seekbarContainer) {
+            seekbarContainer.classList.remove('peek-visible');
+        }
+    }
+
+    function handleSeekbarHoverCheck(clientX, clientY) {
+        if (!seekbarContainer || !seekbarContainer.classList.contains('user-hidden')) return;
+        if (!isSeekbarHoverPeekEnabled) {
+            hideSeekbarPeekImmediately();
+            return;
+        }
+
+        const isInArea = typeof isCursorInSeekbarHoverArea === 'function'
+            ? isCursorInSeekbarHoverArea(clientX, clientY, window.innerWidth, window.innerHeight, {
+                enabled: isSeekbarHoverPeekEnabled,
+                area: seekbarHoverArea,
+                thresholdY: 90
+            })
+            : false;
+
+        if (isInArea) {
+            showSeekbarPeek();
+        } else {
+            if (seekbarContainer.classList.contains('peek-visible')) {
+                scheduleHideSeekbarPeek();
+            }
+        }
+    }
+
     function toggleSeekbar() {
         if (!seekbarContainer) return;
+        hideSeekbarPeekImmediately();
         const isHidden = seekbarContainer.classList.contains('user-hidden');
         if (isHidden) {
             seekbarContainer.classList.remove('user-hidden');
@@ -1521,6 +1590,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (seekbarCheckbox) {
             seekbarCheckbox.checked = localStorage.getItem(STORAGE_KEY_SEEKBAR_VISIBLE) === 'true';
         }
+
+        // Seekbar Hover Peek
+        const seekbarHoverPeekCheckbox = document.getElementById('settings-seekbar-hover-peek');
+        if (seekbarHoverPeekCheckbox) {
+            seekbarHoverPeekCheckbox.checked = isSeekbarHoverPeekEnabled;
+        }
+
+        // Seekbar Hover Area
+        const seekbarHoverAreaSelect = document.getElementById('settings-seekbar-hover-area');
+        if (seekbarHoverAreaSelect) {
+            seekbarHoverAreaSelect.value = seekbarHoverArea;
+            seekbarHoverAreaSelect.disabled = !isSeekbarHoverPeekEnabled;
+        }
         
         // Color Mode
         const colorModeSelect = document.getElementById('settings-color-mode');
@@ -1705,6 +1787,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setSeekbarVisibleFromUI(visible) {
         if (!seekbarContainer) return;
+        hideSeekbarPeekImmediately();
         if (visible) {
             seekbarContainer.classList.remove('user-hidden');
             if (seekbarToggleIcon) seekbarToggleIcon.style.color = '#3498db';
@@ -1923,6 +2006,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (seekbarCheckbox) {
         seekbarCheckbox.addEventListener('change', () => {
             setSeekbarVisibleFromUI(seekbarCheckbox.checked);
+        });
+    }
+
+    // Seekbar Hover Peek & Area
+    const seekbarHoverPeekCheckbox = document.getElementById('settings-seekbar-hover-peek');
+    const seekbarHoverAreaSelect = document.getElementById('settings-seekbar-hover-area');
+    if (seekbarHoverPeekCheckbox) {
+        seekbarHoverPeekCheckbox.addEventListener('change', () => {
+            isSeekbarHoverPeekEnabled = seekbarHoverPeekCheckbox.checked;
+            localStorage.setItem(STORAGE_KEY_SEEKBAR_HOVER_PEEK, isSeekbarHoverPeekEnabled ? 'true' : 'false');
+            if (seekbarHoverAreaSelect) {
+                seekbarHoverAreaSelect.disabled = !isSeekbarHoverPeekEnabled;
+            }
+            if (!isSeekbarHoverPeekEnabled) {
+                hideSeekbarPeekImmediately();
+            }
+        });
+    }
+    if (seekbarHoverAreaSelect) {
+        seekbarHoverAreaSelect.addEventListener('change', () => {
+            seekbarHoverArea = seekbarHoverAreaSelect.value;
+            localStorage.setItem(STORAGE_KEY_SEEKBAR_HOVER_AREA, seekbarHoverArea);
         });
     }
 
@@ -2523,6 +2628,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
 
+        handleSeekbarHoverCheck(e.clientX, e.clientY);
+
         // ⚡ Bolt Optimization: Track hovered element via e.target to avoid
         // expensive synchronous document.elementFromPoint hit-testing.
         if (e.target && (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO')) {
@@ -2575,6 +2682,23 @@ document.addEventListener('DOMContentLoaded', () => {
     seekbar.addEventListener('change', () => {
         resetActivityTimer(); // 操作後はタイマーリセット
         isDraggingSeekbar = false;
+        seekbar.blur();
+        if (seekbarContainer && seekbarContainer.classList.contains('user-hidden')) {
+            if (typeof lastMouseX === 'number' && typeof lastMouseY === 'number') {
+                const isInArea = typeof isCursorInSeekbarHoverArea === 'function'
+                    ? isCursorInSeekbarHoverArea(lastMouseX, lastMouseY, window.innerWidth, window.innerHeight, {
+                        enabled: isSeekbarHoverPeekEnabled,
+                        area: seekbarHoverArea,
+                        thresholdY: 90
+                    })
+                    : false;
+                if (!isInArea) {
+                    scheduleHideSeekbarPeek();
+                }
+            } else {
+                scheduleHideSeekbarPeek();
+            }
+        }
         if (allImagesUrls.length === 0) return;
         const val = parseInt(seekbar.value);
         let absoluteIndex = val;
@@ -2636,6 +2760,62 @@ document.addEventListener('DOMContentLoaded', () => {
             seekbarTooltipAnimationFrame = null;
         }
         if (seekbarTooltip) seekbarTooltip.style.opacity = '0';
+    });
+
+    if (seekbarContainer) {
+        seekbarContainer.addEventListener('mouseenter', () => {
+            if (seekbarContainer.classList.contains('user-hidden') && isSeekbarHoverPeekEnabled) {
+                showSeekbarPeek();
+            }
+        });
+        seekbarContainer.addEventListener('mouseleave', () => {
+            if (seekbarContainer.classList.contains('user-hidden') && !isDraggingSeekbar) {
+                scheduleHideSeekbarPeek();
+            }
+        });
+    }
+
+    seekbar.addEventListener('mouseup', () => {
+        seekbar.blur();
+    });
+    seekbar.addEventListener('touchend', () => {
+        seekbar.blur();
+    });
+    seekbar.addEventListener('click', () => {
+        seekbar.blur();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDraggingSeekbar) {
+            isDraggingSeekbar = false;
+            seekbar.blur();
+            if (seekbarContainer && seekbarContainer.classList.contains('user-hidden')) {
+                if (typeof lastMouseX === 'number' && typeof lastMouseY === 'number') {
+                    const isInArea = typeof isCursorInSeekbarHoverArea === 'function'
+                        ? isCursorInSeekbarHoverArea(lastMouseX, lastMouseY, window.innerWidth, window.innerHeight, {
+                            enabled: isSeekbarHoverPeekEnabled,
+                            area: seekbarHoverArea,
+                            thresholdY: 90
+                        })
+                        : false;
+                    if (!isInArea) {
+                        scheduleHideSeekbarPeek();
+                    }
+                } else {
+                    scheduleHideSeekbarPeek();
+                }
+            }
+        }
+    });
+
+    window.addEventListener('touchend', () => {
+        if (isDraggingSeekbar) {
+            isDraggingSeekbar = false;
+            seekbar.blur();
+            if (seekbarContainer && seekbarContainer.classList.contains('user-hidden')) {
+                scheduleHideSeekbarPeek();
+            }
+        }
     });
 
     scrollUpBtn.addEventListener('click', (e) => {
@@ -2709,23 +2889,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // マウスクリック後にボタンからフォーカスを外し、Enterキー押下時の意図しない再クリックを防ぐ
+    // またシークバー操作後にフォーカスが残りキーボード操作が奪われるのを防ぐ
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('button');
         if (btn) {
             btn.blur();
         }
+        if (e.target === seekbar) {
+            seekbar.blur();
+        }
     }, true); // キャプチャフェーズで実行し、stopPropagation() の影響を受けないようにする
 
     document.addEventListener('keydown', (e) => {
         // --- Input Element Focus Handling ---
-        // テキスト入力欄（INPUT, TEXTAREA 等）にフォーカスがある場合は、ショートカットキーを無効化
+        // テキスト入力欄（INPUT text系, TEXTAREA 等）にフォーカスがある場合は、ショートカットキーを無効化
         const activeEl = document.activeElement;
-        const isTextInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        const isTextInput = typeof isTextInputElement === 'function'
+            ? isTextInputElement(activeEl)
+            : Boolean(activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable || (activeEl.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit', 'reset'].includes(activeEl.type))));
         if (isTextInput) {
             if (e.key === 'Escape') {
                 activeEl.blur();
             }
             return;
+        }
+
+        // シークバーにフォーカスが残っていた場合のフェイルセーフ：フォーカスを外してキー入力を通常通り処理
+        if (activeEl === seekbar) {
+            seekbar.blur();
         }
 
         // --- Soft Reload during Fullscreen ---
@@ -3048,6 +3239,8 @@ document.addEventListener('DOMContentLoaded', () => {
             STORAGE_KEY_GALLERY_FOLDER_PATH,
             STORAGE_KEY_DUAL_FOLDER_PATH,
             STORAGE_KEY_SEEKBAR_VISIBLE,
+            STORAGE_KEY_SEEKBAR_HOVER_PEEK,
+            STORAGE_KEY_SEEKBAR_HOVER_AREA,
             STORAGE_KEY_ENABLE_INCLUDE,
             STORAGE_KEY_COLOR_MODE,
             STORAGE_KEY_CURSOR_TOOLTIP,
@@ -3062,6 +3255,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset internal variables
         enableInclude = false;
         enableCursorTooltip = false;
+        isSeekbarHoverPeekEnabled = DEFAULT_SEEKBAR_HOVER_PEEK;
+        seekbarHoverArea = DEFAULT_SEEKBAR_HOVER_AREA;
         lastDualIndex = -1;
         gallerySortMode = 'random';
         dualSortMode = 'asc';
@@ -3081,6 +3276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cursorTooltip) cursorTooltip.style.opacity = '0';
 
         // 3. Seekbar Visibility
+        hideSeekbarPeekImmediately();
         if (seekbarContainer) seekbarContainer.classList.add('user-hidden');
         if (seekbarToggleIcon) seekbarToggleIcon.style.color = '';
         if (seekbarToggleBtn) {
@@ -3142,10 +3338,11 @@ document.addEventListener('DOMContentLoaded', () => {
             cursorTooltip.dataset.currentSrc = '';
         }
 
-        // Hide seekbar tooltip
+        // Hide seekbar tooltip and peek
         if (seekbarTooltip) {
             seekbarTooltip.style.opacity = '0';
         }
+        hideSeekbarPeekImmediately();
         
         // Hide status overlay
         if (modeOverlay) {
@@ -3254,7 +3451,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
     window.addEventListener('keydown', (e) => {
         const activeEl = document.activeElement;
-        const isTextInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        const isTextInput = typeof isTextInputElement === 'function'
+            ? isTextInputElement(activeEl)
+            : Boolean(activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable || (activeEl.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit', 'reset'].includes(activeEl.type))));
         if (isTextInput) return;
 
         // デュアルビュー中でナビゲーションキー（カーソル、Home/End, PageUp/Down）操作の場合は、

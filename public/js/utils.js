@@ -246,6 +246,60 @@ function debounce(func, wait) {
     };
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds, isVideoUrl, debounce };
+/**
+ * Determines whether a cursor position is within the seekbar hover trigger area.
+ * @param {number} clientX - Mouse X coordinate.
+ * @param {number} clientY - Mouse Y coordinate.
+ * @param {number} viewportWidth - Window inner width.
+ * @param {number} viewportHeight - Window inner height.
+ * @param {Object} [options] - Options including enabled, area ('all' | 'center'), thresholdY.
+ * @returns {boolean}
+ */
+function isCursorInSeekbarHoverArea(clientX, clientY, viewportWidth, viewportHeight, options = {}) {
+    const {
+        enabled = true,
+        area = 'center',
+        thresholdY = 90
+    } = options;
+
+    if (!enabled) return false;
+    if (typeof clientX !== 'number' || typeof clientY !== 'number') return false;
+    if (typeof viewportWidth !== 'number' || typeof viewportHeight !== 'number') return false;
+
+    const distFromBottom = viewportHeight - clientY;
+    if (distFromBottom < 0 || distFromBottom > thresholdY) {
+        return false;
+    }
+
+    if (area === 'center') {
+        const seekbarWidth = Math.min(viewportWidth * 0.7, 900);
+        const marginX = 20;
+        const leftBound = (viewportWidth - seekbarWidth) / 2 - marginX;
+        const rightBound = (viewportWidth + seekbarWidth) / 2 + marginX;
+        return clientX >= leftBound && clientX <= rightBound;
+    }
+
+    return clientX >= 0 && clientX <= viewportWidth;
 }
+
+/**
+ * Checks whether an element is a text input (INPUT text-like, TEXTAREA, or contentEditable).
+ * Returns false for non-text inputs such as range, checkbox, radio, button, etc.
+ * @param {Element|Object|null} el - The element or mock element to check.
+ * @returns {boolean}
+ */
+function isTextInputElement(el) {
+    if (!el || typeof el !== 'object') return false;
+    if (el.tagName === 'TEXTAREA' || el.isContentEditable) return true;
+    if (el.tagName === 'INPUT') {
+        const type = (el.type || 'text').toLowerCase();
+        const nonTextTypes = ['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'image', 'color'];
+        return !nonTextTypes.includes(type);
+    }
+    return false;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { getFolderPath, getFolderDisplayName, getFilename, escapeHTML, getFolderBounds, isVideoUrl, debounce, isCursorInSeekbarHoverArea, isTextInputElement };
+}
+
