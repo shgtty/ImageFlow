@@ -3088,6 +3088,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const fabContainer = document.getElementById('fab-container');
     let activityTimeout = null;
     let lastActivityReset = 0;
+    function hideUI() {
+        if (typeof FolderDrawer !== 'undefined' && FolderDrawer.isOpen) {
+            return;
+        }
+        if (activityTimeout) {
+            clearTimeout(activityTimeout);
+            activityTimeout = null;
+        }
+        fabContainer.classList.add('hidden');
+        document.documentElement.classList.add('hide-cursor');
+        
+        // Hide cursor tooltip
+        if (cursorTooltip) {
+            cursorTooltip.style.opacity = '0';
+            cursorTooltip.dataset.currentSrc = '';
+        }
+
+        // Hide seekbar tooltip
+        if (seekbarTooltip) {
+            seekbarTooltip.style.opacity = '0';
+        }
+        
+        // Hide status overlay
+        if (modeOverlay) {
+            modeOverlay.classList.remove('show');
+            // Clear temporary message after hide transition completes
+            setTimeout(() => {
+                currentModeMessage = '';
+            }, 400);
+        }
+        
+        lastActivityReset = 0;
+    }
+
     function resetActivityTimer() {
         // ⚡ Bolt Optimization: Throttle the UI hide timer reset to prevent thousands of clearTimeout/setTimeout calls on continuous mousemove
         const now = Date.now();
@@ -3106,39 +3140,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (activityTimeout) clearTimeout(activityTimeout);
-        activityTimeout = setTimeout(() => {
-            if (typeof FolderDrawer !== 'undefined' && FolderDrawer.isOpen) {
-                return;
-            }
-            fabContainer.classList.add('hidden');
-            document.documentElement.classList.add('hide-cursor');
-            
-            // Hide cursor tooltip
-            if (cursorTooltip) {
-                cursorTooltip.style.opacity = '0';
-                cursorTooltip.dataset.currentSrc = '';
-            }
-            
-            // Hide status overlay
-            if (modeOverlay) {
-                modeOverlay.classList.remove('show');
-                // Clear temporary message after hide transition completes
-                setTimeout(() => {
-                    currentModeMessage = '';
-                }, 400);
-            }
-            
-            lastActivityReset = 0;
-        }, 3000);
+        activityTimeout = setTimeout(hideUI, 3000);
     }
-    ['mousemove', 'mousedown', 'touchstart', 'wheel'].forEach(type => {
+    ['mousemove', 'mousedown', 'touchstart'].forEach(type => {
         window.addEventListener(type, resetActivityTimer, { passive: true });
     });
+    window.addEventListener('wheel', (e) => {
+        if (typeof FolderDrawer !== 'undefined' && FolderDrawer.isOpen) return;
+        if (e.target && e.target.closest && e.target.closest('#folder-drawer, #drawer-hover-trigger, .modal')) return;
+        const fileSelectModal = document.getElementById('file-select-modal');
+        if (fileSelectModal && fileSelectModal.style.display === 'block') return;
+        const filterModal = document.getElementById('filter-modal');
+        if (filterModal && filterModal.style.display === 'block') return;
+        const configEditModal = document.getElementById('config-edit-modal');
+        if (configEditModal && configEditModal.style.display === 'block') return;
+        const bookmarkModal = document.getElementById('bookmark-modal');
+        if (bookmarkModal && bookmarkModal.style.display === 'block') return;
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal && settingsModal.style.display === 'block') return;
+
+        hideUI();
+    }, { passive: true });
     window.addEventListener('keydown', (e) => {
+        const activeEl = document.activeElement;
+        const isTextInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        if (isTextInput) return;
+
         // デュアルビュー中でナビゲーションキー（カーソル、Home/End, PageUp/Down）操作の場合は、
-        // 没入感を維持するためFABなどのUIを表示しない。
+        // 没入感を維持するためUIを非表示にする。
         const isNavKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key);
         if (typeof DualView !== 'undefined' && DualView.isActive && isNavKey) {
+            hideUI();
             return;
         }
         resetActivityTimer();
