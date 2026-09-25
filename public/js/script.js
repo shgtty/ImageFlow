@@ -94,6 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY_CURSOR_TOOLTIP = 'imageflow_cursor_tooltip';
     const STORAGE_KEY_GALLERY_CONFIG_FILES = 'imageflow_gallery_config_files';
     const STORAGE_KEY_DUAL_CONFIG_FILES = 'imageflow_dual_config_files';
+    const STORAGE_KEY_MOUSE_THRESHOLD = 'imageflow_mouse_threshold';
+    const DEFAULT_MOUSE_ACTIVITY_THRESHOLD = 60;
+    let mouseActivityThreshold = parseInt(localStorage.getItem(STORAGE_KEY_MOUSE_THRESHOLD), 10);
+    if (isNaN(mouseActivityThreshold)) {
+        mouseActivityThreshold = DEFAULT_MOUSE_ACTIVITY_THRESHOLD;
+    }
 
     function getModeConfigFiles(mode) {
         const key = mode === 'dual' ? STORAGE_KEY_DUAL_CONFIG_FILES : STORAGE_KEY_GALLERY_CONFIG_FILES;
@@ -1567,6 +1573,14 @@ document.addEventListener('DOMContentLoaded', () => {
             intervalRange.value = interval;
             intervalValueText.textContent = interval + 's';
         }
+
+        // Mouse Sensitivity (Threshold)
+        const mouseThresholdRange = document.getElementById('settings-mouse-threshold');
+        const mouseThresholdValueText = document.getElementById('settings-mouse-threshold-value');
+        if (mouseThresholdRange && mouseThresholdValueText) {
+            mouseThresholdRange.value = mouseActivityThreshold;
+            mouseThresholdValueText.textContent = mouseActivityThreshold + 'px';
+        }
     }
 
     function applySortChange(mode, newSortMode) {
@@ -1995,6 +2009,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 DualView.setAutoAdvance(interval);
             }
             updateStopBtnIcon();
+        });
+    }
+
+    // Mouse Sensitivity (Threshold)
+    const mouseThresholdRange = document.getElementById('settings-mouse-threshold');
+    const mouseThresholdValueText = document.getElementById('settings-mouse-threshold-value');
+    if (mouseThresholdRange && mouseThresholdValueText) {
+        mouseThresholdRange.addEventListener('input', () => {
+            const val = parseInt(mouseThresholdRange.value, 10);
+            mouseThresholdValueText.textContent = val + 'px';
+            mouseActivityThreshold = val;
+            localStorage.setItem(STORAGE_KEY_MOUSE_THRESHOLD, val);
         });
     }
 
@@ -3027,6 +3053,7 @@ document.addEventListener('DOMContentLoaded', () => {
             STORAGE_KEY_CURSOR_TOOLTIP,
             STORAGE_KEY_GALLERY_CONFIG_FILES,
             STORAGE_KEY_DUAL_CONFIG_FILES,
+            STORAGE_KEY_MOUSE_THRESHOLD,
             'imageflow_scroll_speed',
             'imageflow_column_count'
         ];
@@ -3042,6 +3069,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastActiveDualInterval = 10;
         lastActiveGallerySpeed = 2.0;
         currentColorModeIndex = 0;
+        mouseActivityThreshold = DEFAULT_MOUSE_ACTIVITY_THRESHOLD;
 
         // Reset UI Components
         // 1. Color Mode
@@ -3088,6 +3116,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fabContainer = document.getElementById('fab-container');
     let activityTimeout = null;
     let lastActivityReset = 0;
+    let lastActivityMouseX = null;
+    let lastActivityMouseY = null;
+    let mouseStopTimer = null;
+    const MOUSE_STOP_DELAY = 400; // ms: 静止したとみなして移動カウント（基準位置）をリセットする待機時間
+
     function hideUI() {
         if (typeof FolderDrawer !== 'undefined' && FolderDrawer.isOpen) {
             return;
@@ -3095,6 +3128,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activityTimeout) {
             clearTimeout(activityTimeout);
             activityTimeout = null;
+        }
+        if (mouseStopTimer) {
+            clearTimeout(mouseStopTimer);
+            mouseStopTimer = null;
         }
         fabContainer.classList.add('hidden');
         document.documentElement.classList.add('hide-cursor');
@@ -3120,6 +3157,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         lastActivityReset = 0;
+        if (typeof lastMouseX === 'number' && typeof lastMouseY === 'number' && (lastMouseX !== 0 || lastMouseY !== 0)) {
+            lastActivityMouseX = lastMouseX;
+            lastActivityMouseY = lastMouseY;
+        }
     }
 
     function resetActivityTimer() {
@@ -3127,6 +3168,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = Date.now();
         if (now - lastActivityReset < 250) return;
         lastActivityReset = now;
+
+        if (typeof lastMouseX === 'number' && typeof lastMouseY === 'number' && (lastMouseX !== 0 || lastMouseY !== 0)) {
+            lastActivityMouseX = lastMouseX;
+            lastActivityMouseY = lastMouseY;
+        }
 
         fabContainer.classList.remove('hidden');
         document.documentElement.classList.remove('hide-cursor');
@@ -3142,8 +3188,53 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activityTimeout) clearTimeout(activityTimeout);
         activityTimeout = setTimeout(hideUI, 3000);
     }
-    ['mousemove', 'mousedown', 'touchstart'].forEach(type => {
-        window.addEventListener(type, resetActivityTimer, { passive: true });
+
+    function handleMouseMoveActivity(e) {
+        if (lastActivityMouseX === null || lastActivityMouseY === null) {
+            lastActivityMouseX = e.clientX;
+            lastActivityMouseY = e.clientY;
+            return;
+        }
+
+        const dx = e.clientX - lastActivityMouseX;
+        const dy = e.clientY - lastActivityMouseY;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist >= mouseActivityThreshold) {
+            if (mouseStopTimer) {
+                clearTimeout(mouseStopTimer);
+                mouseStopTimer = null;
+            }
+            lastActivityMouseX = e.clientX;
+            lastActivityMouseY = e.clientY;
+            resetActivityTimer();
+        } else {
+            // 閾値未満の微小移動の場合、マウスが停止した時点で基準位置を現在位置にリセットする
+            if (mouseStopTimer) clearTimeout(mouseStopTimer);
+            mouseStopTimer = setTimeout(() => {
+                lastActivityMouseX = lastMouseX;
+                lastActivityMouseY = lastMouseY;
+                mouseStopTimer = null;
+            }, MOUSE_STOP_DELAY);
+        }
+    }
+
+    window.addEventListener('mousemove', handleMouseMoveActivity, { passive: true });
+    ['mousedown', 'touchstart'].forEach(type => {
+        window.addEventListener(type, (e) => {
+            if (mouseStopTimer) {
+                clearTimeout(mouseStopTimer);
+                mouseStopTimer = null;
+            }
+            const touch = e.touches && e.touches[0];
+            const clientX = touch ? touch.clientX : e.clientX;
+            const clientY = touch ? touch.clientY : e.clientY;
+            if (clientX !== undefined && clientY !== undefined) {
+                lastActivityMouseX = clientX;
+                lastActivityMouseY = clientY;
+            }
+            resetActivityTimer();
+        }, { passive: true });
     });
     window.addEventListener('wheel', (e) => {
         if (typeof FolderDrawer !== 'undefined' && FolderDrawer.isOpen) return;

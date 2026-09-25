@@ -1081,7 +1081,11 @@ const server = http.createServer((req, res) => {
     fs.promises.stat(resolvedPath)
         .then(stats => {
             if (stats.isFile()) {
-                res.writeHead(200, { 'Content-Type': contentType });
+                res.writeHead(200, {
+                    'Content-Type': contentType,
+                    'Cache-Control': 'no-cache, must-revalidate',
+                    'Pragma': 'no-cache'
+                });
                 fs.createReadStream(resolvedPath).pipe(res);
             } else {
                 res.writeHead(404);

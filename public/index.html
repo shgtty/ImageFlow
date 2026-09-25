@@ -1947,6 +1947,18 @@
                         <span id="settings-dual-interval-value" class="settings-range-value">0s</span>
                     </div>
                 </div>
+
+                <!-- マウス反応感度 (移動閾値) -->
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">マウス反応感度 (移動閾値)</div>
+                        <div class="settings-desc">UIを表示するのに必要なマウス移動量 (px)。数値を大きくすると、少し動かしてもUIが表示されなくなります。</div>
+                    </div>
+                    <div class="settings-range-container">
+                        <input type="range" id="settings-mouse-threshold" min="0" max="200" step="5" class="settings-range" aria-label="マウス反応感度 (移動閾値)">
+                        <span id="settings-mouse-threshold-value" class="settings-range-value">60px</span>
+                    </div>
+                </div>
             </div>
 
             <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
@@ -1956,11 +1968,11 @@
         </div>
     </div>
 
-    <script src="js/utils.js"></script>
-    <script src="js/folder-drawer.js"></script>
-    <script src="js/dual-view.js"></script>
-    <script src="js/gallery-view.js"></script>
-    <script src="js/script.js"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/folder-drawer.js?v=2"></script>
+    <script src="js/dual-view.js?v=2"></script>
+    <script src="js/gallery-view.js?v=2"></script>
+    <script src="js/script.js?v=2"></script>
 </body>
 
 </html>
