@@ -1036,6 +1036,10 @@
         .settings-select:focus {
             border-color: #3498db;
         }
+        .settings-select:focus-visible {
+            outline: 2px solid #3498db;
+            outline-offset: 2px;
+        }
         .settings-select:hover {
             background: #333;
         }
@@ -1076,6 +1080,10 @@
             background-color: #3498db;
             border-color: #3498db;
         }
+        .settings-toggle input:focus-visible + .settings-slider {
+            outline: 2px solid #3498db;
+            outline-offset: 2px;
+        }
         .settings-toggle input:checked + .settings-slider:before {
             transform: translateX(24px);
         }
@@ -1092,6 +1100,10 @@
             border-radius: 3px;
             outline: none;
             width: 120px;
+        }
+        .settings-range:focus-visible {
+            outline: 2px solid #3498db;
+            outline-offset: 4px;
         }
         .settings-range::-webkit-slider-thumb {
             -webkit-appearance: none;
