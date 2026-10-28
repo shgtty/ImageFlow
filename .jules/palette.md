@@ -25,3 +25,7 @@
 ## 2024-08-11 - [Accessible Custom List Items with Native Inputs]
 **Learning:** When building custom accessible list items (like `role="checkbox"` `div` elements) that internally use a native purely visual `<input type="checkbox">` for styling or state representation, the inner native input will cause double-focusing and confusing redundant announcements by screen readers if left as-is.
 **Action:** Always explicitly add `tabindex="-1"` and `aria-hidden="true"` to the inner native `<input>` when its parent element is already acting as the focusable and accessible interactive widget (`role="checkbox"`, `tabindex="0"`, `aria-checked="..."`). This delegates all accessibility responsibilities to the properly ARIA-labeled parent and prevents the native input from interfering with keyboard navigation or screen reader flow.
+
+## 2026-10-06 - Focus Styles for Hidden Native Inputs
+**Learning:** When using custom styled inputs like toggle switches where the native `input` element has `opacity: 0` or is visually hidden, the browser's default focus ring won't be visible when the element is focused via keyboard.
+**Action:** Always explicitly define a `:focus-visible` style on the custom visual element when the underlying native `input` element matches `:focus-visible` (e.g., `.custom-toggle input:focus-visible + .custom-slider`).
