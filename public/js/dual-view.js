@@ -579,7 +579,7 @@ const DualView = (() => {
         const remaining = 100 - progress;
 
         if (progressBar) {
-            progressBar.style.width = `${remaining}%`;
+            progressBar.style.transform = `scaleX(${remaining / 100})`;
         }
 
         if (progress < 100) {
