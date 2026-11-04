@@ -31,3 +31,6 @@
 ## 2024-05-19 - Expensive String Manipulations in Render Loops
 **Learning:** Functions that perform string splitting and manipulation (like `getFolderDisplayName` which uses `String.prototype.split`) allocate new array objects on every call. When called inside high-frequency render functions (like `renderBookmarkList` or `updateCursorTooltipContent`), this causes excessive Garbage Collection (GC) overhead and CPU spikes.
 **Action:** Always memoize derived string values using a `Map` cache (e.g., `folderDisplayNameCache`) when the transformation depends on an input that changes infrequently or is repeated across many elements.
+## 2024-05-19 - Layout Thrashing with Progress Bar width animation
+**Learning:** Modifying the `width` style property of a progress bar inside a `requestAnimationFrame` callback causes layout thrashing (synchronous layout recalculation) on every frame (60fps), which results in high CPU usage and potential jank.
+**Action:** Replace `width` manipulation with `transform: scaleX(ratio)` and `transform-origin: left;` to offload the animation entirely to the GPU, keeping the main thread free.
