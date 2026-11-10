@@ -368,7 +368,23 @@ const FolderDrawer = (() => {
         if (filtered.length === 0) {
             const emptyEl = document.createElement('div');
             emptyEl.className = 'folder-drawer-empty';
-            emptyEl.textContent = query ? '一致するフォルダがありません' : 'フォルダがありません';
+
+            if (query) {
+                emptyEl.textContent = '一致するフォルダがありません';
+            } else {
+                emptyEl.innerHTML = `
+                    <div style="margin-bottom: 16px;">
+                        <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: rgba(255, 255, 255, 0.2); margin: 0 auto;">
+                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                        </svg>
+                    </div>
+                    <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 8px; color: #ddd;">フォルダがありません</div>
+                    <div style="font-size: 0.9em; color: #888; line-height: 1.5;">
+                        設定ファイルを選択するか、<br>
+                        正しいディレクトリを指定してください。
+                    </div>
+                `;
+            }
             listEl.appendChild(emptyEl);
             return;
         }
