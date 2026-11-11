@@ -3517,15 +3517,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Bookmark Functions ---
 
+    // ⚡ Bolt Optimization: Cache for getLocalPathFromUrl to prevent redundant URL object instantiation overhead in hot paths
+    const localPathCache = new Map();
     function getLocalPathFromUrl(url) {
+        if (!url) return '';
+        if (localPathCache.has(url)) return localPathCache.get(url);
+
+        let pathStr = url;
         try {
-            const urlObj = new URL(url, window.location.origin);
-            return urlObj.searchParams.get('path') || url;
-        } catch(e) {
+            const match = /[?&]path=([^&#]*)/.exec(url);
+            if (match) {
+                pathStr = decodeURIComponent(match[1].replace(/\+/g, ' '));
+            } else {
+                const urlObj = new URL(url, window.location.origin);
+                pathStr = urlObj.searchParams.get('path') || url;
+            }
+        } catch (e) {
+            // fallback
             const match = url.match(/[\?&]path=([^&]+)/);
-            if (match) return decodeURIComponent(match[1]);
-            return url;
+            if (match) {
+                try {
+                    pathStr = decodeURIComponent(match[1]);
+                } catch(err) {}
+            }
         }
+
+        if (localPathCache.size > 10000) localPathCache.clear();
+        localPathCache.set(url, pathStr);
+        return pathStr;
     }
 
     function getUrlFromLocalPath(localPath) {

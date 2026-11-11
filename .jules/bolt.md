@@ -34,3 +34,6 @@
 ## 2024-05-19 - Layout Thrashing with Progress Bar width animation
 **Learning:** Modifying the `width` style property of a progress bar inside a `requestAnimationFrame` callback causes layout thrashing (synchronous layout recalculation) on every frame (60fps), which results in high CPU usage and potential jank.
 **Action:** Replace `width` manipulation with `transform: scaleX(ratio)` and `transform-origin: left;` to offload the animation entirely to the GPU, keeping the main thread free.
+## 2024-05-19 - Expensive Object Instantiation in Linear Scan Loops
+**Learning:** Calling `new URL()` inside linear scan loops (like `skipToNextStop` evaluating `isBookmarked` for thousands of image URLs) causes substantial synchronous blocking and Garbage Collection (GC) overhead on the main thread. In large flat lists, this leads to perceptible UI jank when skipping between items or bookmarks.
+**Action:** Use fast regex parsing combined with a `Map` cache for frequently repeated URL parameter extractions (e.g., `getLocalPathFromUrl`) to prevent expensive object instantiation overhead during list traversals.
